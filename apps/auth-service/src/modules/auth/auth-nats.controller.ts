@@ -81,7 +81,7 @@ export class AuthNatsController {
         grant_type: 'authorization_code',
       }),
     });
-    const tokenData = await tokenRes.json();
+    const tokenData: any = await tokenRes.json();
 
     if (!tokenData.access_token) {
       throw new Error('Failed to exchange Google auth code');
@@ -91,7 +91,7 @@ export class AuthNatsController {
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
-    const userInfo = await userRes.json();
+    const userInfo: any = await userRes.json();
 
     return {
       googleId: userInfo.id,
