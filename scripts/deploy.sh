@@ -36,14 +36,6 @@ preflight() {
         error ".env.production not found! Copy .env.example to .env.production and fill values."
     fi
 
-    if [ ! -f "$PROJECT_ROOT/infrastructure/ssl/origin.pem" ]; then
-        error "SSL certificate not found at infrastructure/ssl/origin.pem"
-    fi
-
-    if [ ! -f "$PROJECT_ROOT/infrastructure/ssl/origin.key" ]; then
-        error "SSL private key not found at infrastructure/ssl/origin.key"
-    fi
-
     # Check for placeholder values
     if grep -q "CHANGE_ME" "$ENV_FILE" 2>/dev/null; then
         warn "Found CHANGE_ME placeholders in .env.production - please update before production use!"
@@ -70,10 +62,10 @@ deploy() {
     # Start infrastructure first
     log "Starting infrastructure services..."
     docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" up -d \
-        postgres redis elasticsearch minio nats
+        postgres redis nats
 
     log "Waiting for infrastructure to be healthy..."
-    sleep 10
+    sleep 15
     docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" \
         exec -T postgres pg_isready -U srp_hrms_prod || error "PostgreSQL not ready"
 
@@ -97,7 +89,6 @@ deploy() {
     log "  App:        https://app.hrms.srpailabs.com"
     log "  API:        https://api.hrms.srpailabs.com"
     log "  API Docs:   https://api.hrms.srpailabs.com/docs"
-    log "  Grafana:    https://grafana.hrms.srpailabs.com"
 }
 
 # ---- Stop all services ----

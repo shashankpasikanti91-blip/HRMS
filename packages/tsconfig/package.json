@@ -1,0 +1,6 @@
+{
+  "name": "@srp/tsconfig",
+  "version": "1.0.0",
+  "private": true,
+  "files": ["base.json"]
+}
