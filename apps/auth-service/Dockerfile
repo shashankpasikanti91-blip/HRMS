@@ -26,9 +26,6 @@ RUN npm ci --workspace=@srp/auth-service --workspace=@srp/shared --workspace=@sr
 # Build
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/packages/database/node_modules ./packages/database/node_modules
-COPY --from=deps /app/apps/auth-service/node_modules ./apps/auth-service/node_modules
 COPY packages/shared ./packages/shared
 COPY packages/database ./packages/database
 COPY apps/auth-service ./apps/auth-service
@@ -45,7 +42,6 @@ ENV NODE_ENV=production
 
 COPY --from=builder --chown=nestjs:nodejs /app/apps/auth-service/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nodejs /app/packages/database/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nestjs:nodejs /app/apps/auth-service/package.json ./
 
 USER nestjs

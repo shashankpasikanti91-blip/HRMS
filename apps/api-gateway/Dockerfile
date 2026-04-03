@@ -26,9 +26,6 @@ RUN npm ci --workspace=@srp/api-gateway --workspace=@srp/shared --workspace=@srp
 # Build
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/packages/database/node_modules ./packages/database/node_modules
-COPY --from=deps /app/apps/api-gateway/node_modules ./apps/api-gateway/node_modules
 COPY packages/shared ./packages/shared
 COPY packages/database ./packages/database
 COPY apps/api-gateway ./apps/api-gateway
@@ -45,7 +42,6 @@ ENV NODE_ENV=production
 
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api-gateway/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nodejs /app/packages/database/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api-gateway/package.json ./
 
 USER nestjs

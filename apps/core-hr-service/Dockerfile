@@ -24,9 +24,6 @@ RUN npm ci --workspace=@srp/core-hr-service --workspace=@srp/shared --workspace=
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/packages/database/node_modules ./packages/database/node_modules
-COPY --from=deps /app/apps/core-hr-service/node_modules ./apps/core-hr-service/node_modules
 COPY packages/shared ./packages/shared
 COPY packages/database ./packages/database
 COPY apps/core-hr-service ./apps/core-hr-service
@@ -42,7 +39,6 @@ ENV NODE_ENV=production
 
 COPY --from=builder --chown=nestjs:nodejs /app/apps/core-hr-service/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nodejs /app/packages/database/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nestjs:nodejs /app/apps/core-hr-service/package.json ./
 
 USER nestjs

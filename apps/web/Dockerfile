@@ -26,9 +26,6 @@ RUN npm ci --workspace=@srp/web --workspace=@srp/shared --workspace=@srp/databas
 # Build
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/packages/database/node_modules ./packages/database/node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY packages/shared ./packages/shared
 COPY packages/database ./packages/database
 COPY apps/web ./apps/web
