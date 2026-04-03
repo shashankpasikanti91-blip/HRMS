@@ -1,0 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 25% 5%;
+    --foreground: 210 40% 96%;
+    --card: 220 25% 8%;
+    --card-foreground: 210 40% 96%;
+    --primary: 190 95% 45%;
+    --primary-foreground: 220 25% 5%;
+    --secondary: 220 20% 12%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 220 20% 14%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 190 95% 45%;
+    --accent-foreground: 220 25% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 20% 16%;
+    --input: 220 20% 16%;
+    --ring: 190 95% 45%;
+    --radius: 0.75rem;
+
+    --glass: 220 25% 8% / 0.6;
+    --glow-cyan: 190 95% 45%;
+    --glow-violet: 260 80% 60%;
+    --gradient-primary: linear-gradient(135deg, hsl(190 95% 45%), hsl(260 80% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(190 95% 45%), hsl(210 100% 55%));
+    --gradient-hero: linear-gradient(135deg, hsl(190 95% 45%), hsl(260 80% 60%), hsl(330 80% 55%));
+    --shadow-glow-cyan: 0 0 30px hsl(190 95% 45% / 0.3);
+    --shadow-glow-violet: 0 0 30px hsl(260 80% 60% / 0.3);
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground font-body antialiased; }
+  h1, h2, h3, h4, h5, h6 { @apply font-display; }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl;
+  }
+
+  .glass-navbar {
+    @apply bg-card/80 backdrop-blur-2xl border-b border-border/30;
+  }
+
+  .glow-card {
+    @apply glass-card transition-all duration-500;
+  }
+
+  .glow-card:hover {
+    box-shadow: var(--shadow-glow-cyan);
+    border-color: hsl(var(--glow-cyan) / 0.4);
+  }
+
+  .glow-card-violet:hover {
+    box-shadow: var(--shadow-glow-violet);
+    border-color: hsl(var(--glow-violet) / 0.4);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+
+  .gradient-text-accent {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-accent);
+  }
+
+  .gradient-text-hero {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-hero);
+  }
+
+  .btn-primary {
+    @apply px-8 py-3.5 rounded-lg font-display font-semibold text-sm tracking-wider uppercase transition-all duration-300 text-white;
+    background-image: var(--gradient-primary);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow-cyan), var(--shadow-glow-violet);
+  }
+
+  .btn-outline {
+    @apply px-8 py-3.5 rounded-lg font-display font-semibold text-sm tracking-wider uppercase border border-primary/50 text-foreground transition-all duration-300 hover:border-primary hover:bg-primary/10;
+  }
+
+  .section-padding {
+    @apply py-16 md:py-24 px-4 md:px-8;
+  }
+
+  .marquee-track {
+    display: flex;
+    animation: marquee 40s linear infinite;
+    width: max-content;
+  }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 0; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+@keyframes grid-move {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(60px); }
+}
+
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-pulse-ring { animation: pulse-ring 3s ease-in-out infinite; }
+
+.testimonial-track {
+  animation: marquee 45s linear infinite;
+  width: max-content;
+}
+.testimonial-track:hover { animation-play-state: paused; }
+
+html { scroll-behavior: smooth; }
+
+/* Animated grid background */
+.bg-grid {
+  background-image:
+    linear-gradient(hsl(var(--primary) / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--primary) / 0.05) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Gradient orbs */
+.orb-cyan {
+  background: radial-gradient(circle, hsl(190 95% 45% / 0.15), transparent 70%);
+}
+.orb-violet {
+  background: radial-gradient(circle, hsl(260 80% 60% / 0.12), transparent 70%);
+}

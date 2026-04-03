@@ -1,0 +1,50 @@
+{
+  "name": "srp-ai-hrms",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SRP AI HRMS - AI-Powered Human Resource Management System by SRP AI Labs",
+  "author": "SRP AI Labs <dev@srpailabs.com>",
+  "homepage": "https://hrms.srpailabs.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/srpailabs/srp-ai-hrms"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "clean": "turbo run clean && rimraf node_modules",
+    "db:migrate": "turbo run db:migrate --filter=@srp/database",
+    "db:seed": "turbo run db:seed --filter=@srp/database",
+    "db:generate": "turbo run db:generate --filter=@srp/database",
+    "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml down",
+    "docker:build": "docker compose -f infrastructure/docker/docker-compose.yml build",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "prettier": "^3.4.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0",
+    "rimraf": "^6.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": ["eslint --fix", "prettier --write"],
+    "*.{json,md}": ["prettier --write"]
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "packageManager": "npm@10.9.0"
+}

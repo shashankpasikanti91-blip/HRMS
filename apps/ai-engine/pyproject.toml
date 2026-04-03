@@ -1,0 +1,16 @@
+[project]
+name = "srp-ai-engine"
+version = "1.0.0"
+description = "SRP AI HRMS - AI Engine (FastAPI)"
+requires-python = ">=3.11"
+
+[tool.poetry]
+name = "srp-ai-engine"
+version = "1.0.0"
+description = "AI-powered engine for SRP HRMS: RAG chatbot, resume screening, predictive analytics, document embeddings"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "httpx", "ruff"]

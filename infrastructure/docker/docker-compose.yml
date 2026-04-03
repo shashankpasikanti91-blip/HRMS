@@ -1,0 +1,177 @@
+# ============================================================
+# SRP AI HRMS - Docker Compose
+# Full development environment
+# ============================================================
+
+services:
+  # ---- PostgreSQL 16 + pgvector ----
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: srp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: srp_hrms
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-srp_dev_password}
+      POSTGRES_DB: srp_hrms
+      POSTGRES_MULTIPLE_DATABASES: srp_hrms,srp_hrms_test
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U srp_hrms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - srp-network
+
+  # ---- Redis 7 ----
+  redis:
+    image: redis:7-alpine
+    container_name: srp-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-srp_redis_dev}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-srp_redis_dev}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - srp-network
+
+  # ---- Elasticsearch 8 ----
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: srp-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - srp-network
+
+  # ---- MinIO (S3-Compatible Storage) ----
+  minio:
+    image: minio/minio:latest
+    container_name: srp-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-srp_minio_access}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-srp_minio_secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - srp-network
+
+  # ---- NATS (Event Bus) ----
+  nats:
+    image: nats:2-alpine
+    container_name: srp-nats
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: "--jetstream --store_dir /data"
+    volumes:
+      - nats_data:/data
+    networks:
+      - srp-network
+
+  # ---- n8n (Workflow Automation) ----
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: srp-n8n
+    restart: unless-stopped
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-srp_n8n_dev}
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=srp_hrms
+      - DB_POSTGRESDB_USER=srp_hrms
+      - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD:-srp_dev_password}
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - srp-network
+
+  # ---- Prometheus (Monitoring) ----
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: srp-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - srp-network
+
+  # ---- Grafana (Dashboards) ----
+  grafana:
+    image: grafana/grafana:latest
+    container_name: srp-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-srp_grafana_dev}
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - srp-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  elasticsearch_data:
+  minio_data:
+  nats_data:
+  n8n_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  srp-network:
+    driver: bridge
+    name: srp-hrms-network
