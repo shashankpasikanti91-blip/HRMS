@@ -8,7 +8,7 @@ COPY package.json package-lock.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
 COPY apps/analytics-service/package.json ./apps/analytics-service/
-RUN npm ci
+RUN npm ci && rm -rf node_modules/@next node_modules/next node_modules/react node_modules/react-dom node_modules/sharp node_modules/@swc node_modules/.cache
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
