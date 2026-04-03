@@ -20,7 +20,7 @@ COPY apps/notification-service/package.json ./apps/notification-service/
 COPY apps/analytics-service/package.json ./apps/analytics-service/
 COPY apps/web/package.json ./apps/web/
 COPY apps/marketing/package.json ./apps/marketing/
-RUN npm ci --workspace=@srp/core-hr-service --workspace=@srp/shared --workspace=@srp/database --include-workspace-root
+RUN npm ci
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules

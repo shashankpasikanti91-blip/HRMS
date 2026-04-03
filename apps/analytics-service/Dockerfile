@@ -8,7 +8,7 @@ COPY package.json package-lock.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
 COPY apps/analytics-service/package.json ./apps/analytics-service/
-RUN npm ci --workspace=@srp/analytics-service --include-workspace-root
+RUN npm ci
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules

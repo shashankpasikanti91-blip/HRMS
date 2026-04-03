@@ -8,7 +8,7 @@ COPY package.json package-lock.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
 COPY apps/performance-service/package.json ./apps/performance-service/
-RUN npm ci --workspace=@srp/performance-service --include-workspace-root
+RUN npm ci
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
