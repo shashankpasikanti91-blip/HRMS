@@ -5,14 +5,14 @@ import { PrismaService } from '../../config/prisma.service';
 export class PositionsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(tenantId: string, data: { title: string; code: string; description?: string; departmentId?: string; level?: number; minSalary?: number; maxSalary?: number }) {
+  async create(tenantId: string, data: { title: string; code: string; description?: string; departmentId: string; minSalary?: number; maxSalary?: number }) {
     const existing = await this.prisma.position.findUnique({
       where: { tenantId_code: { tenantId, code: data.code } },
     });
     if (existing) throw new ConflictException('Position code already exists');
 
     return this.prisma.position.create({
-      data: { tenantId, ...data },
+      data: { tenantId, ...data } as any,
       include: {
         department: { select: { id: true, name: true } },
         _count: { select: { employees: true } },

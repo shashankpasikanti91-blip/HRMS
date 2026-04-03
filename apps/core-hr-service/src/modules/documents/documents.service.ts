@@ -9,14 +9,14 @@ export class DocumentsService {
     employeeId?: string;
     name: string;
     type: string;
-    category: string;
-    filePath: string;
-    fileSize: number;
+    category?: string;
+    url: string;
+    size: number;
     mimeType: string;
-    uploadedById: string;
+    uploadedBy: string;
   }) {
     return this.prisma.document.create({
-      data: { tenantId, ...data },
+      data: { tenantId, ...data } as any,
     });
   }
 

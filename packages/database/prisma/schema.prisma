@@ -221,6 +221,7 @@ model Employee {
   reviewsGiven        PerformanceReview[] @relation("ReviewReviewer")
   documents           Document[]         @relation("EmployeeDocuments")
   skills              EmployeeSkill[]
+  headedDepartments   Department[]       @relation("DepartmentHead")
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId])
@@ -247,6 +248,7 @@ model Department {
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
   children    Department[] @relation("DepartmentHierarchy")
+  head        Employee?    @relation("DepartmentHead", fields: [headId], references: [id])
   employees   Employee[]
   positions   Position[]
   jobPostings JobPosting[]
