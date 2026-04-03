@@ -14,7 +14,13 @@ async function bootstrap() {
   app.use(helmet());
   app.use(compression());
   app.enableCors({
-    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+    origin: process.env.CORS_ORIGINS?.split(',') || [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://hrms.srpailabs.com',
+      'https://app.hrms.srpailabs.com',
+      'https://api.hrms.srpailabs.com',
+    ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id', 'X-Request-Id'],

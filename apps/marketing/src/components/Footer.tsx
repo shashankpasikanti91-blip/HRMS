@@ -7,12 +7,12 @@ const Footer = () => {
         {/* CTA Banner */}
         <div className="py-16 text-center border-b border-border/20">
           <h3 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
-            Ready to Experience the Future of HR?
+            Ready to Replace Manual HR?
           </h3>
           <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-            Join hundreds of companies already using SRP AI HRMS to transform their workforce management.
+            Start your AI-powered HR transformation today.
           </p>
-          <a href="#contact" className="btn-primary inline-flex items-center gap-2">
+          <a href="https://app.hrms.srpailabs.com/register" className="btn-primary inline-flex items-center gap-2">
             Start Free Trial <ArrowUpRight size={16} />
           </a>
         </div>
@@ -29,8 +29,8 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-              The next-generation AI-powered Human Resource Management System by SRP AI Labs.
-              More advanced than Workday, Oracle HCM & SAP SuccessFactors.
+              AI-powered Human Resource Management System by SRP AI Labs.
+              From hiring to exit — fully automated.
             </p>
             <div className="flex gap-3">
               {[Linkedin, Twitter, Github].map((Icon, i) => (
@@ -66,11 +66,11 @@ const Footer = () => {
           <div>
             <h4 className="font-display font-semibold text-foreground mb-4 text-sm uppercase tracking-wider">Resources</h4>
             <ul className="space-y-2">
-              {['Documentation', 'API Reference', 'Status Page', 'Privacy Policy', 'Terms of Service'].map((l) => (
-                <li key={l}>
-                  <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">{l}</a>
-                </li>
-              ))}
+              <li><a href="https://api.hrms.srpailabs.com/docs" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition-colors">API Reference</a></li>
+              <li><a href="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms" className="text-sm text-muted-foreground hover:text-primary transition-colors">Terms of Service</a></li>
+              <li><a href="/security" className="text-sm text-muted-foreground hover:text-primary transition-colors">Security</a></li>
+              <li><a href="#contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contact Us</a></li>
             </ul>
           </div>
         </div>

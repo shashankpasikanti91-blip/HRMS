@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight, Calendar } from 'lucide-react';
 
 const HeroSection = () => {
   return (
@@ -19,7 +19,7 @@ const HeroSection = () => {
         >
           <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-primary/30 bg-primary/10 backdrop-blur-sm text-sm font-medium text-foreground/80 tracking-widest uppercase">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            SRP AI Labs Platform — Now Live
+            AI That Runs Your HR
           </span>
         </motion.div>
 
@@ -29,7 +29,7 @@ const HeroSection = () => {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display font-bold leading-[1.05] mb-6"
         >
-          <span className="text-foreground">The Future of</span>
+          <span className="text-foreground">Stop Managing HR.</span>
           <br />
           <motion.span
             className="gradient-text-hero inline-block"
@@ -37,20 +37,27 @@ const HeroSection = () => {
             transition={{ duration: 6, repeat: Infinity }}
             style={{ backgroundSize: '200% 200%' }}
           >
-            HR Management
+            Let AI Run It.
           </motion.span>
-          <br />
-          <span className="text-foreground">is Here.</span>
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
+          className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed"
         >
-          38+ AI-powered modules. Enterprise-grade security. Multi-tenant SaaS.
-          More advanced than Workday, Oracle HCM & SAP SuccessFactors — built for the modern workforce.
+          AI-powered HRMS that screens candidates, predicts attrition, automates workflows,
+          and answers employee queries — all in real time.
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.7 }}
+          className="text-sm text-muted-foreground/70 mb-10"
+        >
+          Built for modern teams replacing manual HR with intelligent automation.
         </motion.p>
 
         <motion.div
@@ -59,11 +66,11 @@ const HeroSection = () => {
           transition={{ duration: 0.8, delay: 0.8 }}
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
-          <a href="#contact" className="btn-primary inline-flex items-center gap-2 justify-center">
-            Start Free Trial <ArrowRight size={16} />
+          <a href="https://app.hrms.srpailabs.com/register" className="btn-primary inline-flex items-center gap-2 justify-center">
+            🚀 Start Free Trial <ArrowRight size={16} />
           </a>
-          <a href="#features" className="btn-outline inline-flex items-center gap-2 justify-center">
-            <Play size={14} /> Watch Demo
+          <a href="#contact" className="btn-outline inline-flex items-center gap-2 justify-center">
+            <Calendar size={14} /> Book Live Demo
           </a>
         </motion.div>
 

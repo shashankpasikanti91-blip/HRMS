@@ -5,9 +5,10 @@
 import { Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
+import { UsersNatsController } from './users-nats.controller';
 
 @Module({
-  controllers: [UsersController],
+  controllers: [UsersController, UsersNatsController],
   providers: [UsersService],
   exports: [UsersService],
 })

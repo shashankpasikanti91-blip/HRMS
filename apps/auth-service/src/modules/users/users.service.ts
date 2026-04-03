@@ -109,6 +109,76 @@ export class UsersService {
     return user;
   }
 
+  // Find user by ID without tenantId constraint (for /me endpoint)
+  async findById(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        ...this.userSelect,
+        userRoles: {
+          select: {
+            role: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                permissions: {
+                  select: {
+                    permission: {
+                      select: { resource: true, action: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        tenant: {
+          select: { id: true, name: true, slug: true, logo: true },
+        },
+        employee: {
+          select: {
+            id: true,
+            employeeCode: true,
+            departmentId: true,
+            positionId: true,
+          },
+        },
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Flatten roles and permissions for frontend
+    const roles = user.userRoles.map((ur) => ({
+      id: ur.role.id,
+      name: ur.role.name,
+      slug: ur.role.slug,
+    }));
+    const permissions = [
+      ...new Set(
+        user.userRoles.flatMap((ur) =>
+          ur.role.permissions.map((rp) => `${rp.permission.resource}:${rp.permission.action}`),
+        ),
+      ),
+    ];
+
+    return {
+      id: user.id,
+      tenantId: user.tenantId,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      avatar: user.avatar,
+      status: user.status,
+      mfaEnabled: user.mfaEnabled,
+      roles,
+      permissions,
+      tenant: user.tenant,
+      employee: user.employee,
+    };
+  }
+
   async update(tenantId: string, id: string, dto: UpdateUserDto) {
     const existing = await this.prisma.user.findFirst({ where: { id, tenantId } });
     if (!existing) throw new NotFoundException('User not found');

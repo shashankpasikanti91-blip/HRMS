@@ -23,17 +23,26 @@ const CTASection = () => {
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7 }}
           >
-            <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Get in Touch</span>
+            <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Get Started</span>
             <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 mb-5 text-foreground leading-tight">
-              Ready to Transform <br />
-              <span className="gradient-text">Your HR?</span>
+              Ready to Replace <br />
+              <span className="gradient-text">Manual HR?</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-8">
-              Schedule a personalized demo and see how SRP AI HRMS can replace your legacy systems
-              with AI-powered intelligence. Our team will set up a trial environment with your data in under 24 hours.
+              Start your AI-powered HR transformation today.
+              Our team will set up a trial environment with your data in under 24 hours.
             </p>
 
-            <div className="space-y-4 mb-8">
+            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+              <a href="https://app.hrms.srpailabs.com/register" className="btn-primary inline-flex items-center gap-2 justify-center">
+                🚀 Start Free Trial <ArrowRight size={16} />
+              </a>
+              <a href="#contact" className="btn-outline inline-flex items-center gap-2 justify-center">
+                📞 Book Demo
+              </a>
+            </div>
+
+            <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
                   <Mail className="w-4 h-4 text-primary" />

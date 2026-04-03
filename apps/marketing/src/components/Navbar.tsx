@@ -79,10 +79,10 @@ const Navbar = () => {
         </div>
 
         <div className="hidden lg:flex items-center gap-4">
-          <a href="https://hrms.srpailabs.com/login" className="btn-outline text-xs py-2.5 px-5">
+          <a href="https://app.hrms.srpailabs.com/login" className="btn-outline text-xs py-2.5 px-5">
             Sign In
           </a>
-          <a href="#contact" className="btn-primary text-xs py-2.5 px-5">
+          <a href="https://app.hrms.srpailabs.com/register" className="btn-primary text-xs py-2.5 px-5">
             Get Started
           </a>
         </div>
@@ -111,7 +111,7 @@ const Navbar = () => {
                   {link.label}
                 </a>
               ))}
-              <a href="#contact" className="btn-primary text-center mt-2">
+              <a href="https://app.hrms.srpailabs.com/register" className="btn-primary text-center mt-2">
                 Get Started
               </a>
             </div>

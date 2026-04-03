@@ -9,42 +9,42 @@ const features = [
   {
     icon: Users,
     title: 'Core HR & Employee Management',
-    desc: 'Complete employee lifecycle — onboarding, profiles, org charts, department hierarchy, document vault, and self-service portal.',
-  },
-  {
-    icon: Clock,
-    title: 'Attendance & Leave Management',
-    desc: 'Biometric integration, geo-fenced check-in, shift scheduling, leave policies, holiday calendars, and auto-overtime calculations.',
-  },
-  {
-    icon: DollarSign,
-    title: 'Payroll & Compensation',
-    desc: 'Multi-country payroll with precision math (Decimal.js), tax calculations, salary structures, payslip generation, and CTC modeling.',
+    desc: 'Complete employee lifecycle — onboarding, profiles, org charts, documents, and self-service portal.',
   },
   {
     icon: Briefcase,
     title: 'Recruitment & ATS',
-    desc: 'AI-powered job board, candidate pipeline, interview scheduling, resume parsing, scorecard evaluation, and offer letter automation.',
+    desc: 'AI-powered job board, candidate pipeline, interview scheduling, resume screening, and offer letter automation.',
+  },
+  {
+    icon: DollarSign,
+    title: 'Payroll & Compensation',
+    desc: 'Multi-country payroll processing, tax calculations, salary structures, and payslip generation.',
+  },
+  {
+    icon: Clock,
+    title: 'Attendance & Leave',
+    desc: 'Real-time tracking, shift scheduling, leave policies, holiday calendars, and overtime management.',
   },
   {
     icon: Target,
-    title: 'Performance & Goals',
-    desc: 'OKR/KPI tracking, 360° reviews, review cycles, skill matrix, competency frameworks, goal alignment, and 9-box grid visualization.',
-  },
-  {
-    icon: Bell,
-    title: 'Notifications & Workflows',
-    desc: 'Multi-channel alerts (email, SMS, push, WhatsApp, Telegram), custom workflows via n8n, and event-driven automation with NATS.',
+    title: 'Performance & OKR Tracking',
+    desc: 'Goal setting, review cycles, 360° feedback, skill matrix, and competency frameworks.',
   },
   {
     icon: BarChart3,
     title: 'Analytics & Reports',
-    desc: 'Executive dashboards, headcount analytics, attrition trends, payroll cost analysis, custom reports, and scheduled CSV/PDF exports.',
+    desc: 'Executive dashboards, workforce analytics, attrition trends, and scheduled report exports.',
   },
   {
     icon: Bot,
     title: 'AI HR Chatbot',
-    desc: 'RAG-powered conversational assistant that answers HR policies, generates letters, explains payslips, and provides manager insights.',
+    desc: '24/7 assistant that answers HR policies, generates letters, explains payslips, and handles requests.',
+  },
+  {
+    icon: Bell,
+    title: 'Notifications & Workflows',
+    desc: 'Multi-channel alerts and automated workflows from onboarding to exit — no manual steps.',
   },
 ];
 
@@ -61,12 +61,12 @@ const FeaturesSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Platform Capabilities</span>
+          <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Complete Platform</span>
           <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 text-foreground">
             Everything You Need, <span className="gradient-text">Powered by AI</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            8 microservices working in harmony — each module is independently scalable, fully API-driven, and enhanced with artificial intelligence.
+            From hiring to exit — every module is designed to save time, reduce errors, and give you real-time insights.
           </p>
         </motion.div>
 

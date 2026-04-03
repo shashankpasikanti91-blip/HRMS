@@ -21,10 +21,9 @@ const AboutSection = () => {
               <span className="gradient-text">Artificial Intelligence</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-6">
-              SRP AI HRMS is the next-generation human resource management system built by SRP AI Labs.
-              Designed to surpass Workday, Oracle HCM, and SAP SuccessFactors — our platform combines
-              deep AI capabilities with enterprise-grade architecture to automate, predict, and transform
-              every aspect of workforce management.
+              SRP AI HRMS is a next-generation human resource management system built by SRP AI Labs.
+              Our platform combines deep AI capabilities with enterprise-grade security to automate, predict,
+              and transform every aspect of workforce management.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-8">
               From recruitment to retirement, every workflow is powered by intelligent automation,
@@ -63,10 +62,10 @@ const AboutSection = () => {
             className="space-y-4"
           >
             {[
-              { title: 'SRP AI Labs', desc: '6 AI products live — Autonomous OS, Marketing OS, MediFlow, SmartRecruit, Growth OS & HRMS', icon: '🚀' },
-              { title: 'Multi-Tenant SaaS', desc: 'Isolated data, custom branding, role-based access — each tenant is a universe of its own', icon: '🏢' },
-              { title: 'Microservices Architecture', desc: '8 independent services — Auth, Core HR, Payroll, Attendance, Recruitment, Performance, Analytics & AI Engine', icon: '⚡' },
-              { title: 'AI-Native Platform', desc: 'RAG chatbot, resume screening, attrition prediction, sentiment analysis — AI is woven into every module', icon: '🤖' },
+              { title: 'SRP AI Labs', desc: '6 AI products live — built by a team obsessed with intelligent automation', icon: '🚀' },
+              { title: 'Enterprise Ready', desc: 'Isolated data per organization, custom branding, and role-based access', icon: '🏢' },
+              { title: 'Scalable Platform', desc: 'Handles 10 employees to 100,000+ — no performance compromise', icon: '⚡' },
+              { title: 'AI-Native', desc: 'Resume screening, attrition prediction, HR chatbot — AI in every module', icon: '🤖' },
             ].map((item, i) => (
               <motion.div
                 key={item.title}

@@ -5,52 +5,55 @@ import { Check, ArrowRight } from 'lucide-react';
 const plans = [
   {
     name: 'Starter',
-    price: '$4',
+    price: '$29',
     unit: 'per employee/month',
-    desc: 'For startups and small teams getting started with HR automation.',
+    desc: 'For small teams getting started with HR automation.',
     features: [
-      'Up to 50 employees',
       'Core HR & Employee Management',
-      'Attendance & Leave tracking',
-      'Basic Payroll',
+      'Attendance & Leave Tracking',
+      'Basic Payroll Processing',
       'Employee Self-Service Portal',
-      'Email support',
     ],
     popular: false,
   },
   {
-    name: 'Professional',
-    price: '$9',
+    name: 'Growth',
+    price: '$59',
     unit: 'per employee/month',
-    desc: 'For growing companies that need the full HRMS experience.',
+    desc: 'For growing companies that need AI-powered HR.',
     features: [
-      'Up to 500 employees',
-      'Everything in Starter, plus:',
+      'Everything in Starter',
       'Recruitment & ATS',
-      'Performance & Goals (OKR)',
       'AI HR Chatbot',
-      'Workforce Analytics Dashboard',
-      'Multi-country Payroll',
-      'Priority support',
+      'Analytics Dashboard',
+      'Workflow Automation',
     ],
     popular: true,
   },
   {
+    name: 'Professional',
+    price: '$89',
+    unit: 'per employee/month',
+    desc: 'For organizations that need the full AI engine.',
+    features: [
+      'Everything in Growth',
+      'AI Resume Screening',
+      'Attrition Prediction',
+      'Multi-Country Payroll',
+      'Priority Support',
+    ],
+    popular: false,
+  },
+  {
     name: 'Enterprise',
     price: 'Custom',
-    unit: 'tailored pricing',
-    desc: 'For large organizations that need the full power of the platform.',
+    unit: 'contact us',
+    desc: 'For large organizations with custom requirements.',
     features: [
-      'Unlimited employees',
-      'Everything in Professional, plus:',
-      'All 38+ modules',
-      'AI Resume Screening & Scoring',
-      'Attrition Prediction ML models',
-      'Custom integrations & APIs',
-      'SSO / SAML / LDAP',
-      'Dedicated account manager',
-      'On-premise deployment option',
-      'SLA 99.99% uptime guarantee',
+      'Full AI Engine Access',
+      'Custom Integrations',
+      'Dedicated Support',
+      'SLA Guarantee',
     ],
     popular: false,
   },
@@ -71,14 +74,14 @@ const PricingSection = () => {
         >
           <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Pricing</span>
           <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 text-foreground">
-            Simple, <span className="gradient-text">Transparent</span> Pricing
+            Simple, <span className="gradient-text">Scalable</span> Pricing
           </h2>
           <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
             No hidden fees. No per-module charges. Scale as you grow.
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
@@ -114,7 +117,7 @@ const PricingSection = () => {
               </ul>
 
               <a
-                href="#contact"
+                href="https://app.hrms.srpailabs.com/register"
                 className={`w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg font-display font-semibold text-sm tracking-wider uppercase transition-all duration-300 ${
                   plan.popular
                     ? 'text-white hover:-translate-y-1'

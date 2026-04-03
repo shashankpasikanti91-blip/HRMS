@@ -2,6 +2,19 @@ import { create } from "zustand";
 import api from "@/lib/api";
 import type { User } from "@/types";
 
+function getTenantId(): string {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("tenant_id");
+    if (stored) return stored;
+
+    // Extract from cookie set by middleware
+    const match = document.cookie.match(/tenant-slug=([^;]+)/);
+    if (match) return match[1];
+  }
+  // Default to demo tenant for development
+  return "a0000000-0000-4000-8000-000000000001";
+}
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
@@ -18,23 +31,31 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   login: async (email, password) => {
-    const { data } = await api.post("/auth/login", { email, password });
+    const tenantId = getTenantId();
+    const { data } = await api.post("/auth/login", { email, password, tenantId });
     const result = data.data || data;
-    localStorage.setItem("access_token", result.accessToken);
-    localStorage.setItem("refresh_token", result.refreshToken);
+    localStorage.setItem("access_token", result.tokens?.accessToken || result.accessToken);
+    localStorage.setItem("refresh_token", result.tokens?.refreshToken || result.refreshToken);
     if (result.user?.tenantId) {
       localStorage.setItem("tenant_id", result.user.tenantId);
+    } else if (result.tenant?.id) {
+      localStorage.setItem("tenant_id", result.tenant.id);
     }
     set({ user: result.user, isAuthenticated: true, isLoading: false });
   },
 
   register: async (formData) => {
-    const { data } = await api.post("/auth/register", formData);
+    const tenantId = formData.tenantId || getTenantId();
+    const { data } = await api.post("/auth/register", { ...formData, tenantId });
     const result = data.data || data;
-    localStorage.setItem("access_token", result.accessToken);
-    localStorage.setItem("refresh_token", result.refreshToken);
+    if (result.tokens?.accessToken || result.accessToken) {
+      localStorage.setItem("access_token", result.tokens?.accessToken || result.accessToken);
+      localStorage.setItem("refresh_token", result.tokens?.refreshToken || result.refreshToken);
+    }
     if (result.user?.tenantId) {
       localStorage.setItem("tenant_id", result.user.tenantId);
+    } else if (result.tenant?.id) {
+      localStorage.setItem("tenant_id", result.tenant.id);
     }
     set({ user: result.user, isAuthenticated: true, isLoading: false });
   },

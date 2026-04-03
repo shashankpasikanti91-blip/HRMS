@@ -15,7 +15,11 @@ async function bootstrap() {
   // Security
   app.use(helmet());
   app.enableCors({
-    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
+    origin: process.env.CORS_ORIGINS?.split(',') || [
+      'http://localhost:3000',
+      'https://app.hrms.srpailabs.com',
+      'https://hrms.srpailabs.com',
+    ],
     credentials: true,
   });
 

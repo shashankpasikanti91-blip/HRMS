@@ -2,22 +2,12 @@ import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 
 const integrations = [
-  { name: 'PostgreSQL', desc: 'Primary DB' },
-  { name: 'Redis', desc: 'Caching' },
-  { name: 'Elasticsearch', desc: 'Search' },
-  { name: 'NATS', desc: 'Events' },
-  { name: 'MinIO / S3', desc: 'Storage' },
-  { name: 'OpenAI / GPT-4', desc: 'AI Models' },
-  { name: 'Google Gemini', desc: 'AI Models' },
-  { name: 'Anthropic Claude', desc: 'AI Models' },
-  { name: 'Slack', desc: 'Messaging' },
-  { name: 'MS Teams', desc: 'Collaboration' },
-  { name: 'WhatsApp', desc: 'Notifications' },
-  { name: 'Twilio', desc: 'SMS / Voice' },
-  { name: 'Stripe', desc: 'Payments' },
-  { name: 'Razorpay', desc: 'Payments' },
-  { name: 'Google SSO', desc: 'Auth' },
-  { name: 'Azure AD', desc: 'SSO / LDAP' },
+  { name: 'Slack', abbr: 'SL' },
+  { name: 'WhatsApp', abbr: 'WA' },
+  { name: 'Stripe', abbr: 'ST' },
+  { name: 'Google', abbr: 'GO' },
+  { name: 'OpenAI', abbr: 'AI' },
+  { name: 'MS Teams', abbr: 'MT' },
 ];
 
 const IntegrationsSection = () => {
@@ -25,7 +15,7 @@ const IntegrationsSection = () => {
   const inView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section className="section-padding" ref={ref}>
+    <section className="section-padding bg-secondary/20" ref={ref}>
       <div className="container mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -35,27 +25,23 @@ const IntegrationsSection = () => {
         >
           <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Integrations</span>
           <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 text-foreground">
-            Connects with <span className="gradient-text">Everything</span>
+            Works With Your <span className="gradient-text">Existing Tools</span>
           </h2>
-          <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            Built with an API-first architecture. Integrates with your existing tools, databases, and AI models seamlessly.
-          </p>
         </motion.div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="flex flex-wrap justify-center gap-6 max-w-3xl mx-auto">
           {integrations.map((int, i) => (
             <motion.div
               key={int.name}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={inView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ duration: 0.3, delay: i * 0.04 }}
-              className="glass-card p-4 text-center group hover:border-primary/30 transition-all duration-300"
+              transition={{ duration: 0.3, delay: i * 0.06 }}
+              className="glass-card px-8 py-5 text-center group hover:border-primary/30 transition-all duration-300"
             >
-              <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-display font-bold text-primary group-hover:bg-primary/20 transition-colors">
-                {int.name.slice(0, 2).toUpperCase()}
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-display font-bold text-primary group-hover:bg-primary/20 transition-colors">
+                {int.abbr}
               </div>
-              <div className="text-xs font-display font-semibold text-foreground truncate">{int.name}</div>
-              <div className="text-[10px] text-muted-foreground">{int.desc}</div>
+              <div className="text-sm font-display font-semibold text-foreground">{int.name}</div>
             </motion.div>
           ))}
         </div>

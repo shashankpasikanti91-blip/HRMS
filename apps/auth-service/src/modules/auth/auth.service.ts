@@ -352,6 +352,194 @@ export class AuthService {
     return null;
   }
 
+  // ---- Google OAuth Login/Register ----
+  async googleLogin(googleUser: {
+    googleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    avatar?: string | null;
+  }, ipAddress?: string, userAgent?: string) {
+    // Find user by Google ID first
+    let user = await this.prisma.user.findFirst({
+      where: { googleId: googleUser.googleId },
+      include: {
+        userRoles: {
+          include: {
+            role: {
+              include: {
+                permissions: { include: { permission: true } },
+              },
+            },
+          },
+        },
+        tenant: true,
+      },
+    });
+
+    // If not found by googleId, try by email across tenants
+    if (!user) {
+      user = await this.prisma.user.findFirst({
+        where: { email: googleUser.email },
+        include: {
+          userRoles: {
+            include: {
+              role: {
+                include: {
+                  permissions: { include: { permission: true } },
+                },
+              },
+            },
+          },
+          tenant: true,
+        },
+      });
+    }
+
+    if (user) {
+      // Link Google ID if not yet linked
+      if (!user.googleId) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: googleUser.googleId,
+            avatar: user.avatar || googleUser.avatar,
+            emailVerified: true,
+          },
+        });
+      }
+
+      // Update last login
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          lastLoginAt: new Date(),
+          lastLoginIp: ipAddress,
+        },
+      });
+
+      // Generate tokens
+      const tokens = await this.generateTokens(user);
+
+      // Store refresh token
+      await this.prisma.refreshToken.create({
+        data: {
+          userId: user.id,
+          token: tokens.refreshToken,
+          userAgent,
+          ipAddress,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      // Audit log
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          action: 'google_login',
+          resource: 'auth',
+          ipAddress,
+          userAgent,
+        },
+      });
+
+      const permissions = user.userRoles.flatMap((ur) =>
+        ur.role.permissions.map((rp) => `${rp.permission.resource}:${rp.permission.action}`),
+      );
+
+      return {
+        user: {
+          id: user.id,
+          tenantId: user.tenantId,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          avatar: user.avatar,
+          roles: user.userRoles.map((ur) => ({
+            id: ur.role.id,
+            name: ur.role.name,
+            slug: ur.role.slug,
+          })),
+          permissions: [...new Set(permissions)],
+        },
+        tenant: {
+          id: user.tenant.id,
+          name: user.tenant.name,
+          slug: user.tenant.slug,
+          logo: user.tenant.logo,
+        },
+        tokens,
+      };
+    }
+
+    // User doesn't exist — create in demo tenant for now
+    const demoTenant = await this.prisma.tenant.findFirst({
+      where: { slug: 'demo' },
+    });
+
+    if (!demoTenant) {
+      throw new BadRequestException('No default tenant available. Please contact support.');
+    }
+
+    const newUser = await this.prisma.user.create({
+      data: {
+        tenantId: demoTenant.id,
+        email: googleUser.email,
+        firstName: googleUser.firstName,
+        lastName: googleUser.lastName,
+        avatar: googleUser.avatar,
+        googleId: googleUser.googleId,
+        status: 'active',
+        emailVerified: true,
+      },
+    });
+
+    // Assign default employee role
+    const employeeRole = await this.prisma.role.findUnique({
+      where: { tenantId_slug: { tenantId: demoTenant.id, slug: 'employee' } },
+    });
+    if (employeeRole) {
+      await this.prisma.userRole.create({
+        data: { userId: newUser.id, roleId: employeeRole.id },
+      });
+    }
+
+    // Generate tokens
+    const tokens = await this.generateTokens(newUser);
+
+    // Store refresh token
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: newUser.id,
+        token: tokens.refreshToken,
+        userAgent,
+        ipAddress,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    return {
+      user: {
+        id: newUser.id,
+        tenantId: newUser.tenantId,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        avatar: newUser.avatar,
+        roles: [{ id: employeeRole?.id, name: 'Employee', slug: 'employee' }],
+        permissions: [],
+      },
+      tenant: {
+        id: demoTenant.id,
+        name: demoTenant.name,
+        slug: demoTenant.slug,
+        logo: demoTenant.logo,
+      },
+      tokens,
+    };
+  }
+
   // ---- Get current user profile ----
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
