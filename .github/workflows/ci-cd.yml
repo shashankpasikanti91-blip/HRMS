@@ -1,10 +1,18 @@
 name: SRP AI HRMS - CI/CD Pipeline
 
+# Disabled auto-trigger to prevent email spam on every push.
+# Run manually from GitHub Actions tab when ready.
 on:
-  push:
-    branches: [main, staging]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment target'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
 
 env:
   NODE_VERSION: '22'
