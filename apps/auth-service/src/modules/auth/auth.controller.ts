@@ -74,7 +74,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout current session' })
   async logout(@Req() req: Request, @Body() body: { refreshToken?: string }) {
-    return this.authService.logout(req['user'].sub, body.refreshToken);
+    return this.authService.logout((req as any).user.sub, body.refreshToken);
   }
 
   @Delete('sessions')
@@ -82,7 +82,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout all sessions' })
   async logoutAllSessions(@Req() req: Request) {
-    return this.authService.logoutAllSessions(req['user'].sub);
+    return this.authService.logoutAllSessions((req as any).user.sub);
   }
 
   @Get('profile')
@@ -90,7 +90,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user profile' })
   async getProfile(@Req() req: Request) {
-    return this.authService.getProfile(req['user'].sub);
+    return this.authService.getProfile((req as any).user.sub);
   }
 
   @Post('mfa/enable')
@@ -98,7 +98,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Enable MFA – returns QR code' })
   async enableMfa(@Req() req: Request) {
-    return this.authService.enableMfa(req['user'].sub);
+    return this.authService.enableMfa((req as any).user.sub);
   }
 
   @Post('mfa/verify')
@@ -106,7 +106,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify MFA code and activate' })
   async verifyMfa(@Req() req: Request, @Body() dto: VerifyMfaDto) {
-    return this.authService.verifyMfa(req['user'].sub, dto);
+    return this.authService.verifyMfa((req as any).user.sub, dto);
   }
 
   @Post('mfa/disable')
@@ -114,7 +114,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Disable MFA' })
   async disableMfa(@Req() req: Request, @Body() dto: DisableMfaDto) {
-    return this.authService.disableMfa(req['user'].sub, dto.code);
+    return this.authService.disableMfa((req as any).user.sub, dto.code);
   }
 
   @Patch('password')
@@ -122,7 +122,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Change password' })
   async changePassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
-    return this.authService.changePassword(req['user'].sub, dto);
+    return this.authService.changePassword((req as any).user.sub, dto);
   }
 
   @Post('forgot-password')

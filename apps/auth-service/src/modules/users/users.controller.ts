@@ -34,34 +34,34 @@ export class UsersController {
   @Permissions('users:create')
   @ApiOperation({ summary: 'Create a user' })
   create(@Req() req: Request, @Body() dto: CreateUserDto) {
-    return this.usersService.create(req['user'].tenantId, dto);
+    return this.usersService.create((req as any).user.tenantId, dto);
   }
 
   @Get()
   @Permissions('users:read')
   @ApiOperation({ summary: 'List all users' })
   findAll(@Req() req: Request, @Query() query: ListUsersDto) {
-    return this.usersService.findAll(req['user'].tenantId, query);
+    return this.usersService.findAll((req as any).user.tenantId, query);
   }
 
   @Get(':id')
   @Permissions('users:read')
   @ApiOperation({ summary: 'Get user by ID' })
   findOne(@Req() req: Request, @Param('id') id: string) {
-    return this.usersService.findOne(req['user'].tenantId, id);
+    return this.usersService.findOne((req as any).user.tenantId, id);
   }
 
   @Patch(':id')
   @Permissions('users:update')
   @ApiOperation({ summary: 'Update a user' })
   update(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(req['user'].tenantId, id, dto);
+    return this.usersService.update((req as any).user.tenantId, id, dto);
   }
 
   @Delete(':id')
   @Roles('super-admin', 'admin')
   @ApiOperation({ summary: 'Deactivate a user' })
   remove(@Req() req: Request, @Param('id') id: string) {
-    return this.usersService.remove(req['user'].tenantId, id);
+    return this.usersService.remove((req as any).user.tenantId, id);
   }
 }

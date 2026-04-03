@@ -32,41 +32,41 @@ export class RolesController {
   @Roles('super-admin', 'admin')
   @ApiOperation({ summary: 'Create a role' })
   create(@Req() req: Request, @Body() dto: CreateRoleDto) {
-    return this.rolesService.create(req['user'].tenantId, dto);
+    return this.rolesService.create((req as any).user.tenantId, dto);
   }
 
   @Get()
   @Roles('super-admin', 'admin', 'hr-manager')
   @ApiOperation({ summary: 'List all roles' })
   findAll(@Req() req: Request) {
-    return this.rolesService.findAll(req['user'].tenantId);
+    return this.rolesService.findAll((req as any).user.tenantId);
   }
 
   @Get('permissions')
   @Roles('super-admin', 'admin')
   @ApiOperation({ summary: 'Get all available permissions' })
   getPermissions(@Req() req: Request) {
-    return this.rolesService.getPermissions(req['user'].tenantId);
+    return this.rolesService.getPermissions((req as any).user.tenantId);
   }
 
   @Get(':id')
   @Roles('super-admin', 'admin', 'hr-manager')
   @ApiOperation({ summary: 'Get role by ID' })
   findOne(@Req() req: Request, @Param('id') id: string) {
-    return this.rolesService.findOne(req['user'].tenantId, id);
+    return this.rolesService.findOne((req as any).user.tenantId, id);
   }
 
   @Patch(':id')
   @Roles('super-admin', 'admin')
   @ApiOperation({ summary: 'Update a role' })
   update(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateRoleDto) {
-    return this.rolesService.update(req['user'].tenantId, id, dto);
+    return this.rolesService.update((req as any).user.tenantId, id, dto);
   }
 
   @Delete(':id')
   @Roles('super-admin', 'admin')
   @ApiOperation({ summary: 'Delete a role' })
   remove(@Req() req: Request, @Param('id') id: string) {
-    return this.rolesService.remove(req['user'].tenantId, id);
+    return this.rolesService.remove((req as any).user.tenantId, id);
   }
 }
