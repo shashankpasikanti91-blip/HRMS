@@ -25,8 +25,8 @@ export class JwtAuthGuard implements CanActivate {
       const secret = process.env.JWT_SECRET || 'srp-hrms-jwt-secret-change-in-production';
       const payload = jwt.verify(token, secret) as JwtPayload;
 
-      (request as Record<string, unknown>).user = payload;
-      (request as Record<string, unknown>).tenantId = payload.tenantId;
+      (request as any).user = payload;
+      (request as any).tenantId = payload.tenantId;
       return true;
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
