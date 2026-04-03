@@ -31,7 +31,7 @@ export class TenantsService {
           industry: dto.industry,
           country: dto.country,
           timezone: dto.timezone || 'UTC',
-          settings: dto.settings || {},
+          settings: (dto.settings || {}) as any,
           maxUsers: dto.maxUsers || 50,
           status: 'trial',
         },
@@ -47,17 +47,16 @@ export class TenantsService {
 
       const permissions = resources.flatMap((resource) =>
         actions.map((action) => ({
-          tenantId: tenant.id,
           resource,
           action,
           description: `${action} ${resource}`,
         })),
       );
 
-      await tx.permission.createMany({ data: permissions });
+      await tx.permission.createMany({ data: permissions, skipDuplicates: true });
 
       // Create default roles
-      const allPerms = await tx.permission.findMany({ where: { tenantId: tenant.id } });
+      const allPerms = await tx.permission.findMany();
       const permMap = new Map(allPerms.map((p) => [`${p.resource}:${p.action}`, p.id]));
 
       const roles = [
@@ -160,7 +159,7 @@ export class TenantsService {
         ...(dto.industry && { industry: dto.industry }),
         ...(dto.country && { country: dto.country }),
         ...(dto.timezone && { timezone: dto.timezone }),
-        ...(dto.settings && { settings: dto.settings }),
+        ...(dto.settings && { settings: dto.settings as any }),
         ...(dto.status && { status: dto.status }),
         ...(dto.maxUsers && { maxUsers: dto.maxUsers }),
       },

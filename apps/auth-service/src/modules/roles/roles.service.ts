@@ -51,7 +51,7 @@ export class RolesService {
         permissions: {
           include: { permission: true },
         },
-        _count: { select: { users: true } },
+        _count: { select: { userRoles: true } },
       },
       orderBy: { name: 'asc' },
     });
@@ -64,7 +64,7 @@ export class RolesService {
         permissions: {
           include: { permission: true },
         },
-        _count: { select: { users: true } },
+        _count: { select: { userRoles: true } },
       },
     });
     if (!role) throw new NotFoundException('Role not found');
@@ -112,7 +112,6 @@ export class RolesService {
 
   async getPermissions(tenantId: string) {
     return this.prisma.permission.findMany({
-      where: { tenantId },
       orderBy: [{ resource: 'asc' }, { action: 'asc' }],
     });
   }
