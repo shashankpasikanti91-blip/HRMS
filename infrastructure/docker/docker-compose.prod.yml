@@ -307,6 +307,7 @@ services:
     image: srp-hrms/web:${IMAGE_TAG:-latest}
     container_name: srp-hrms-web
     restart: unless-stopped
+    command: ["dumb-init", "node", "apps/web/server.js"]
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=https://api.hrms.srpailabs.com
