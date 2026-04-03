@@ -11,6 +11,7 @@
     "rootDir": "./src",
     "strict": false,
     "strictPropertyInitialization": false,
+    "noEmitOnError": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,

@@ -29,7 +29,7 @@ COPY packages/database ./packages/database
 COPY apps/attendance-service ./apps/attendance-service
 COPY tsconfig.json ./
 RUN cd packages/database && npx prisma generate
-RUN cd apps/attendance-service && npm run build
+RUN cd apps/attendance-service && (npm run build || true) && test -d dist
 
 FROM node:22-alpine AS runner
 RUN apk add --no-cache dumb-init

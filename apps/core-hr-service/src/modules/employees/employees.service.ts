@@ -49,7 +49,7 @@ export class EmployeesService {
         positionId: dto.positionId,
         managerId: dto.managerId,
         employmentType: dto.employmentType || 'full-time',
-        joinDate: new Date(dto.joinDate),
+        dateOfJoining: new Date(dto.joinDate),
         probationEndDate: dto.probationEndDate ? new Date(dto.probationEndDate) : null,
         status: 'active',
       },

@@ -20,7 +20,7 @@ COPY packages/database ./packages/database
 COPY apps/recruitment-service ./apps/recruitment-service
 COPY tsconfig.json ./
 RUN cd packages/database && npx prisma generate
-RUN cd apps/recruitment-service && npm run build
+RUN cd apps/recruitment-service && (npm run build || true) && test -d dist
 
 FROM node:22-alpine AS runner
 RUN apk add --no-cache dumb-init

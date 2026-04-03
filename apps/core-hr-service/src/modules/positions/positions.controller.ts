@@ -13,7 +13,7 @@ export class PositionsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a position' })
-  create(@Req() req: Request, @Body() dto: { title: string; code: string; description?: string; departmentId?: string; level?: number; minSalary?: number; maxSalary?: number }) {
+  create(@Req() req: Request, @Body() dto: any) {
     return this.positionsService.create(req.headers['x-tenant-id'] as string, dto);
   }
 

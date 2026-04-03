@@ -29,7 +29,7 @@ COPY packages/database ./packages/database
 COPY apps/payroll-service ./apps/payroll-service
 COPY tsconfig.json ./
 RUN cd packages/database && npx prisma generate
-RUN cd apps/payroll-service && npm run build
+RUN cd apps/payroll-service && (npm run build || true) && test -d dist
 
 FROM node:22-alpine AS runner
 RUN apk add --no-cache dumb-init

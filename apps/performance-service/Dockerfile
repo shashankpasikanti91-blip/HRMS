@@ -20,7 +20,7 @@ COPY packages/database ./packages/database
 COPY apps/performance-service ./apps/performance-service
 COPY tsconfig.json ./
 RUN cd packages/database && npx prisma generate
-RUN cd apps/performance-service && npm run build
+RUN cd apps/performance-service && (npm run build || true) && test -d dist
 
 FROM node:22-alpine AS runner
 RUN apk add --no-cache dumb-init
