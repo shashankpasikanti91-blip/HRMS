@@ -129,38 +129,38 @@ ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- 6. USERS (password: Demo@2026!)
--- bcrypt hash generated with 12 rounds
+-- bcrypt hash generated with 12 rounds using bcryptjs
 -- ============================================================
 -- NOTE: The password hash below is for "Demo@2026!" 
 -- In production, use the auth service's registration endpoint instead
 INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, phone, status, mfa_enabled, email_verified, created_at, updated_at) VALUES
   -- Admin
   ('f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001',
-   'admin@demo.srpailabs.com', '$2b$12$LJ3m4ys3LMDrBN/XJqKgNuVp1CjGQDJvJGZZrT5mBZxrSQz/Udeay',
+   'admin@demo.srpailabs.com', '$2a$12$n.XPEyGdzUAJRiglxWSdleOclgiHD0SA2p8Taqhky9gKUpbrl3CYu',
    'Demo', 'Admin', '+91-9876543210', 'active', false, true, NOW(), NOW()),
   -- HR Manager
   ('f0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001',
-   'hr@demo.srpailabs.com', '$2b$12$LJ3m4ys3LMDrBN/XJqKgNuVp1CjGQDJvJGZZrT5mBZxrSQz/Udeay',
+   'hr@demo.srpailabs.com', '$2a$12$n.XPEyGdzUAJRiglxWSdleOclgiHD0SA2p8Taqhky9gKUpbrl3CYu',
    'Priya', 'Sharma', '+91-9876543211', 'active', false, true, NOW(), NOW()),
   -- Engineering Manager
   ('f0000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000001',
-   'engineering@demo.srpailabs.com', '$2b$12$LJ3m4ys3LMDrBN/XJqKgNuVp1CjGQDJvJGZZrT5mBZxrSQz/Udeay',
+   'engineering@demo.srpailabs.com', '$2a$12$n.XPEyGdzUAJRiglxWSdleOclgiHD0SA2p8Taqhky9gKUpbrl3CYu',
    'Rahul', 'Kumar', '+91-9876543212', 'active', false, true, NOW(), NOW()),
   -- Software Engineer 1
   ('f0000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000001',
-   'dev1@demo.srpailabs.com', '$2b$12$LJ3m4ys3LMDrBN/XJqKgNuVp1CjGQDJvJGZZrT5mBZxrSQz/Udeay',
+   'dev1@demo.srpailabs.com', '$2a$12$n.XPEyGdzUAJRiglxWSdleOclgiHD0SA2p8Taqhky9gKUpbrl3CYu',
    'Anita', 'Patel', '+91-9876543213', 'active', false, true, NOW(), NOW()),
   -- Software Engineer 2
   ('f0000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000001',
-   'dev2@demo.srpailabs.com', '$2b$12$LJ3m4ys3LMDrBN/XJqKgNuVp1CjGQDJvJGZZrT5mBZxrSQz/Udeay',
+   'dev2@demo.srpailabs.com', '$2a$12$n.XPEyGdzUAJRiglxWSdleOclgiHD0SA2p8Taqhky9gKUpbrl3CYu',
    'Vikram', 'Singh', '+91-9876543214', 'active', false, true, NOW(), NOW()),
   -- Marketing
   ('f0000000-0000-4000-8000-000000000006', 'a0000000-0000-4000-8000-000000000001',
-   'marketing@demo.srpailabs.com', '$2b$12$LJ3m4ys3LMDrBN/XJqKgNuVp1CjGQDJvJGZZrT5mBZxrSQz/Udeay',
+   'marketing@demo.srpailabs.com', '$2a$12$n.XPEyGdzUAJRiglxWSdleOclgiHD0SA2p8Taqhky9gKUpbrl3CYu',
    'Neha', 'Gupta', '+91-9876543215', 'active', false, true, NOW(), NOW()),
   -- Finance
   ('f0000000-0000-4000-8000-000000000007', 'a0000000-0000-4000-8000-000000000001',
-   'finance@demo.srpailabs.com', '$2b$12$LJ3m4ys3LMDrBN/XJqKgNuVp1CjGQDJvJGZZrT5mBZxrSQz/Udeay',
+   'finance@demo.srpailabs.com', '$2a$12$n.XPEyGdzUAJRiglxWSdleOclgiHD0SA2p8Taqhky9gKUpbrl3CYu',
    'Arjun', 'Reddy', '+91-9876543216', 'active', false, true, NOW(), NOW())
 ON CONFLICT (tenant_id, email) DO NOTHING;
 
