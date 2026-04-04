@@ -119,7 +119,7 @@ ON CONFLICT DO NOTHING;
 -- ============================================================
 -- 5. POSITIONS
 -- ============================================================
-INSERT INTO positions (id, tenant_id, title, code, department_id, grade, level, min_salary, max_salary, status, created_at, updated_at) VALUES
+INSERT INTO positions (id, tenant_id, title, code, department_id, grade, band, min_salary, max_salary, status, created_at, updated_at) VALUES
   ('e0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'CEO', 'CEO-001', 'd0000000-0000-4000-8000-000000000001', 'L10', 10, 0, 0, 'active', NOW(), NOW()),
   ('e0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001', 'HR Director', 'HRD-001', 'd0000000-0000-4000-8000-000000000002', 'L8', 8, 0, 0, 'active', NOW(), NOW()),
   ('e0000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000001', 'HR Manager', 'HRM-001', 'd0000000-0000-4000-8000-000000000002', 'L6', 6, 0, 0, 'active', NOW(), NOW()),
