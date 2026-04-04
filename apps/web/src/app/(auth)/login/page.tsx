@@ -29,7 +29,13 @@ export default function LoginPage() {
       await login(email, password);
       router.push("/dashboard");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Invalid credentials";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const axiosErr = err as any;
+      const message =
+        axiosErr?.response?.data?.message ||
+        (axiosErr?.message === "Network Error"
+          ? "Unable to reach the server. Please try again."
+          : axiosErr?.message || "Invalid credentials");
       setError(message);
     } finally {
       setLoading(false);
@@ -51,6 +57,13 @@ export default function LoginPage() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          {/* Demo credentials */}
+          <div className="rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 text-xs text-blue-700 dark:text-blue-300">
+            <p className="font-medium mb-1">Demo Credentials</p>
+            <p>Email: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">admin@demo.srpailabs.com</code></p>
+            <p>Password: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">Demo@2026!</code></p>
+          </div>
+
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}

@@ -11,6 +11,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { PrismaModule } from './config/prisma.module';
 import { RedisModule } from './config/redis.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -23,5 +24,6 @@ import { RedisModule } from './config/redis.module';
     RolesModule,
     TenantsModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
