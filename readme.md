@@ -2102,15 +2102,64 @@ GET    /api/v1/webhooks/:id/deliveries
 
 ---
 
+## **Quick Start**
+
+```bash
+# Clone the repository
+git clone https://github.com/shashankpasikanti91-blip/HRMS.git
+cd HRMS
+
+# Install dependencies (requires Node.js 18+)
+npm install
+
+# Set up environment
+cp .env.example .env   # Edit with your DB, Redis, NATS credentials
+
+# Run database migrations
+npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma
+
+# Start all services (Docker)
+docker compose -f infrastructure/docker/docker-compose.yml up -d
+
+# Or start individual services for development
+npm run dev --workspace=apps/api-gateway
+npm run dev --workspace=apps/web
+npm run dev --workspace=apps/marketing
+```
+
+---
+
+## **Live Deployment**
+
+| Service | URL |
+|---------|-----|
+| **Marketing Site** | [hrms.srpailabs.com](https://hrms.srpailabs.com) |
+| **Web App** | [app.hrms.srpailabs.com](https://app.hrms.srpailabs.com) |
+| **API Gateway** | [api.hrms.srpailabs.com](https://api.hrms.srpailabs.com) |
+| **GitHub** | [github.com/shashankpasikanti91-blip/HRMS](https://github.com/shashankpasikanti91-blip/HRMS) |
+
+---
+
 ## **Project Information**
 
 | Item | Detail |
 |------|--------|
 | **Platform** | SRP AI HRMS |
 | **URL** | [HRMS.SRPailabs.com](https://hrms.srpailabs.com) |
+| **GitHub** | [github.com/shashankpasikanti91-blip/HRMS](https://github.com/shashankpasikanti91-blip/HRMS) |
 | **Parent** | [SRP AI Labs](https://srpailabs.com) |
 | **Architecture** | AI-Native, Multi-Tenant, Microservices, Event-Driven |
 | **License** | Proprietary — SRP AI Labs |
+
+---
+
+## **Contact**
+
+| Channel | Detail |
+|---------|--------|
+| **WhatsApp (Preferred)** | [+91 6281294878](https://wa.me/916281294878) |
+| **Email** | contact@srpailabs.com |
+| **Platform** | [hrms.srpailabs.com](https://hrms.srpailabs.com) |
 
 ---
 
@@ -2120,7 +2169,7 @@ GET    /api/v1/webhooks/:id/deliveries
 
 The future of Human Resource Management is autonomous, intelligent, and here.
 
-[HRMS.SRPailabs.com](https://hrms.srpailabs.com)
+[HRMS.SRPailabs.com](https://hrms.srpailabs.com) · [GitHub](https://github.com/shashankpasikanti91-blip/HRMS)
 
 ---
 
