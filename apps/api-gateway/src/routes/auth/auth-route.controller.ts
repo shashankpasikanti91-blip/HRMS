@@ -68,6 +68,15 @@ export class AuthRouteController {
   }
 
   // ── Users ──
+  @Get('users/me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  getMe(@Req() req: Request) {
+    const user = (req as any).user;
+    return firstValueFrom(this.authClient.send('users.findOne', { id: user.sub || user.id }));
+  }
+
   @Get('users')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -149,13 +158,4 @@ export class AuthRouteController {
     }
   }
 
-  // ── Users /me ──
-  @Get('users/me')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user profile' })
-  getMe(@Req() req: Request) {
-    const user = (req as any).user;
-    return firstValueFrom(this.authClient.send('users.findOne', { id: user.sub || user.id }));
-  }
 }

@@ -57,8 +57,8 @@ const CTASection = () => {
                   <Phone className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Phone</div>
-                  <div className="text-sm font-display font-semibold text-foreground">+1 (555) 123-4567</div>
+                  <div className="text-xs text-muted-foreground">WhatsApp (Preferred)</div>
+                  <a href="https://wa.me/916281294878" target="_blank" rel="noopener noreferrer" className="text-sm font-display font-semibold text-foreground hover:text-primary transition-colors">+91 6281294878</a>
                 </div>
               </div>
               <div className="flex items-center gap-3">

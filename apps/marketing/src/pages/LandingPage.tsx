@@ -1,7 +1,9 @@
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
+import AboutSection from '../components/AboutSection';
 import StatsSection from '../components/StatsSection';
 import WhyChooseSection from '../components/WhyChooseSection';
+import ModulesSection from '../components/ModulesSection';
 import AISection from '../components/AISection';
 import FeaturesSection from '../components/FeaturesSection';
 import HowItWorksSection from '../components/HowItWorksSection';
@@ -18,8 +20,10 @@ const LandingPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <HeroSection />
+      <AboutSection />
       <StatsSection />
       <WhyChooseSection />
+      <ModulesSection />
       <AISection />
       <FeaturesSection />
       <HowItWorksSection />
