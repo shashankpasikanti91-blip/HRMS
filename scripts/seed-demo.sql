@@ -6,8 +6,6 @@
 -- bcrypt hash of "Demo@2026!" with 12 rounds
 -- ============================================================
 
-BEGIN;
-
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -244,31 +242,29 @@ ON CONFLICT (user_id) DO NOTHING;
 -- ============================================================
 -- 9. LEAVE TYPES
 -- ============================================================
-INSERT INTO leave_types (id, tenant_id, name, code, description, default_days, carry_forward, max_carry_forward, paid, status, created_at, updated_at) VALUES
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Casual Leave', 'CL', 'Casual leave for personal work', 12, true, 6, true, 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Sick Leave', 'SL', 'Medical / sick leave', 12, false, 0, true, 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Earned Leave', 'EL', 'Earned / privilege leave', 15, true, 30, true, 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Maternity Leave', 'ML', 'Maternity leave (26 weeks)', 182, false, 0, true, 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Paternity Leave', 'PL', 'Paternity leave', 15, false, 0, true, 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Compensatory Off', 'CO', 'Compensatory time off', 0, false, 0, true, 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Loss of Pay', 'LOP', 'Leave without pay', 0, false, 0, false, 'active', NOW(), NOW())
+INSERT INTO leave_types (id, tenant_id, name, code, description, annual_quota, carry_forward_limit, encashable, is_paid, status, created_at, updated_at) VALUES
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Casual Leave', 'CL', 'Casual leave for personal work', 12, 6, false, true, 'active', NOW(), NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Sick Leave', 'SL', 'Medical / sick leave', 12, 0, false, true, 'active', NOW(), NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Earned Leave', 'EL', 'Earned / privilege leave', 15, 30, true, true, 'active', NOW(), NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Maternity Leave', 'ML', 'Maternity leave (26 weeks)', 182, 0, false, true, 'active', NOW(), NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Paternity Leave', 'PL', 'Paternity leave', 15, 0, false, true, 'active', NOW(), NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Compensatory Off', 'CO', 'Compensatory time off', 0, 0, false, true, 'active', NOW(), NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Loss of Pay', 'LOP', 'Leave without pay', 0, 0, false, false, 'active', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- 10. HOLIDAYS (2026 India)
 -- ============================================================
-INSERT INTO holidays (id, tenant_id, name, date, type, location, status, created_at, updated_at) VALUES
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Republic Day', '2026-01-26', 'national', 'all', 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Holi', '2026-03-17', 'national', 'all', 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Good Friday', '2026-04-03', 'national', 'all', 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Labour Day', '2026-05-01', 'national', 'all', 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Independence Day', '2026-08-15', 'national', 'all', 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Gandhi Jayanti', '2026-10-02', 'national', 'all', 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Diwali', '2026-10-20', 'national', 'all', 'active', NOW(), NOW()),
-  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Christmas', '2026-12-25', 'national', 'all', 'active', NOW(), NOW())
+INSERT INTO holidays (id, tenant_id, name, date, type, location, created_at) VALUES
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Republic Day', '2026-01-26', 'national', 'all', NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Holi', '2026-03-17', 'national', 'all', NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Good Friday', '2026-04-03', 'national', 'all', NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Labour Day', '2026-05-01', 'national', 'all', NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Independence Day', '2026-08-15', 'national', 'all', NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Gandhi Jayanti', '2026-10-02', 'national', 'all', NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Diwali', '2026-10-20', 'national', 'all', NOW()),
+  (uuid_generate_v4(), 'a0000000-0000-4000-8000-000000000001', 'Christmas', '2026-12-25', 'national', 'all', NOW())
 ON CONFLICT DO NOTHING;
-
-COMMIT;
 
 -- ============================================================
 -- DEMO LOGIN CREDENTIALS
