@@ -1,151 +1,278 @@
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { BarChart3, PieChart, TrendingUp, TrendingDown, Download, Users, DollarSign, Clock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BarChart3, Download, Users, DollarSign, Clock, Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import { analyticsService } from "@/services/api-services";
+import { useToast } from "@/hooks/use-toast";
+
+interface AnalyticsData {
+  executive?: {
+    totalEmployees?: number;
+    attritionRate?: number;
+    avgTenure?: number;
+    costPerHire?: number;
+    timeToFill?: number;
+    headcountTrend?: Array<{ month: string; count: number; change: number }>;
+    departmentDistribution?: Array<{ name: string; count: number; percent: number }>;
+  };
+  workforce?: {
+    genderDistribution?: Array<{ label: string; count: number; percent: number }>;
+    ageDistribution?: Array<{ label: string; count: number; percent: number }>;
+    tenureDistribution?: Array<{ label: string; count: number; percent: number }>;
+  };
+  attendance?: {
+    avgAttendance?: number;
+    latePercentage?: number;
+    leaveUtilization?: number;
+    overtimeHours?: number;
+  };
+  recruitment?: {
+    openPositions?: number;
+    totalApplications?: number;
+    interviewToOffer?: number;
+    avgTimeToHire?: number;
+  };
+}
 
 export default function AnalyticsPage() {
+  const { toast } = useToast();
+  const [data, setData] = useState<AnalyticsData>({});
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState("last_30_days");
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [execRes, workforceRes, attendanceRes, recruitRes] = await Promise.allSettled([
+        analyticsService.getExecutiveDashboard({ period }),
+        analyticsService.getWorkforceAnalytics({ period }),
+        analyticsService.getAttendanceAnalytics({ period }),
+        analyticsService.getRecruitmentAnalytics({ period }),
+      ]);
+      setData({
+        executive: execRes.status === "fulfilled" ? execRes.value : {},
+        workforce: workforceRes.status === "fulfilled" ? workforceRes.value : {},
+        attendance: attendanceRes.status === "fulfilled" ? attendanceRes.value : {},
+        recruitment: recruitRes.status === "fulfilled" ? recruitRes.value : {},
+      });
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, [period]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const exec = data.executive || {};
+  const dept = exec.departmentDistribution || [];
+  const headcount = exec.headcountTrend || [];
+  const workforce = data.workforce || {};
+  const attendance = data.attendance || {};
+  const recruitment = data.recruitment || {};
+
+  const DEPT_COLORS = ["bg-blue-500", "bg-green-500", "bg-orange-500", "bg-purple-500", "bg-pink-500", "bg-cyan-500", "bg-red-500", "bg-yellow-500"];
+
+  function handleExport() {
+    toast({ title: "Exporting", description: "Report export will be downloaded shortly" });
+    // In production, call analyticsService export endpoint
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics & Reports</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Analytics &amp; Reports</h1>
           <p className="text-muted-foreground">AI-powered insights and workforce analytics</p>
         </div>
-        <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />Export Report</Button>
+        <div className="flex items-center gap-2">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="last_7_days">Last 7 days</SelectItem>
+              <SelectItem value="last_30_days">Last 30 days</SelectItem>
+              <SelectItem value="last_90_days">Last 90 days</SelectItem>
+              <SelectItem value="last_12_months">Last 12 months</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={handleExport}><Download className="mr-2 h-4 w-4" />Export</Button>
+        </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Attrition Rate", value: "4.2%", change: "-0.8%", trend: "down", icon: TrendingDown, color: "text-green-600" },
-          { label: "Avg. Tenure", value: "2.8 yrs", change: "+0.3", trend: "up", icon: Users, color: "text-blue-600" },
-          { label: "Cost per Hire", value: "$4,250", change: "-12%", trend: "down", icon: DollarSign, color: "text-green-600" },
-          { label: "Time to Fill", value: "32 days", change: "-5 days", trend: "down", icon: Clock, color: "text-green-600" },
-        ].map((kpi) => (
-          <Card key={kpi.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
-                <Badge variant={kpi.trend === "down" ? "success" : "default"} className="text-xs">{kpi.change}</Badge>
-              </div>
-              <p className="mt-2 text-2xl font-bold">{kpi.value}</p>
-              <p className="text-xs text-muted-foreground">{kpi.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Tabs defaultValue="workforce">
-        <TabsList>
-          <TabsTrigger value="workforce">Workforce</TabsTrigger>
-          <TabsTrigger value="attrition">Attrition Risk</TabsTrigger>
-          <TabsTrigger value="compensation">Compensation</TabsTrigger>
-          <TabsTrigger value="diversity">Diversity</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="workforce" className="mt-4">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Headcount Trend</CardTitle>
-                <CardDescription>12-month employee headcount changes</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { month: "Oct 2024", count: 230, change: +5 },
-                    { month: "Nov 2024", count: 235, change: +5 },
-                    { month: "Dec 2024", count: 238, change: +3 },
-                    { month: "Jan 2025", count: 242, change: +4 },
-                    { month: "Feb 2025", count: 245, change: +3 },
-                    { month: "Mar 2025", count: 248, change: +3 },
-                  ].map((m) => (
-                    <div key={m.month} className="flex items-center justify-between text-sm">
-                      <span>{m.month}</span>
-                      <div className="flex items-center gap-2">
-                        <Progress value={(m.count / 300) * 100} className="h-2 w-32" />
-                        <span className="w-8 text-right font-medium">{m.count}</span>
-                        <span className="w-10 text-right text-green-600">+{m.change}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Department Distribution</CardTitle>
-                <CardDescription>Employees by department</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { name: "Engineering", count: 82, percent: 33, color: "bg-blue-500" },
-                    { name: "Sales", count: 45, percent: 18, color: "bg-green-500" },
-                    { name: "Operations", count: 53, percent: 22, color: "bg-orange-500" },
-                    { name: "Marketing", count: 28, percent: 11, color: "bg-purple-500" },
-                    { name: "HR", count: 22, percent: 9, color: "bg-pink-500" },
-                    { name: "Finance", count: 18, percent: 7, color: "bg-cyan-500" },
-                  ].map((dept) => (
-                    <div key={dept.name} className="flex items-center gap-3">
-                      <div className={`h-3 w-3 rounded-full ${dept.color}`} />
-                      <span className="w-24 text-sm">{dept.name}</span>
-                      <Progress value={dept.percent} className="h-2 flex-1" />
-                      <span className="w-20 text-right text-sm text-muted-foreground">{dept.count} ({dept.percent}%)</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="attrition" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Attrition Risk Analysis</CardTitle>
-              <CardDescription>AI-predicted flight risk across the organization</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { name: "Rahul Kumar", department: "Engineering", risk: 78, level: "high", factors: ["Low compensation growth", "No promotion in 3 years"] },
-                  { name: "Vikram Singh", department: "Sales", risk: 65, level: "medium", factors: ["Manager change", "Below market salary"] },
-                  { name: "Priya Sharma", department: "Marketing", risk: 42, level: "medium", factors: ["Limited growth opportunities"] },
-                  { name: "Arjun Patel", department: "Engineering", risk: 15, level: "low", factors: [] },
-                  { name: "Sneha Gupta", department: "HR", risk: 10, level: "low", factors: [] },
-                ].map((emp) => (
-                  <div key={emp.name} className="flex items-center gap-4 rounded-lg border p-4">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium">{emp.name}</p>
-                          <p className="text-xs text-muted-foreground">{emp.department}</p>
-                        </div>
-                        <Badge variant={emp.level === "high" ? "destructive" : emp.level === "medium" ? "warning" : "success"}>
-                          {emp.risk}% risk
-                        </Badge>
-                      </div>
-                      {emp.factors.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {emp.factors.map((f) => (
-                            <Badge key={f} variant="outline" className="text-xs">{f}</Badge>
-                          ))}
-                        </div>
-                      )}
+      {loading ? (
+        <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
+      ) : (
+        <>
+          {/* KPI Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Total Employees", value: exec.totalEmployees ?? "—", icon: Users, color: "text-blue-600" },
+              { label: "Attrition Rate", value: exec.attritionRate != null ? `${exec.attritionRate}%` : "—", icon: TrendingDown, color: "text-green-600" },
+              { label: "Avg. Attendance", value: attendance.avgAttendance != null ? `${attendance.avgAttendance}%` : "—", icon: Clock, color: "text-orange-600" },
+              { label: "Open Positions", value: recruitment.openPositions ?? "—", icon: BarChart3, color: "text-purple-600" },
+            ].map((kpi) => (
+              <Card key={kpi.label}>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+                    <div>
+                      <p className="text-2xl font-bold">{kpi.value}</p>
+                      <p className="text-xs text-muted-foreground">{kpi.label}</p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Tabs defaultValue="workforce">
+            <TabsList>
+              <TabsTrigger value="workforce">Workforce</TabsTrigger>
+              <TabsTrigger value="attendance">Attendance</TabsTrigger>
+              <TabsTrigger value="recruitment">Recruitment</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="workforce" className="mt-4">
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Headcount Trend */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Headcount Trend</CardTitle>
+                    <CardDescription>Employee headcount over time</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {headcount.length > 0 ? (
+                      <div className="space-y-3">
+                        {headcount.map((m) => (
+                          <div key={m.month} className="flex items-center justify-between text-sm">
+                            <span className="w-20">{m.month}</span>
+                            <div className="flex items-center gap-2">
+                              <Progress value={Math.min((m.count / (exec.totalEmployees || m.count) ) * 80 + 20, 100)} className="h-2 w-32" />
+                              <span className="w-8 text-right font-medium">{m.count}</span>
+                              <span className={`w-10 text-right ${m.change >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                {m.change >= 0 ? "+" : ""}{m.change}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="py-8 text-center text-muted-foreground">No headcount trend data available.</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Department Distribution */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Department Distribution</CardTitle>
+                    <CardDescription>Employees by department</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {dept.length > 0 ? (
+                      <div className="space-y-4">
+                        {dept.map((d, i) => (
+                          <div key={d.name} className="flex items-center gap-3">
+                            <div className={`h-3 w-3 rounded-full ${DEPT_COLORS[i % DEPT_COLORS.length]}`} />
+                            <span className="w-24 text-sm">{d.name}</span>
+                            <Progress value={d.percent} className="h-2 flex-1" />
+                            <span className="w-20 text-right text-sm text-muted-foreground">{d.count} ({d.percent}%)</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="py-8 text-center text-muted-foreground">No department distribution data available.</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Demographics */}
+                {(workforce.genderDistribution || workforce.ageDistribution) && (
+                  <Card className="lg:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Workforce Demographics</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        {workforce.genderDistribution && (
+                          <div>
+                            <p className="mb-3 text-sm font-medium">Gender Distribution</p>
+                            <div className="space-y-2">
+                              {workforce.genderDistribution.map((g) => (
+                                <div key={g.label} className="flex items-center gap-2 text-sm">
+                                  <span className="w-16">{g.label}</span>
+                                  <Progress value={g.percent} className="h-2 flex-1" />
+                                  <span className="w-16 text-right text-muted-foreground">{g.count} ({g.percent}%)</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {workforce.ageDistribution && (
+                          <div>
+                            <p className="mb-3 text-sm font-medium">Age Distribution</p>
+                            <div className="space-y-2">
+                              {workforce.ageDistribution.map((a) => (
+                                <div key={a.label} className="flex items-center gap-2 text-sm">
+                                  <span className="w-16">{a.label}</span>
+                                  <Progress value={a.percent} className="h-2 flex-1" />
+                                  <span className="w-16 text-right text-muted-foreground">{a.count} ({a.percent}%)</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="attendance" className="mt-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  { label: "Avg Attendance Rate", value: attendance.avgAttendance != null ? `${attendance.avgAttendance}%` : "—" },
+                  { label: "Late Arrival %", value: attendance.latePercentage != null ? `${attendance.latePercentage}%` : "—" },
+                  { label: "Leave Utilization", value: attendance.leaveUtilization != null ? `${attendance.leaveUtilization}%` : "—" },
+                  { label: "Overtime Hours", value: attendance.overtimeHours != null ? `${attendance.overtimeHours}h` : "—" },
+                ].map((s) => (
+                  <Card key={s.label}>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold">{s.value}</p>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+
+            <TabsContent value="recruitment" className="mt-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  { label: "Open Positions", value: recruitment.openPositions ?? "—" },
+                  { label: "Total Applications", value: recruitment.totalApplications ?? "—" },
+                  { label: "Interview to Offer %", value: recruitment.interviewToOffer != null ? `${recruitment.interviewToOffer}%` : "—" },
+                  { label: "Avg Time to Hire", value: recruitment.avgTimeToHire != null ? `${recruitment.avgTimeToHire} days` : "—" },
+                ].map((s) => (
+                  <Card key={s.label}>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold">{s.value}</p>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
     </div>
   );
 }

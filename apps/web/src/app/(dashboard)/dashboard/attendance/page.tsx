@@ -1,44 +1,158 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, LogIn, LogOut, Calendar, Users } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Clock, LogIn, LogOut, Calendar, Users, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { attendanceService, leaveService } from "@/services/api-services";
+import { useToast } from "@/hooks/use-toast";
+import { formatDate, formatDateTime } from "@/lib/utils";
+import type { AttendanceRecord, LeaveRequest } from "@/types";
 
 export default function AttendancePage() {
+  const { toast } = useToast();
   const [clockedIn, setClockedIn] = useState(false);
+  const [clockInTime, setClockInTime] = useState<string | null>(null);
+  const [clockLoading, setClockLoading] = useState(false);
+  const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
+  const [teamData, setTeamData] = useState<{ present: number; onLeave: number; late: number; absent: number }>({ present: 0, onLeave: 0, late: 0, absent: 0 });
+  const [attendanceLog, setAttendanceLog] = useState<AttendanceRecord[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionForm, setCorrectionForm] = useState({ date: "", clockIn: "", clockOut: "", reason: "" });
+  const [leaveApplying, setLeaveApplying] = useState(false);
 
-  const todayRecords = [
-    { name: "Arjun Patel", clockIn: "09:02 AM", clockOut: "—", status: "present" },
-    { name: "Priya Sharma", clockIn: "08:55 AM", clockOut: "—", status: "present" },
-    { name: "Rahul Kumar", clockIn: "—", clockOut: "—", status: "on_leave" },
-    { name: "Sneha Gupta", clockIn: "09:30 AM", clockOut: "—", status: "late" },
-    { name: "Vikram Singh", clockIn: "09:00 AM", clockOut: "—", status: "present" },
-  ];
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [todayResult, teamResult, leaveResult] = await Promise.allSettled([
+        attendanceService.getToday(),
+        attendanceService.getTeamDashboard(),
+        leaveService.getRequests(),
+      ]);
 
-  const leaveRequests = [
-    { name: "Rahul Kumar", type: "Sick Leave", from: "Mar 15", to: "Mar 17", days: 3, status: "approved" },
-    { name: "Priya Sharma", type: "Casual Leave", from: "Mar 20", to: "Mar 20", days: 1, status: "pending" },
-    { name: "Vikram Singh", type: "Privilege Leave", from: "Apr 1", to: "Apr 5", days: 5, status: "pending" },
-  ];
+      if (todayResult.status === "fulfilled" && todayResult.value) {
+        const today = todayResult.value;
+        setTodayRecord(today);
+        if (today.clockIn && !today.clockOut) {
+          setClockedIn(true);
+          setClockInTime(today.clockIn);
+        }
+      }
+
+      if (teamResult.status === "fulfilled" && teamResult.value) {
+        const team = teamResult.value;
+        setTeamData({
+          present: team.present || team.presentCount || 0,
+          onLeave: team.onLeave || team.onLeaveCount || 0,
+          late: team.late || team.lateCount || 0,
+          absent: team.absent || team.absentCount || 0,
+        });
+        if (team.records || team.attendance) {
+          setAttendanceLog(team.records || team.attendance || []);
+        }
+      }
+
+      if (leaveResult.status === "fulfilled") {
+        setLeaveRequests(Array.isArray(leaveResult.value) ? leaveResult.value : []);
+      }
+    } catch {
+      // API not available - show empty state
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  async function handleClockIn() {
+    setClockLoading(true);
+    try {
+      const result = await attendanceService.clockIn({ source: "web" });
+      setClockedIn(true);
+      setClockInTime(new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
+      toast({ title: "Clocked In", description: "You have been clocked in successfully", variant: "success" });
+      loadData();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to clock in";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setClockLoading(false);
+    }
+  }
+
+  async function handleClockOut() {
+    setClockLoading(true);
+    try {
+      await attendanceService.clockOut();
+      setClockedIn(false);
+      toast({ title: "Clocked Out", description: "You have been clocked out successfully", variant: "success" });
+      loadData();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to clock out";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setClockLoading(false);
+    }
+  }
+
+  async function handleLeaveAction(id: string, action: "approve" | "reject") {
+    setLeaveApplying(true);
+    try {
+      if (action === "approve") {
+        await leaveService.approve(id);
+        toast({ title: "Leave Approved", variant: "success" });
+      } else {
+        await leaveService.reject(id);
+        toast({ title: "Leave Rejected" });
+      }
+      loadData();
+    } catch {
+      toast({ title: "Error", description: `Failed to ${action} leave`, variant: "destructive" });
+    } finally {
+      setLeaveApplying(false);
+    }
+  }
+
+  async function handleCorrectionSubmit() {
+    if (!correctionForm.date || !correctionForm.reason) {
+      toast({ title: "Error", description: "Date and reason are required", variant: "destructive" });
+      return;
+    }
+    try {
+      await attendanceService.requestCorrection(correctionForm);
+      toast({ title: "Correction Submitted", description: "Your correction request has been sent for approval", variant: "success" });
+      setCorrectionOpen(false);
+      setCorrectionForm({ date: "", clockIn: "", clockOut: "", reason: "" });
+    } catch {
+      toast({ title: "Error", description: "Failed to submit correction", variant: "destructive" });
+    }
+  }
 
   const statusColors: Record<string, "success" | "warning" | "destructive" | "default"> = {
-    present: "success",
-    late: "warning",
-    absent: "destructive",
-    on_leave: "default",
-    approved: "success",
-    pending: "warning",
-    rejected: "destructive",
+    present: "success", late: "warning", absent: "destructive", on_leave: "default",
+    approved: "success", pending: "warning", rejected: "destructive",
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Attendance & Leave</h1>
-        <p className="text-muted-foreground">Track attendance, manage leaves, and view schedules</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Attendance & Leave</h1>
+          <p className="text-muted-foreground">Track attendance, manage leaves, and view schedules</p>
+        </div>
+        <Button variant="outline" onClick={() => setCorrectionOpen(true)}>
+          <AlertCircle className="mr-2 h-4 w-4" />Request Correction
+        </Button>
       </div>
 
       {/* Clock In/Out Card */}
@@ -50,15 +164,25 @@ export default function AttendancePage() {
             </div>
             <div>
               <p className="text-lg font-semibold">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
-              <p className="text-sm text-muted-foreground">{clockedIn ? "Clocked in at 09:00 AM" : "You haven't clocked in yet"}</p>
+              <p className="text-sm text-muted-foreground">
+                {clockedIn ? `Clocked in at ${clockInTime || "—"}` : "You haven't clocked in yet"}
+              </p>
             </div>
           </div>
           <Button
             size="lg"
             variant={clockedIn ? "destructive" : "default"}
-            onClick={() => setClockedIn(!clockedIn)}
+            onClick={clockedIn ? handleClockOut : handleClockIn}
+            disabled={clockLoading}
           >
-            {clockedIn ? <><LogOut className="mr-2 h-4 w-4" />Clock Out</> : <><LogIn className="mr-2 h-4 w-4" />Clock In</>}
+            {clockLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : clockedIn ? (
+              <LogOut className="mr-2 h-4 w-4" />
+            ) : (
+              <LogIn className="mr-2 h-4 w-4" />
+            )}
+            {clockedIn ? "Clock Out" : "Clock In"}
           </Button>
         </CardContent>
       </Card>
@@ -66,10 +190,10 @@ export default function AttendancePage() {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
         {[
-          { label: "Present Today", value: "231", icon: Users, color: "text-green-600" },
-          { label: "On Leave", value: "12", icon: Calendar, color: "text-yellow-600" },
-          { label: "Late Arrivals", value: "5", icon: Clock, color: "text-orange-600" },
-          { label: "Absent", value: "5", icon: Users, color: "text-red-600" },
+          { label: "Present Today", value: teamData.present || "—", icon: Users, color: "text-green-600" },
+          { label: "On Leave", value: teamData.onLeave || "—", icon: Calendar, color: "text-yellow-600" },
+          { label: "Late Arrivals", value: teamData.late || "—", icon: Clock, color: "text-orange-600" },
+          { label: "Absent", value: teamData.absent || "—", icon: Users, color: "text-red-600" },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-4 p-4">
@@ -86,35 +210,48 @@ export default function AttendancePage() {
       <Tabs defaultValue="attendance">
         <TabsList>
           <TabsTrigger value="attendance">Today&apos;s Attendance</TabsTrigger>
-          <TabsTrigger value="leaves">Leave Requests</TabsTrigger>
+          <TabsTrigger value="leaves">Leave Requests ({leaveRequests.filter((l) => l.status === "pending").length} pending)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="attendance" className="mt-4">
           <Card>
             <CardHeader>
               <CardTitle>Attendance Log</CardTitle>
+              <CardDescription>Real-time attendance tracking from the attendance service</CardDescription>
             </CardHeader>
             <CardContent>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="p-3 text-left text-sm font-medium">Employee</th>
-                    <th className="p-3 text-left text-sm font-medium">Clock In</th>
-                    <th className="p-3 text-left text-sm font-medium">Clock Out</th>
-                    <th className="p-3 text-left text-sm font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {todayRecords.map((r, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      <td className="p-3 text-sm font-medium">{r.name}</td>
-                      <td className="p-3 text-sm">{r.clockIn}</td>
-                      <td className="p-3 text-sm">{r.clockOut}</td>
-                      <td className="p-3"><Badge variant={statusColors[r.status]}>{r.status.replace("_", " ")}</Badge></td>
+              {loading ? (
+                <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : attendanceLog.length > 0 ? (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="p-3 text-left text-sm font-medium">Employee</th>
+                      <th className="p-3 text-left text-sm font-medium">Clock In</th>
+                      <th className="p-3 text-left text-sm font-medium">Clock Out</th>
+                      <th className="p-3 text-left text-sm font-medium">Hours</th>
+                      <th className="p-3 text-left text-sm font-medium">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {attendanceLog.map((r, i) => (
+                      <tr key={r.id || i} className="border-b last:border-0">
+                        <td className="p-3 text-sm font-medium">{r.employeeId}</td>
+                        <td className="p-3 text-sm">{r.clockIn ? new Date(r.clockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                        <td className="p-3 text-sm">{r.clockOut ? new Date(r.clockOut).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                        <td className="p-3 text-sm">{r.hoursWorked ? `${r.hoursWorked.toFixed(1)}h` : "—"}</td>
+                        <td className="p-3"><Badge variant={statusColors[r.status] || "default"}>{r.status?.replace("_", " ") || "present"}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  <CheckCircle2 className="mx-auto mb-2 h-8 w-8" />
+                  <p>No attendance records for today yet.</p>
+                  <p className="text-xs">Click &quot;Clock In&quot; to start tracking your attendance.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -123,43 +260,86 @@ export default function AttendancePage() {
           <Card>
             <CardHeader>
               <CardTitle>Leave Requests</CardTitle>
+              <CardDescription>Manage pending leave requests</CardDescription>
             </CardHeader>
             <CardContent>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="p-3 text-left text-sm font-medium">Employee</th>
-                    <th className="p-3 text-left text-sm font-medium">Type</th>
-                    <th className="p-3 text-left text-sm font-medium">Duration</th>
-                    <th className="p-3 text-left text-sm font-medium">Days</th>
-                    <th className="p-3 text-left text-sm font-medium">Status</th>
-                    <th className="p-3 text-left text-sm font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaveRequests.map((l, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      <td className="p-3 text-sm font-medium">{l.name}</td>
-                      <td className="p-3 text-sm">{l.type}</td>
-                      <td className="p-3 text-sm">{l.from} - {l.to}</td>
-                      <td className="p-3 text-sm">{l.days}</td>
-                      <td className="p-3"><Badge variant={statusColors[l.status]}>{l.status}</Badge></td>
-                      <td className="p-3">
-                        {l.status === "pending" && (
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="default">Approve</Button>
-                            <Button size="sm" variant="outline">Reject</Button>
-                          </div>
-                        )}
-                      </td>
+              {leaveRequests.length > 0 ? (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="p-3 text-left text-sm font-medium">Employee</th>
+                      <th className="p-3 text-left text-sm font-medium">Type</th>
+                      <th className="p-3 text-left text-sm font-medium">Duration</th>
+                      <th className="p-3 text-left text-sm font-medium">Days</th>
+                      <th className="p-3 text-left text-sm font-medium">Status</th>
+                      <th className="p-3 text-left text-sm font-medium">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {leaveRequests.map((l) => (
+                      <tr key={l.id} className="border-b last:border-0">
+                        <td className="p-3 text-sm font-medium">{l.employeeId}</td>
+                        <td className="p-3 text-sm">{l.leaveType?.name || "Leave"}</td>
+                        <td className="p-3 text-sm">{formatDate(l.startDate)} - {formatDate(l.endDate)}</td>
+                        <td className="p-3 text-sm">{l.days}</td>
+                        <td className="p-3"><Badge variant={statusColors[l.status]}>{l.status}</Badge></td>
+                        <td className="p-3">
+                          {l.status === "pending" && (
+                            <div className="flex gap-2">
+                              <Button size="sm" disabled={leaveApplying} onClick={() => handleLeaveAction(l.id, "approve")}>Approve</Button>
+                              <Button size="sm" variant="outline" disabled={leaveApplying} onClick={() => handleLeaveAction(l.id, "reject")}>Reject</Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="py-8 text-center text-muted-foreground">No leave requests found</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Correction Request Dialog */}
+      <Dialog open={correctionOpen} onOpenChange={setCorrectionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Attendance Correction</DialogTitle>
+            <DialogDescription>Submit a correction request for missed punch or incorrect time</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Date *</Label>
+              <Input type="date" value={correctionForm.date} onChange={(e) => setCorrectionForm({ ...correctionForm, date: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Correct Clock In</Label>
+                <Input type="time" value={correctionForm.clockIn} onChange={(e) => setCorrectionForm({ ...correctionForm, clockIn: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Correct Clock Out</Label>
+                <Input type="time" value={correctionForm.clockOut} onChange={(e) => setCorrectionForm({ ...correctionForm, clockOut: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Reason *</Label>
+              <Textarea
+                value={correctionForm.reason}
+                onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })}
+                placeholder="Explain why you need a correction..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCorrectionOpen(false)}>Cancel</Button>
+            <Button onClick={handleCorrectionSubmit}>Submit Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

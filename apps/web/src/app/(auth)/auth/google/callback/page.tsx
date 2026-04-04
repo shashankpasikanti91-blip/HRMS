@@ -60,6 +60,7 @@ function GoogleCallbackContent() {
 
 export default function GoogleCallbackPage() {
   return (
+    // @ts-expect-error React 19 Suspense JSX type mismatch
     <Suspense
       fallback={
         <div className="flex flex-col items-center justify-center min-h-screen gap-4">

@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Filter, Download, Upload } from "lucide-react";
-import api from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Search, Filter, Download, Upload, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { employeeService, departmentService } from "@/services/api-services";
+import { useToast } from "@/hooks/use-toast";
 import { getInitials, formatDate } from "@/lib/utils";
-import type { Employee } from "@/types";
+import type { Employee, Department } from "@/types";
 
 const statusColors: Record<string, "success" | "warning" | "destructive" | "secondary" | "default"> = {
   active: "success",
@@ -21,35 +26,134 @@ const statusColors: Record<string, "success" | "warning" | "destructive" | "seco
 };
 
 export default function EmployeesPage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    firstName: "", lastName: "", email: "", phone: "",
+    departmentId: "", employmentType: "full_time" as string,
+    dateOfJoining: new Date().toISOString().split("T")[0],
+    gender: "", dateOfBirth: "",
+  });
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [empResult, deptResult] = await Promise.allSettled([
+        employeeService.list({ search: search || undefined, status: statusFilter !== "all" ? statusFilter : undefined }),
+        departmentService.list(),
+      ]);
+      if (empResult.status === "fulfilled") {
+        const empData = empResult.value;
+        setEmployees(Array.isArray(empData) ? empData : empData?.data || []);
+      }
+      if (deptResult.status === "fulfilled") {
+        setDepartments(Array.isArray(deptResult.value) ? deptResult.value : []);
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to load employees", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [search, statusFilter, toast]);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const { data } = await api.get("/core-hr/employees");
-        setEmployees(data.data || []);
-      } catch {
-        // Demo data
-        setEmployees([
-          { id: "1", employeeCode: "EMP001", firstName: "Arjun", lastName: "Patel", email: "arjun@srp.com", departmentId: "1", department: { id: "1", name: "Engineering", code: "ENG" }, positionId: "1", position: { id: "1", title: "Senior Developer", code: "SR-DEV", departmentId: "1" }, dateOfJoining: "2023-01-15", status: "active", employmentType: "full_time" },
-          { id: "2", employeeCode: "EMP002", firstName: "Priya", lastName: "Sharma", email: "priya@srp.com", departmentId: "2", department: { id: "2", name: "Marketing", code: "MKT" }, positionId: "2", position: { id: "2", title: "Marketing Manager", code: "MKT-MGR", departmentId: "2" }, dateOfJoining: "2023-03-20", status: "active", employmentType: "full_time" },
-          { id: "3", employeeCode: "EMP003", firstName: "Rahul", lastName: "Kumar", email: "rahul@srp.com", departmentId: "1", department: { id: "1", name: "Engineering", code: "ENG" }, positionId: "3", position: { id: "3", title: "DevOps Engineer", code: "DEVOPS", departmentId: "1" }, dateOfJoining: "2023-06-01", status: "on_leave", employmentType: "full_time" },
-          { id: "4", employeeCode: "EMP004", firstName: "Sneha", lastName: "Gupta", email: "sneha@srp.com", departmentId: "3", department: { id: "3", name: "HR", code: "HR" }, positionId: "4", position: { id: "4", title: "HR Business Partner", code: "HRBP", departmentId: "3" }, dateOfJoining: "2022-11-10", status: "active", employmentType: "full_time" },
-          { id: "5", employeeCode: "EMP005", firstName: "Vikram", lastName: "Singh", email: "vikram@srp.com", departmentId: "4", department: { id: "4", name: "Sales", code: "SALES" }, positionId: "5", position: { id: "5", title: "Sales Executive", code: "SALES-EXE", departmentId: "4" }, dateOfJoining: "2024-01-08", status: "probation", employmentType: "full_time" },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
+    loadData();
+  }, [loadData]);
 
-  const filtered = employees.filter(
-    (e) =>
-      `${e.firstName} ${e.lastName} ${e.employeeCode} ${e.email}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = employees.filter((e) => {
+    const matchSearch = `${e.firstName} ${e.lastName} ${e.employeeCode} ${e.email}`.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === "all" || e.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  function openAddDialog() {
+    setEditingEmployee(null);
+    setForm({ firstName: "", lastName: "", email: "", phone: "", departmentId: "", employmentType: "full_time", dateOfJoining: new Date().toISOString().split("T")[0], gender: "", dateOfBirth: "" });
+    setDialogOpen(true);
+  }
+
+  function openEditDialog(emp: Employee) {
+    setEditingEmployee(emp);
+    setForm({
+      firstName: emp.firstName, lastName: emp.lastName, email: emp.email, phone: emp.phone || "",
+      departmentId: emp.departmentId || "", employmentType: emp.employmentType || "full_time",
+      dateOfJoining: emp.dateOfJoining?.split("T")[0] || "", gender: emp.gender || "", dateOfBirth: emp.dateOfBirth || "",
+    });
+    setDialogOpen(true);
+  }
+
+  async function handleSave() {
+    if (!form.firstName || !form.lastName || !form.email) {
+      toast({ title: "Validation Error", description: "First name, last name, and email are required", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingEmployee) {
+        await employeeService.update(editingEmployee.id, form);
+        toast({ title: "Success", description: "Employee updated successfully", variant: "success" });
+      } else {
+        await employeeService.create(form);
+        toast({ title: "Success", description: "Employee created successfully", variant: "success" });
+      }
+      setDialogOpen(false);
+      loadData();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to save employee";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deletingId) return;
+    try {
+      await employeeService.delete(deletingId);
+      toast({ title: "Success", description: "Employee deleted", variant: "success" });
+      setDeleteDialogOpen(false);
+      setDeletingId(null);
+      loadData();
+    } catch {
+      toast({ title: "Error", description: "Failed to delete employee", variant: "destructive" });
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const blob = await employeeService.exportCsv();
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `employees-${new Date().toISOString().split("T")[0]}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Success", description: "Export downloaded" });
+    } catch {
+      // Fallback: export from current data
+      const csv = ["Employee Code,First Name,Last Name,Email,Department,Status,Joined"]
+        .concat(filtered.map((e) => `${e.employeeCode},${e.firstName},${e.lastName},${e.email},${e.department?.name || ""},${e.status},${e.dateOfJoining}`))
+        .join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `employees-${new Date().toISOString().split("T")[0]}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Exported", description: `${filtered.length} employees exported as CSV` });
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -59,9 +163,8 @@ export default function EmployeesPage() {
           <p className="text-muted-foreground">Manage your organization&apos;s workforce</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm"><Upload className="mr-2 h-4 w-4" />Import</Button>
-          <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />Export</Button>
-          <Button size="sm"><Plus className="mr-2 h-4 w-4" />Add Employee</Button>
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" />Export</Button>
+          <Button size="sm" onClick={openAddDialog}><Plus className="mr-2 h-4 w-4" />Add Employee</Button>
         </div>
       </div>
 
@@ -70,67 +173,195 @@ export default function EmployeesPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search employees..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Button variant="outline" size="sm"><Filter className="mr-2 h-4 w-4" />Filter</Button>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[160px]"><Filter className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="on_leave">On Leave</SelectItem>
+            <SelectItem value="probation">Probation</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="terminated">Terminated</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <Tabs defaultValue="all">
+      <Tabs value={statusFilter} onValueChange={setStatusFilter}>
         <TabsList>
           <TabsTrigger value="all">All ({employees.length})</TabsTrigger>
           <TabsTrigger value="active">Active ({employees.filter((e) => e.status === "active").length})</TabsTrigger>
           <TabsTrigger value="on_leave">On Leave ({employees.filter((e) => e.status === "on_leave").length})</TabsTrigger>
           <TabsTrigger value="probation">Probation ({employees.filter((e) => e.status === "probation").length})</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="all" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="p-4 text-left text-sm font-medium">Employee</th>
-                      <th className="p-4 text-left text-sm font-medium">Department</th>
-                      <th className="p-4 text-left text-sm font-medium">Position</th>
-                      <th className="p-4 text-left text-sm font-medium">Joined</th>
-                      <th className="p-4 text-left text-sm font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((emp) => (
-                      <tr key={emp.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="text-xs">{getInitials(`${emp.firstName} ${emp.lastName}`)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">{emp.firstName} {emp.lastName}</p>
-                              <p className="text-xs text-muted-foreground">{emp.employeeCode} &middot; {emp.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-sm">{emp.department?.name || "—"}</td>
-                        <td className="p-4 text-sm">{emp.position?.title || "—"}</td>
-                        <td className="p-4 text-sm text-muted-foreground">{formatDate(emp.dateOfJoining)}</td>
-                        <td className="p-4">
-                          <Badge variant={statusColors[emp.status] || "secondary"}>
-                            {emp.status.replace("_", " ")}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                    {filtered.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="p-8 text-center text-muted-foreground">No employees found</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
+
+      <Card>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center p-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-4 text-left text-sm font-medium">Employee</th>
+                    <th className="p-4 text-left text-sm font-medium">Department</th>
+                    <th className="p-4 text-left text-sm font-medium">Position</th>
+                    <th className="p-4 text-left text-sm font-medium">Joined</th>
+                    <th className="p-4 text-left text-sm font-medium">Status</th>
+                    <th className="p-4 text-left text-sm font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((emp) => (
+                    <tr
+                      key={emp.id}
+                      className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                      onClick={() => router.push(`/dashboard/employees/${emp.id}`)}
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                            <AvatarFallback className="text-xs">{getInitials(`${emp.firstName} ${emp.lastName}`)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium">{emp.firstName} {emp.lastName}</p>
+                            <p className="text-xs text-muted-foreground">{emp.employeeCode} &middot; {emp.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm">{emp.department?.name || "—"}</td>
+                      <td className="p-4 text-sm">{emp.position?.title || "—"}</td>
+                      <td className="p-4 text-sm text-muted-foreground">{formatDate(emp.dateOfJoining)}</td>
+                      <td className="p-4"><Badge variant={statusColors[emp.status] || "secondary"}>{emp.status.replace("_", " ")}</Badge></td>
+                      <td className="p-4">
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditDialog(emp)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setDeletingId(emp.id); setDeleteDialogOpen(true); }}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && !loading && (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                        {search ? "No employees match your search" : "No employees found. Click 'Add Employee' to get started."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add/Edit Employee Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingEmployee ? "Edit Employee" : "Add New Employee"}</DialogTitle>
+            <DialogDescription>
+              {editingEmployee ? "Update employee information" : "Fill in details to create a new employee. Employee ID will be auto-generated."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name *</Label>
+                <Input id="firstName" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name *</Label>
+                <Input id="lastName" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Department</Label>
+                <Select value={form.departmentId} onValueChange={(val) => setForm({ ...form, departmentId: val })}>
+                  <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Employment Type</Label>
+                <Select value={form.employmentType} onValueChange={(val) => setForm({ ...form, employmentType: val })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full_time">Full Time</SelectItem>
+                    <SelectItem value="part_time">Part Time</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="intern">Intern</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="doj">Date of Joining</Label>
+                <Input id="doj" type="date" value={form.dateOfJoining} onChange={(e) => setForm({ ...form, dateOfJoining: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Gender</Label>
+                <Select value={form.gender} onValueChange={(val) => setForm({ ...form, gender: val })}>
+                  <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dob">Date of Birth</Label>
+              <Input id="dob" type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingEmployee ? "Update" : "Create"} Employee
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Employee</DialogTitle>
+            <DialogDescription>Are you sure you want to delete this employee? This action cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
