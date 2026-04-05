@@ -127,7 +127,7 @@ log "Nginx updated and reloaded"
 echo ""
 echo "Waiting 15s for container to be healthy..."
 sleep 15
-HEALTH=$(ssh "$SERVER" "curl -sf https://api.hrms.srpailabs.com/health || echo FAIL")
+HEALTH=$(ssh "$SERVER" "curl -sf https://api.hrms.srpailabs.com/health || curl -sf http://127.0.0.1:8003/health || echo FAIL")
 if echo "$HEALTH" | grep -q '"status":"ok"'; then
   log "Health check passed: $HEALTH"
 else

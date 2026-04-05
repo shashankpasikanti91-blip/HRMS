@@ -65,7 +65,7 @@ server {
     # Auth endpoints — strict rate limit
     location /api/v1/auth/ {
         limit_req zone=hrms_auth burst=5 nodelay;
-        proxy_pass http://127.0.0.1:8001;
+        proxy_pass http://127.0.0.1:8003;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -75,7 +75,7 @@ server {
 
     # Uploaded files (served directly by nginx from Docker volume)
     location /files/ {
-        proxy_pass http://127.0.0.1:8001;
+        proxy_pass http://127.0.0.1:8003;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         expires 7d;
@@ -85,7 +85,7 @@ server {
     # General API + docs
     location / {
         limit_req zone=hrms_api burst=50 nodelay;
-        proxy_pass http://127.0.0.1:8001;
+        proxy_pass http://127.0.0.1:8003;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
