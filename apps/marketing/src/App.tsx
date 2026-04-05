@@ -3,6 +3,7 @@ import LandingPage from './pages/LandingPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import SecurityPage from './pages/SecurityPage';
+import LegalPage from './pages/LegalPage';
 
 const App = () => (
   <BrowserRouter>
@@ -11,6 +12,7 @@ const App = () => (
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/security" element={<SecurityPage />} />
+      <Route path="/legal" element={<LegalPage />} />
     </Routes>
   </BrowserRouter>
 );

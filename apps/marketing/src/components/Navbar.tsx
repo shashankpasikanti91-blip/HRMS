@@ -3,11 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 
 const navLinks = [
-  { label: 'Home', href: '#hero' },
-  { label: 'About', href: '#about' },
-  { label: 'Features', href: '#features' },
+  { label: 'Solutions', href: '#solutions' },
   { label: 'AI Engine', href: '#ai' },
-  { label: 'Modules', href: '#modules' },
+  { label: 'Platform', href: '#features' },
+  { label: 'Security', href: '#security' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'Contact', href: '#contact' },
 ];
@@ -20,7 +19,7 @@ const Navbar = () => {
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 50);
-      const sections = navLinks.map((l) => l.href.replace('#', ''));
+      const sections = ['hero', 'solutions', 'ai', 'features', 'security', 'pricing', 'contact'];
       for (const id of [...sections].reverse()) {
         const el = document.getElementById(id);
         if (el && el.getBoundingClientRect().top <= 200) {
@@ -78,12 +77,20 @@ const Navbar = () => {
           ))}
         </div>
 
-        <div className="hidden lg:flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-3">
+          <a
+            href="https://api.hrms.srpailabs.com/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors font-medium px-3 py-2"
+          >
+            API Docs
+          </a>
           <a href="https://app.hrms.srpailabs.com/login" className="btn-outline text-xs py-2.5 px-5">
             Sign In
           </a>
           <a href="https://app.hrms.srpailabs.com/register" className="btn-primary text-xs py-2.5 px-5">
-            Get Started
+            Get Started Free
           </a>
         </div>
 

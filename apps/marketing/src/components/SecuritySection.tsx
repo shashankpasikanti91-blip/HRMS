@@ -14,7 +14,7 @@ const SecuritySection = () => {
   const inView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section className="section-padding relative overflow-hidden" ref={ref}>
+    <section className="section-padding relative overflow-hidden" id="security" ref={ref}>
       <div className="absolute inset-0 bg-grid opacity-30" />
       <div className="container mx-auto relative z-10">
         <motion.div

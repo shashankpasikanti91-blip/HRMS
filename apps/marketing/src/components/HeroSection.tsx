@@ -1,5 +1,11 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Calendar } from 'lucide-react';
+import { ArrowRight, Calendar, Shield, Zap, Users } from 'lucide-react';
+
+const trustBadges = [
+  { icon: Shield, text: 'SOC2 Ready' },
+  { icon: Zap, text: '99.9% Uptime' },
+  { icon: Users, text: 'Multi-Tenant' },
+];
 
 const HeroSection = () => {
   return (
@@ -19,7 +25,7 @@ const HeroSection = () => {
         >
           <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-primary/30 bg-primary/10 backdrop-blur-sm text-sm font-medium text-foreground/80 tracking-widest uppercase">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            AI That Runs Your HR
+            AI-Native HR Platform · Built for APAC &amp; Middle East
           </span>
         </motion.div>
 
@@ -29,7 +35,7 @@ const HeroSection = () => {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display font-bold leading-[1.05] mb-6"
         >
-          <span className="text-foreground">Stop Managing HR.</span>
+          <span className="text-foreground">The Future of Work</span>
           <br />
           <motion.span
             className="gradient-text-hero inline-block"
@@ -37,7 +43,7 @@ const HeroSection = () => {
             transition={{ duration: 6, repeat: Infinity }}
             style={{ backgroundSize: '200% 200%' }}
           >
-            Let AI Run It.
+            Starts with AI HR.
           </motion.span>
         </motion.h1>
 
@@ -47,8 +53,8 @@ const HeroSection = () => {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed"
         >
-          AI-powered HRMS that screens candidates, predicts attrition, automates workflows,
-          and answers employee queries — all in real time.
+          SRP AI HRMS unifies your entire workforce — from hire to retire — with intelligent automation,
+          predictive analytics, and an AI engine that adapts to your organization.
         </motion.p>
 
         <motion.p
@@ -57,21 +63,36 @@ const HeroSection = () => {
           transition={{ duration: 0.8, delay: 0.7 }}
           className="text-sm text-muted-foreground/70 mb-10"
         >
-          Built for modern teams replacing manual HR with intelligent automation.
+          Trusted by forward-thinking teams across APAC and the Middle East.
         </motion.p>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center"
+          className="flex flex-col sm:flex-row gap-4 justify-center mb-10"
         >
           <a href="https://app.hrms.srpailabs.com/register" className="btn-primary inline-flex items-center gap-2 justify-center">
-            🚀 Start Free Trial <ArrowRight size={16} />
+            Start Free Trial <ArrowRight size={16} />
           </a>
           <a href="#contact" className="btn-outline inline-flex items-center gap-2 justify-center">
             <Calendar size={14} /> Book Live Demo
           </a>
+        </motion.div>
+
+        {/* Trust badges */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 1.0 }}
+          className="flex flex-wrap items-center justify-center gap-6 mb-4"
+        >
+          {trustBadges.map((b) => (
+            <div key={b.text} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <b.icon className="w-3.5 h-3.5 text-primary" />
+              <span className="font-medium tracking-wide">{b.text}</span>
+            </div>
+          ))}
         </motion.div>
 
         {/* Dashboard preview mockup */}
