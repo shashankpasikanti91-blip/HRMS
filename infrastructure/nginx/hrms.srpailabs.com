@@ -40,7 +40,7 @@ server {
     }
 }
 
-# ---- API Gateway: api.hrms.srpailabs.com ----
+# ---- FastAPI Backend: api.hrms.srpailabs.com ----
 server {
     listen 80;
     listen [::]:80;
@@ -65,7 +65,7 @@ server {
     # Auth endpoints — strict rate limit
     location /api/v1/auth/ {
         limit_req zone=hrms_auth burst=5 nodelay;
-        proxy_pass http://127.0.0.1:4000;
+        proxy_pass http://127.0.0.1:8001;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -73,10 +73,19 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # General API
+    # Uploaded files (served directly by nginx from Docker volume)
+    location /files/ {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # General API + docs
     location / {
         limit_req zone=hrms_api burst=50 nodelay;
-        proxy_pass http://127.0.0.1:4000;
+        proxy_pass http://127.0.0.1:8001;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

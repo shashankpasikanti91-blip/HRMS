@@ -320,6 +320,49 @@ services:
     networks:
       - srp-hrms-prod
 
+  # ---- FastAPI Python Backend ----
+  fastapi-backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    image: srp-hrms/fastapi-backend:${IMAGE_TAG:-latest}
+    container_name: srp-hrms-fastapi-backend
+    restart: unless-stopped
+    env_file: ../../.env.production
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - DATABASE_URL=postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/hrms_backend
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - JWT_SECRET_KEY=${FASTAPI_SECRET_KEY}
+      - SUPER_ADMIN_EMAIL=${FASTAPI_SUPER_ADMIN_EMAIL}
+      - SUPER_ADMIN_PASSWORD=${FASTAPI_SUPER_ADMIN_PASSWORD}
+      - ALLOWED_ORIGINS=https://app.hrms.srpailabs.com,https://hrms.srpailabs.com
+      - DOCS_ENABLED=false
+      - LOCAL_UPLOAD_DIR=/app/uploads
+      - STORAGE_BACKEND=local
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - fastapi_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - srp-hrms-prod
+
   # ---- Marketing Site (Vite/React) ----
   marketing:
     build:
@@ -344,6 +387,8 @@ volumes:
     name: srp-hrms-redis-data
   nats_data:
     name: srp-hrms-nats-data
+  fastapi_uploads:
+    name: srp-hrms-fastapi-uploads
 
 networks:
   srp-hrms-prod:

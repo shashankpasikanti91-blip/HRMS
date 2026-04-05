@@ -1,0 +1,241 @@
+from __future__ import annotations
+
+from typing import List, Optional, Tuple
+
+from sqlalchemy import select, func, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import NotFoundException, ConflictException, BadRequestException
+from app.core.pagination import PaginationParams
+from app.models.employee import Employee, Department
+from app.models.attendance import Attendance, LeaveRequest
+from app.repositories.base import BaseRepository
+from app.schemas.employee import (
+    EmployeeCreate,
+    EmployeeUpdate,
+    DepartmentCreate,
+    DepartmentUpdate,
+    EmployeeSummaryDetail,
+)
+from app.services.business_id_service import BusinessIdService
+from datetime import date
+import uuid
+
+
+class DepartmentService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.repo = BaseRepository(Department, db)
+
+    async def create(self, data: DepartmentCreate, company_id: str, created_by: str) -> Department:
+        bid = await BusinessIdService.generate(self.db, "department")
+        dept = Department(
+            id=str(uuid.uuid4()),
+            business_id=bid,
+            company_id=company_id,
+            name=data.name,
+            code=data.code,
+            description=data.description,
+            parent_department_id=data.parent_department_id,
+            head_employee_id=data.head_employee_id,
+            created_by=created_by,
+        )
+        self.db.add(dept)
+        await self.db.flush()
+        await self.db.refresh(dept)
+        return dept
+
+    async def list(self, company_id: str, params: PaginationParams) -> Tuple[List[Department], int]:
+        conditions = []
+        if params.q:
+            q = f"%{params.q}%"
+            conditions.append(
+                or_(
+                    Department.name.ilike(q),
+                    Department.code.ilike(q),
+                    Department.business_id.ilike(q),
+                )
+            )
+        return await self.repo.list(company_id=company_id, params=params, extra_conditions=conditions)
+
+    async def get(self, business_id: str, company_id: str) -> Department:
+        return await self.repo.get_or_404(business_id, company_id)
+
+    async def update(self, business_id: str, data: DepartmentUpdate, company_id: str, updated_by: str) -> Department:
+        dept = await self.repo.get_or_404(business_id, company_id)
+        update_dict = data.model_dump(exclude_unset=True)
+        update_dict["updated_by"] = updated_by
+        return await self.repo.update(dept, update_dict)
+
+    async def get_employee_count(self, department_id: str) -> int:
+        result = await self.db.execute(
+            select(func.count()).select_from(Employee).where(
+                Employee.department_id == department_id,
+                Employee.is_deleted == False,
+            )
+        )
+        return result.scalar() or 0
+
+
+class EmployeeService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.repo = BaseRepository(Employee, db)
+
+    async def create(self, data: EmployeeCreate, company_id: str, created_by: str) -> Employee:
+        # Check work email uniqueness within company
+        existing = await self.db.execute(
+            select(Employee).where(
+                Employee.work_email == data.work_email,
+                Employee.company_id == company_id,
+                Employee.is_deleted == False,
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise ConflictException(f"Employee with work email '{data.work_email}' already exists")
+
+        bid = await BusinessIdService.generate(self.db, "employee")
+
+        # Auto-generate employee_code if not provided
+        emp_code = data.employee_code
+        if not emp_code:
+            count_result = await self.db.execute(
+                select(func.count()).select_from(Employee).where(
+                    Employee.company_id == company_id
+                )
+            )
+            count = (count_result.scalar() or 0) + 1
+            emp_code = f"EMP{str(count).zfill(4)}"
+
+        emp = Employee(
+            id=str(uuid.uuid4()),
+            business_id=bid,
+            company_id=company_id,
+            employee_code=emp_code,
+            full_name=data.full_name,
+            first_name=data.first_name,
+            last_name=data.last_name,
+            work_email=data.work_email,
+            personal_email=str(data.personal_email) if data.personal_email else None,
+            phone=data.phone,
+            emergency_contact_name=data.emergency_contact_name,
+            emergency_contact_phone=data.emergency_contact_phone,
+            gender=data.gender.value if data.gender else None,
+            date_of_birth=data.date_of_birth,
+            joining_date=data.joining_date,
+            employment_type=data.employment_type.value if data.employment_type else None,
+            work_mode=data.work_mode.value if data.work_mode else None,
+            department_id=data.department_id,
+            designation=data.designation,
+            manager_id=data.manager_id,
+            location=data.location,
+            notes=data.notes,
+            created_by=created_by,
+        )
+        self.db.add(emp)
+        await self.db.flush()
+        await self.db.refresh(emp)
+        return emp
+
+    async def list(
+        self,
+        company_id: str,
+        params: PaginationParams,
+        department_id: Optional[str] = None,
+        employment_status: Optional[str] = None,
+    ) -> Tuple[List[Employee], int]:
+        conditions = []
+        if params.q:
+            q = f"%{params.q}%"
+            conditions.append(
+                or_(
+                    Employee.full_name.ilike(q),
+                    Employee.work_email.ilike(q),
+                    Employee.employee_code.ilike(q),
+                    Employee.designation.ilike(q),
+                    Employee.business_id.ilike(q),
+                    Employee.phone.ilike(q),
+                )
+            )
+        filters = {}
+        if department_id:
+            filters["department_id"] = department_id
+        if employment_status:
+            filters["employment_status"] = employment_status
+
+        return await self.repo.list(
+            company_id=company_id,
+            params=params,
+            filters=filters,
+            extra_conditions=conditions,
+        )
+
+    async def get(self, business_id: str, company_id: str) -> Employee:
+        return await self.repo.get_or_404(business_id, company_id)
+
+    async def get_summary(self, business_id: str, company_id: str) -> dict:
+        emp = await self.repo.get_or_404(business_id, company_id)
+
+        # Department
+        dept_name = None
+        if emp.department_id:
+            dept_result = await self.db.execute(
+                select(Department).where(Department.id == emp.department_id)
+            )
+            dept = dept_result.scalar_one_or_none()
+            if dept:
+                dept_name = dept.name
+
+        # Manager
+        manager_name = None
+        if emp.manager_id:
+            mgr_result = await self.db.execute(
+                select(Employee).where(Employee.id == emp.manager_id)
+            )
+            mgr = mgr_result.scalar_one_or_none()
+            if mgr:
+                manager_name = mgr.full_name
+
+        # Today's attendance
+        today = date.today()
+        att_result = await self.db.execute(
+            select(Attendance).where(
+                Attendance.employee_id == emp.id,
+                Attendance.attendance_date == today,
+            )
+        )
+        att = att_result.scalar_one_or_none()
+
+        # Pending leaves
+        leave_count_result = await self.db.execute(
+            select(func.count()).select_from(LeaveRequest).where(
+                LeaveRequest.employee_id == emp.id,
+                LeaveRequest.status == "pending",
+                LeaveRequest.is_deleted == False,
+            )
+        )
+        pending_leaves = leave_count_result.scalar() or 0
+
+        return {
+            **emp.__dict__,
+            "department_name": dept_name,
+            "manager_name": manager_name,
+            "today_attendance_status": att.status if att else None,
+            "pending_leaves": pending_leaves,
+        }
+
+    async def update(self, business_id: str, data: EmployeeUpdate, company_id: str, updated_by: str) -> Employee:
+        emp = await self.repo.get_or_404(business_id, company_id)
+        update_dict = data.model_dump(exclude_unset=True)
+        # Convert enums to values
+        for key in ("gender", "employment_type", "work_mode", "employment_status"):
+            if key in update_dict and update_dict[key] and hasattr(update_dict[key], "value"):
+                update_dict[key] = update_dict[key].value
+        if "personal_email" in update_dict and update_dict["personal_email"]:
+            update_dict["personal_email"] = str(update_dict["personal_email"])
+        update_dict["updated_by"] = updated_by
+        return await self.repo.update(emp, update_dict)
+
+    async def delete(self, business_id: str, company_id: str, deleted_by: str) -> Employee:
+        emp = await self.repo.get_or_404(business_id, company_id)
+        return await self.repo.soft_delete(emp, deleted_by=deleted_by)
