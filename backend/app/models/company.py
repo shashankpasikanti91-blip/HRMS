@@ -31,7 +31,7 @@ class Company(BaseModel):
     )
     branding_settings: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     subscription_plan: Mapped[str] = mapped_column(
-        String(30), default=SubscriptionPlan.TRIAL.value, nullable=False
+        String(30), default=SubscriptionPlan.FREE.value, nullable=False
     )
     subscription_status: Mapped[str] = mapped_column(
         String(30), default=SubscriptionStatus.TRIAL.value, nullable=False
