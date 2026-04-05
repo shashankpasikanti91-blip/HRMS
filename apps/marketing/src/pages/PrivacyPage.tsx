@@ -1,11 +1,17 @@
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 
 const PrivacyPage = () => (
   <div className="min-h-screen bg-background">
     <Navbar />
     <section className="pt-32 pb-20 px-4">
       <div className="container mx-auto max-w-3xl">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8 group">
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+          Back to Home
+        </Link>
         <h1 className="text-4xl font-display font-bold text-foreground mb-2">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground mb-2">Last updated: April 5, 2026</p>
         <p className="text-sm text-muted-foreground mb-10">

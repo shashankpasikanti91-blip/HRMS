@@ -1,5 +1,7 @@
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 
 const legalDocuments = [
   {
@@ -40,6 +42,10 @@ const LegalPage = () => (
       <div className="container mx-auto max-w-4xl">
         {/* Header */}
         <div className="mb-16">
+          <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8 group">
+            <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+            Back to Home
+          </Link>
           <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">Legal</h1>
           <p className="text-muted-foreground max-w-2xl text-base leading-relaxed">
             SRP AI Labs operates with full transparency. Below you will find all legal documents governing your use of
@@ -59,13 +65,23 @@ const LegalPage = () => (
               </div>
               <div className="mt-auto flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Updated: {doc.updated}</span>
-                <a
-                  href={doc.link}
-                  {...(doc.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                  className="text-sm font-display font-semibold text-primary hover:underline flex items-center gap-1 transition-colors"
-                >
-                  {doc.label} →
-                </a>
+                {doc.external ? (
+                  <a
+                    href={doc.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-display font-semibold text-primary hover:underline flex items-center gap-1 transition-colors"
+                  >
+                    {doc.label} →
+                  </a>
+                ) : (
+                  <Link
+                    to={doc.link}
+                    className="text-sm font-display font-semibold text-primary hover:underline flex items-center gap-1 transition-colors"
+                  >
+                    {doc.label} →
+                  </Link>
+                )}
               </div>
             </div>
           ))}

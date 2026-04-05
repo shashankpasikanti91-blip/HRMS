@@ -2,10 +2,10 @@ import { motion, useInView } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
 
 const stats = [
-  { value: 10000, suffix: '+', label: 'Employees Managed' },
-  { value: 38, suffix: '+', label: 'AI Modules' },
+  { value: 15000, suffix: '+', label: 'Employee Profiles Managed' },
+  { value: 500, suffix: '+', label: 'Enterprises Onboarded' },
   { value: 99.9, suffix: '%', label: 'Uptime SLA' },
-  { value: 0, suffix: '', label: 'Used by Teams Across APAC & Middle East', isText: true },
+  { value: 38, suffix: '+', label: 'AI-Powered Modules' },
 ];
 
 const Counter = ({ target, suffix, inView }: { target: number; suffix: string; inView: boolean }) => {
@@ -54,13 +54,9 @@ const StatsSection = () => {
               transition={{ duration: 0.5, delay: i * 0.15 }}
               className="text-center"
             >
-              {'isText' in s && s.isText ? (
-                <div className="text-lg md:text-xl font-display font-bold gradient-text mb-2">🌏</div>
-              ) : (
-                <div className="text-5xl md:text-6xl font-display font-bold gradient-text mb-2">
-                  <Counter target={s.value} suffix={s.suffix} inView={inView} />
-                </div>
-              )}
+              <div className="text-5xl md:text-6xl font-display font-bold gradient-text mb-2">
+                <Counter target={s.value} suffix={s.suffix} inView={inView} />
+              </div>
               <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{s.label}</div>
             </motion.div>
           ))}

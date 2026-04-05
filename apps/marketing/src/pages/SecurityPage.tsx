@@ -1,6 +1,7 @@
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { Shield, Lock, Eye, Server, Key, FileCheck } from 'lucide-react';
+import { Shield, Lock, Eye, Server, Key, FileCheck, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const features = [
   { icon: Lock, title: 'AES-256 Encryption', desc: 'All data encrypted at rest and in transit using AES-256 encryption with TLS 1.3.' },
@@ -16,6 +17,10 @@ const SecurityPage = () => (
     <Navbar />
     <section className="pt-32 pb-20 px-4">
       <div className="container mx-auto max-w-4xl">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8 group">
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+          Back to Home
+        </Link>
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">Security at SRP AI HRMS</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">Your employee data is the most sensitive asset. We built security into every layer — not bolted on as an afterthought.</p>

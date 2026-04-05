@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const navLinks = [
-  { label: 'Solutions', href: '#solutions' },
-  { label: 'AI Engine', href: '#ai' },
-  { label: 'Platform', href: '#features' },
-  { label: 'Security', href: '#security' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'Contact', href: '#contact' },
+  { label: 'Solutions', href: '/#solutions' },
+  { label: 'AI Engine', href: '/#ai' },
+  { label: 'Platform', href: '/#features' },
+  { label: 'Security', href: '/#security' },
+  { label: 'Pricing', href: '/#pricing' },
+  { label: 'Contact', href: '/#contact' },
 ];
 
 const Navbar = () => {
@@ -42,7 +43,7 @@ const Navbar = () => {
       }`}
     >
       <div className="container mx-auto flex items-center justify-between h-20 px-4 md:px-8">
-        <a href="#hero" className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--gradient-primary)' }}>
             <span className="text-white font-display font-bold text-sm">S</span>
           </div>
@@ -52,7 +53,7 @@ const Navbar = () => {
             </span>
             <span className="text-[10px] text-muted-foreground tracking-widest uppercase">by SRP AI Labs</span>
           </div>
-        </a>
+        </Link>
 
         <div className="hidden lg:flex items-center gap-8">
           {navLinks.map((link) => (
@@ -60,13 +61,13 @@ const Navbar = () => {
               key={link.label}
               href={link.href}
               className={`text-sm font-medium transition-colors duration-300 tracking-wide uppercase relative ${
-                activeSection === link.href.replace('#', '')
+                activeSection === link.href.replace('/#', '')
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {link.label}
-              {activeSection === link.href.replace('#', '') && (
+              {activeSection === link.href.replace('/#', '') && (
                 <motion.span
                   layoutId="activeNavHRMS"
                   className="absolute -bottom-1 left-0 right-0 h-0.5 rounded-full"

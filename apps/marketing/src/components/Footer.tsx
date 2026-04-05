@@ -1,4 +1,5 @@
 import { Linkedin, Twitter, Github, ArrowUpRight, Mail } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -57,12 +58,12 @@ const Footer = () => {
             <h4 className="font-display font-semibold text-foreground mb-4 text-sm uppercase tracking-wider">Platform</h4>
             <ul className="space-y-2">
               {[
-                { label: 'Core HR', href: '#solutions' },
-                { label: 'Payroll', href: '#solutions' },
-                { label: 'Recruitment & ATS', href: '#solutions' },
-                { label: 'Performance', href: '#solutions' },
-                { label: 'Analytics', href: '#solutions' },
-                { label: 'AI Engine', href: '#ai' },
+                { label: 'Core HR', href: '/#solutions' },
+                { label: 'Payroll', href: '/#solutions' },
+                { label: 'Recruitment & ATS', href: '/#solutions' },
+                { label: 'Performance', href: '/#solutions' },
+                { label: 'Analytics', href: '/#solutions' },
+                { label: 'AI Engine', href: '/#ai' },
               ].map((l) => (
                 <li key={l.label}>
                   <a href={l.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">{l.label}</a>
@@ -76,18 +77,22 @@ const Footer = () => {
             <ul className="space-y-2">
               {[
                 { label: 'About SRP AI Labs', href: 'https://srpailabs.com', external: true },
-                { label: 'Contact Us', href: '#contact' },
-                { label: 'Security', href: '/security' },
+                { label: 'Contact Us', href: '/#contact' },
+                { label: 'Security', href: '/security', internal: true },
                 { label: 'API Reference', href: 'https://api.hrms.srpailabs.com/docs', external: true },
               ].map((l) => (
                 <li key={l.label}>
-                  <a
-                    href={l.href}
-                    {...(l.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {l.label}
-                  </a>
+                  {l.internal ? (
+                    <Link to={l.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">{l.label}</Link>
+                  ) : (
+                    <a
+                      href={l.href}
+                      {...(l.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      {l.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
@@ -104,7 +109,7 @@ const Footer = () => {
                 { label: 'Accessibility', href: '/legal#accessibility' },
               ].map((l) => (
                 <li key={l.label}>
-                  <a href={l.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">{l.label}</a>
+                  <Link to={l.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">{l.label}</Link>
                 </li>
               ))}
             </ul>
@@ -117,10 +122,10 @@ const Footer = () => {
             © {currentYear} SRP AI Labs. All rights reserved.
           </p>
           <div className="flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
-            <a href="/legal" className="hover:text-primary transition-colors">Legal</a>
-            <a href="/privacy" className="hover:text-primary transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-primary transition-colors">Terms</a>
-            <a href="/legal#accessibility" className="hover:text-primary transition-colors">Accessibility</a>
+            <Link to="/legal" className="hover:text-primary transition-colors">Legal</Link>
+            <Link to="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-primary transition-colors">Terms</Link>
+            <Link to="/legal#accessibility" className="hover:text-primary transition-colors">Accessibility</Link>
             <span>|</span>
             <span>
               A product of{' '}
