@@ -66,7 +66,7 @@ class DocumentService:
         count_q = select(func.count()).select_from(q.subquery())
         total = (await self.db.execute(count_q)).scalar_one()
 
-        q = q.order_by(Document.created_at.desc()).offset(params.skip).limit(params.limit)
+        q = q.order_by(Document.created_at.desc()).offset(params.offset).limit(params.limit)
         result = await self.db.execute(q)
         return list(result.scalars().all()), total
 
@@ -129,7 +129,7 @@ class NotificationService:
         count_q = select(func.count()).select_from(q.subquery())
         total = (await self.db.execute(count_q)).scalar_one()
 
-        q = q.order_by(Notification.created_at.desc()).offset(params.skip).limit(params.limit)
+        q = q.order_by(Notification.created_at.desc()).offset(params.offset).limit(params.limit)
         result = await self.db.execute(q)
         return list(result.scalars().all()), total
 
