@@ -41,22 +41,22 @@ export default function AttendancePage() {
       if (todayResult.status === "fulfilled" && todayResult.value) {
         const today = todayResult.value;
         setTodayRecord(today);
-        if (today.clockIn && !today.clockOut) {
+        if (today.check_in_time && !today.check_out_time) {
           setClockedIn(true);
-          setClockInTime(today.clockIn);
+          setClockInTime(new Date(today.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
         }
       }
 
       if (teamResult.status === "fulfilled" && teamResult.value) {
         const team = teamResult.value;
         setTeamData({
-          present: team.present || team.presentCount || 0,
-          onLeave: team.onLeave || team.onLeaveCount || 0,
-          late: team.late || team.lateCount || 0,
-          absent: team.absent || team.absentCount || 0,
+          present: team.present || 0,
+          onLeave: team.onLeave || 0,
+          late: team.late || 0,
+          absent: team.absent || 0,
         });
-        if (team.records || team.attendance) {
-          setAttendanceLog(team.records || team.attendance || []);
+        if (team.records) {
+          setAttendanceLog(team.records);
         }
       }
 
@@ -77,7 +77,7 @@ export default function AttendancePage() {
   async function handleClockIn() {
     setClockLoading(true);
     try {
-      const result = await attendanceService.clockIn({ source: "web" });
+      await attendanceService.checkIn({ check_in_method: "web" });
       setClockedIn(true);
       setClockInTime(new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
       toast({ title: "Clocked In", description: "You have been clocked in successfully", variant: "success" });
@@ -93,7 +93,7 @@ export default function AttendancePage() {
   async function handleClockOut() {
     setClockLoading(true);
     try {
-      await attendanceService.clockOut();
+      await attendanceService.checkOut();
       setClockedIn(false);
       toast({ title: "Clocked Out", description: "You have been clocked out successfully", variant: "success" });
       loadData();
@@ -112,7 +112,7 @@ export default function AttendancePage() {
         await leaveService.approve(id);
         toast({ title: "Leave Approved", variant: "success" });
       } else {
-        await leaveService.reject(id);
+        await leaveService.reject(id, "Rejected by manager");
         toast({ title: "Leave Rejected" });
       }
       loadData();
@@ -129,7 +129,14 @@ export default function AttendancePage() {
       return;
     }
     try {
-      await attendanceService.requestCorrection(correctionForm);
+      await attendanceService.manualEntry({
+        employee_id: correctionForm.date,
+        attendance_date: correctionForm.date,
+        check_in_time: correctionForm.clockIn || undefined,
+        check_out_time: correctionForm.clockOut || undefined,
+        status: "present",
+        remarks: correctionForm.reason,
+      });
       toast({ title: "Correction Submitted", description: "Your correction request has been sent for approval", variant: "success" });
       setCorrectionOpen(false);
       setCorrectionForm({ date: "", clockIn: "", clockOut: "", reason: "" });
@@ -236,10 +243,10 @@ export default function AttendancePage() {
                   <tbody>
                     {attendanceLog.map((r, i) => (
                       <tr key={r.id || i} className="border-b last:border-0">
-                        <td className="p-3 text-sm font-medium">{r.employeeId}</td>
-                        <td className="p-3 text-sm">{r.clockIn ? new Date(r.clockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
-                        <td className="p-3 text-sm">{r.clockOut ? new Date(r.clockOut).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
-                        <td className="p-3 text-sm">{r.hoursWorked ? `${r.hoursWorked.toFixed(1)}h` : "—"}</td>
+                        <td className="p-3 text-sm font-medium">{r.employee_id}</td>
+                        <td className="p-3 text-sm">{r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                        <td className="p-3 text-sm">{r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                        <td className="p-3 text-sm">{r.total_hours ? `${r.total_hours.toFixed(1)}h` : "—"}</td>
                         <td className="p-3"><Badge variant={statusColors[r.status] || "default"}>{r.status?.replace("_", " ") || "present"}</Badge></td>
                       </tr>
                     ))}
@@ -278,16 +285,16 @@ export default function AttendancePage() {
                   <tbody>
                     {leaveRequests.map((l) => (
                       <tr key={l.id} className="border-b last:border-0">
-                        <td className="p-3 text-sm font-medium">{l.employeeId}</td>
-                        <td className="p-3 text-sm">{l.leaveType?.name || "Leave"}</td>
-                        <td className="p-3 text-sm">{formatDate(l.startDate)} - {formatDate(l.endDate)}</td>
-                        <td className="p-3 text-sm">{l.days}</td>
+                        <td className="p-3 text-sm font-medium">{l.employee_id}</td>
+                        <td className="p-3 text-sm">{l.leave_type || "Leave"}</td>
+                        <td className="p-3 text-sm">{formatDate(l.start_date)} - {formatDate(l.end_date)}</td>
+                        <td className="p-3 text-sm">{l.total_days}</td>
                         <td className="p-3"><Badge variant={statusColors[l.status]}>{l.status}</Badge></td>
                         <td className="p-3">
                           {l.status === "pending" && (
                             <div className="flex gap-2">
-                              <Button size="sm" disabled={leaveApplying} onClick={() => handleLeaveAction(l.id, "approve")}>Approve</Button>
-                              <Button size="sm" variant="outline" disabled={leaveApplying} onClick={() => handleLeaveAction(l.id, "reject")}>Reject</Button>
+                              <Button size="sm" disabled={leaveApplying} onClick={() => handleLeaveAction(l.business_id, "approve")}>Approve</Button>
+                              <Button size="sm" variant="outline" disabled={leaveApplying} onClick={() => handleLeaveAction(l.business_id, "reject")}>Reject</Button>
                             </div>
                           )}
                         </td>

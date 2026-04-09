@@ -15,7 +15,7 @@ import { Plus, Search, Filter, Download, Upload, Loader2, MoreHorizontal, Pencil
 import { employeeService, departmentService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { getInitials, formatDate } from "@/lib/utils";
-import type { Employee, Department } from "@/types";
+import type { Employee, EmployeeSummary, Department } from "@/types";
 
 const statusColors: Record<string, "success" | "warning" | "destructive" | "secondary" | "default"> = {
   active: "success",
@@ -28,28 +28,28 @@ const statusColors: Record<string, "success" | "warning" | "destructive" | "seco
 export default function EmployeesPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeSummary | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    firstName: "", lastName: "", email: "", phone: "",
-    departmentId: "", employmentType: "full_time" as string,
-    dateOfJoining: new Date().toISOString().split("T")[0],
-    gender: "", dateOfBirth: "",
+    full_name: "", work_email: "", phone: "",
+    department_id: "", employment_type: "full_time" as string,
+    joining_date: new Date().toISOString().split("T")[0],
+    gender: "", date_of_birth: "",
   });
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [empResult, deptResult] = await Promise.allSettled([
-        employeeService.list({ search: search || undefined, status: statusFilter !== "all" ? statusFilter : undefined }),
+        employeeService.list({ q: search || undefined, employment_status: statusFilter !== "all" ? statusFilter : undefined }),
         departmentService.list(),
       ]);
       if (empResult.status === "fulfilled") {
@@ -71,36 +71,36 @@ export default function EmployeesPage() {
   }, [loadData]);
 
   const filtered = employees.filter((e) => {
-    const matchSearch = `${e.firstName} ${e.lastName} ${e.employeeCode} ${e.email}`.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || e.status === statusFilter;
+    const matchSearch = `${e.full_name} ${e.employee_code} ${e.work_email}`.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === "all" || e.employment_status === statusFilter;
     return matchSearch && matchStatus;
   });
 
   function openAddDialog() {
     setEditingEmployee(null);
-    setForm({ firstName: "", lastName: "", email: "", phone: "", departmentId: "", employmentType: "full_time", dateOfJoining: new Date().toISOString().split("T")[0], gender: "", dateOfBirth: "" });
+    setForm({ full_name: "", work_email: "", phone: "", department_id: "", employment_type: "full_time", joining_date: new Date().toISOString().split("T")[0], gender: "", date_of_birth: "" });
     setDialogOpen(true);
   }
 
-  function openEditDialog(emp: Employee) {
+  function openEditDialog(emp: EmployeeSummary) {
     setEditingEmployee(emp);
     setForm({
-      firstName: emp.firstName, lastName: emp.lastName, email: emp.email, phone: emp.phone || "",
-      departmentId: emp.departmentId || "", employmentType: emp.employmentType || "full_time",
-      dateOfJoining: emp.dateOfJoining?.split("T")[0] || "", gender: emp.gender || "", dateOfBirth: emp.dateOfBirth || "",
+      full_name: emp.full_name, work_email: emp.work_email, phone: "",
+      department_id: "", employment_type: "full_time",
+      joining_date: emp.joining_date?.split("T")[0] || "", gender: "", date_of_birth: "",
     });
     setDialogOpen(true);
   }
 
   async function handleSave() {
-    if (!form.firstName || !form.lastName || !form.email) {
-      toast({ title: "Validation Error", description: "First name, last name, and email are required", variant: "destructive" });
+    if (!form.full_name || !form.work_email) {
+      toast({ title: "Validation Error", description: "Full name and email are required", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
       if (editingEmployee) {
-        await employeeService.update(editingEmployee.id, form);
+        await employeeService.update(editingEmployee.business_id, form);
         toast({ title: "Success", description: "Employee updated successfully", variant: "success" });
       } else {
         await employeeService.create(form);
@@ -131,18 +131,9 @@ export default function EmployeesPage() {
 
   async function handleExport() {
     try {
-      const blob = await employeeService.exportCsv();
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `employees-${new Date().toISOString().split("T")[0]}.csv`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      toast({ title: "Success", description: "Export downloaded" });
-    } catch {
-      // Fallback: export from current data
-      const csv = ["Employee Code,First Name,Last Name,Email,Department,Status,Joined"]
-        .concat(filtered.map((e) => `${e.employeeCode},${e.firstName},${e.lastName},${e.email},${e.department?.name || ""},${e.status},${e.dateOfJoining}`))
+      // Export from current data
+      const csv = ["Employee Code,Full Name,Email,Department,Status,Joined"]
+        .concat(filtered.map((e) => `${e.employee_code},${e.full_name},${e.work_email},${e.department_name || ""},${e.employment_status},${e.joining_date || ""}`))
         .join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
@@ -152,6 +143,8 @@ export default function EmployeesPage() {
       link.click();
       window.URL.revokeObjectURL(url);
       toast({ title: "Exported", description: `${filtered.length} employees exported as CSV` });
+    } catch {
+      toast({ title: "Error", description: "Export failed", variant: "destructive" });
     }
   }
 
@@ -189,9 +182,9 @@ export default function EmployeesPage() {
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
         <TabsList>
           <TabsTrigger value="all">All ({employees.length})</TabsTrigger>
-          <TabsTrigger value="active">Active ({employees.filter((e) => e.status === "active").length})</TabsTrigger>
-          <TabsTrigger value="on_leave">On Leave ({employees.filter((e) => e.status === "on_leave").length})</TabsTrigger>
-          <TabsTrigger value="probation">Probation ({employees.filter((e) => e.status === "probation").length})</TabsTrigger>
+          <TabsTrigger value="active">Active ({employees.filter((e) => e.employment_status === "active").length})</TabsTrigger>
+          <TabsTrigger value="on_leave">On Leave ({employees.filter((e) => e.employment_status === "on_leave").length})</TabsTrigger>
+          <TabsTrigger value="probation">Probation ({employees.filter((e) => e.employment_status === "probation").length})</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -219,29 +212,29 @@ export default function EmployeesPage() {
                     <tr
                       key={emp.id}
                       className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
-                      onClick={() => router.push(`/dashboard/employees/${emp.id}`)}
+                      onClick={() => router.push(`/dashboard/employees/${emp.business_id}`)}
                     >
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
-                            <AvatarFallback className="text-xs">{getInitials(`${emp.firstName} ${emp.lastName}`)}</AvatarFallback>
+                            <AvatarFallback className="text-xs">{getInitials(emp.full_name)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm font-medium">{emp.firstName} {emp.lastName}</p>
-                            <p className="text-xs text-muted-foreground">{emp.employeeCode} &middot; {emp.email}</p>
+                            <p className="text-sm font-medium">{emp.full_name}</p>
+                            <p className="text-xs text-muted-foreground">{emp.employee_code} &middot; {emp.work_email}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 text-sm">{emp.department?.name || "—"}</td>
-                      <td className="p-4 text-sm">{emp.position?.title || "—"}</td>
-                      <td className="p-4 text-sm text-muted-foreground">{formatDate(emp.dateOfJoining)}</td>
-                      <td className="p-4"><Badge variant={statusColors[emp.status] || "secondary"}>{emp.status.replace("_", " ")}</Badge></td>
+                      <td className="p-4 text-sm">{emp.department_name || "—"}</td>
+                      <td className="p-4 text-sm">{emp.designation || "—"}</td>
+                      <td className="p-4 text-sm text-muted-foreground">{formatDate(emp.joining_date)}</td>
+                      <td className="p-4"><Badge variant={statusColors[emp.employment_status] || "secondary"}>{emp.employment_status.replace("_", " ")}</Badge></td>
                       <td className="p-4">
                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditDialog(emp)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setDeletingId(emp.id); setDeleteDialogOpen(true); }}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setDeletingId(emp.business_id); setDeleteDialogOpen(true); }}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -272,20 +265,14 @@ export default function EmployeesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name *</Label>
-                <Input id="firstName" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name *</Label>
-                <Input id="lastName" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name *</Label>
+              <Input id="fullName" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <Label htmlFor="email">Work Email *</Label>
+                <Input id="email" type="email" value={form.work_email} onChange={(e) => setForm({ ...form, work_email: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
@@ -295,7 +282,7 @@ export default function EmployeesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Department</Label>
-                <Select value={form.departmentId} onValueChange={(val) => setForm({ ...form, departmentId: val })}>
+                <Select value={form.department_id} onValueChange={(val) => setForm({ ...form, department_id: val })}>
                   <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
                   <SelectContent>
                     {departments.map((d) => (
@@ -306,7 +293,7 @@ export default function EmployeesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Employment Type</Label>
-                <Select value={form.employmentType} onValueChange={(val) => setForm({ ...form, employmentType: val })}>
+                <Select value={form.employment_type} onValueChange={(val) => setForm({ ...form, employment_type: val })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="full_time">Full Time</SelectItem>
@@ -320,7 +307,7 @@ export default function EmployeesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="doj">Date of Joining</Label>
-                <Input id="doj" type="date" value={form.dateOfJoining} onChange={(e) => setForm({ ...form, dateOfJoining: e.target.value })} />
+                <Input id="doj" type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>Gender</Label>
@@ -336,7 +323,7 @@ export default function EmployeesPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="dob">Date of Birth</Label>
-              <Input id="dob" type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} />
+              <Input id="dob" type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
             </div>
           </div>
           <DialogFooter>

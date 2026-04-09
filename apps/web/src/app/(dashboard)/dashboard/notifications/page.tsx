@@ -6,26 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Bell, CheckCheck, Megaphone, Loader2 } from "lucide-react";
 import { notificationService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
-
-interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  read: boolean;
-  createdAt: string;
-}
+import type { Notification } from "@/types";
 
 export default function NotificationsPage() {
   const { toast } = useToast();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const result = await notificationService.list();
-      setNotifications(Array.isArray(result) ? result : []);
+      const items = Array.isArray(result) ? result : (result as { data?: Notification[] })?.data || [];
+      setNotifications(items);
     } catch {
       setNotifications([]);
     } finally {
@@ -35,25 +28,24 @@ export default function NotificationsPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   async function markAllRead() {
     try {
       await notificationService.markAllRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       toast({ title: "Done", description: "All notifications marked as read", variant: "success" });
     } catch {
-      // Fallback: mark locally
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     }
   }
 
-  async function markRead(id: string) {
+  async function markRead(businessId: string) {
     try {
-      await notificationService.markRead(id);
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      await notificationService.markRead(businessId);
+      setNotifications((prev) => prev.map((n) => (n.business_id === businessId ? { ...n, is_read: true } : n)));
     } catch {
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setNotifications((prev) => prev.map((n) => (n.business_id === businessId ? { ...n, is_read: true } : n)));
     }
   }
 
@@ -85,19 +77,19 @@ export default function NotificationsPage() {
       ) : notifications.length > 0 ? (
         <div className="space-y-3">
           {notifications.map((n) => (
-            <Card key={n.id} className={`cursor-pointer transition-colors ${!n.read ? "border-primary/50 bg-primary/5" : ""}`} onClick={() => !n.read && markRead(n.id)}>
+            <Card key={n.id} className={`cursor-pointer transition-colors ${!n.is_read ? "border-primary/50 bg-primary/5" : ""}`} onClick={() => !n.is_read && markRead(n.business_id)}>
               <CardContent className="flex items-start gap-4 p-4">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${!n.read ? "bg-primary/10" : "bg-muted"}`}>
-                  {n.type === "announcement" ? <Megaphone className="h-5 w-5 text-primary" /> : <Bell className="h-5 w-5 text-muted-foreground" />}
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${!n.is_read ? "bg-primary/10" : "bg-muted"}`}>
+                  {n.category === "announcement" ? <Megaphone className="h-5 w-5 text-primary" /> : <Bell className="h-5 w-5 text-muted-foreground" />}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <p className={`text-sm ${!n.read ? "font-semibold" : "font-medium"}`}>{n.title}</p>
-                    <span className="text-xs text-muted-foreground">{timeAgo(n.createdAt)}</span>
+                    <p className={`text-sm ${!n.is_read ? "font-semibold" : "font-medium"}`}>{n.title}</p>
+                    <span className="text-xs text-muted-foreground">{timeAgo(n.created_at)}</span>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
                 </div>
-                {!n.read && <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />}
+                {!n.is_read && <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />}
               </CardContent>
             </Card>
           ))}

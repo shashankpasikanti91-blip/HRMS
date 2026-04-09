@@ -68,8 +68,8 @@ export default function EmployeeDetailPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{employee.firstName} {employee.lastName}</h1>
-          <p className="text-muted-foreground">{employee.employeeCode} &middot; {employee.position?.title || "No position"}</p>
+          <h1 className="text-3xl font-bold tracking-tight">{employee.full_name}</h1>
+          <p className="text-muted-foreground">{employee.employee_code} &middot; {employee.designation || "No position"}</p>
         </div>
       </div>
 
@@ -79,19 +79,19 @@ export default function EmployeeDetailPage() {
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center">
               <Avatar className="h-20 w-20">
-                <AvatarFallback className="text-xl">{getInitials(`${employee.firstName} ${employee.lastName}`)}</AvatarFallback>
+                <AvatarFallback className="text-xl">{getInitials(employee.full_name)}</AvatarFallback>
               </Avatar>
-              <h2 className="mt-4 text-lg font-semibold">{employee.firstName} {employee.lastName}</h2>
-              <p className="text-sm text-muted-foreground">{employee.position?.title}</p>
-              <Badge className="mt-2" variant={employee.status === "active" ? "success" : employee.status === "on_leave" ? "warning" : "secondary"}>
-                {employee.status.replace("_", " ")}
+              <h2 className="mt-4 text-lg font-semibold">{employee.full_name}</h2>
+              <p className="text-sm text-muted-foreground">{employee.designation}</p>
+              <Badge className="mt-2" variant={employee.employment_status === "active" ? "success" : employee.employment_status === "on_leave" ? "warning" : "secondary"}>
+                {employee.employment_status.replace("_", " ")}
               </Badge>
             </div>
             <Separator className="my-4" />
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{employee.email}</span>
+                <span>{employee.work_email}</span>
               </div>
               {employee.phone && (
                 <div className="flex items-center gap-3 text-sm">
@@ -101,15 +101,15 @@ export default function EmployeeDetailPage() {
               )}
               <div className="flex items-center gap-3 text-sm">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span>{employee.department?.name || "No department"}</span>
+                <span>{employee.department_name || "No department"}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>Joined {formatDate(employee.dateOfJoining)}</span>
+                <span>Joined {formatDate(employee.joining_date)}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Briefcase className="h-4 w-4 text-muted-foreground" />
-                <span>{employee.employmentType?.replace("_", " ") || "Full time"}</span>
+                <span>{employee.employment_type?.replace("_", " ") || "Full time"}</span>
               </div>
             </div>
           </CardContent>
@@ -134,7 +134,7 @@ export default function EmployeeDetailPage() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">Employee Code</p>
-                      <p className="font-medium">{employee.employeeCode}</p>
+                      <p className="font-medium">{employee.employee_code}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Gender</p>
@@ -142,11 +142,11 @@ export default function EmployeeDetailPage() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">Date of Birth</p>
-                      <p className="font-medium">{employee.dateOfBirth ? formatDate(employee.dateOfBirth) : "—"}</p>
+                      <p className="font-medium">{employee.date_of_birth ? formatDate(employee.date_of_birth) : "—"}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Address</p>
-                      <p className="font-medium">{employee.address || "—"}</p>
+                      <p className="font-medium">{"—"}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -159,19 +159,19 @@ export default function EmployeeDetailPage() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">Department</p>
-                      <p className="font-medium">{employee.department?.name || "—"}</p>
+                      <p className="font-medium">{employee.department_name || "—"}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Position</p>
-                      <p className="font-medium">{employee.position?.title || "—"}</p>
+                      <p className="font-medium">{employee.designation || "—"}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Employment Type</p>
-                      <p className="font-medium capitalize">{employee.employmentType?.replace("_", " ") || "—"}</p>
+                      <p className="font-medium capitalize">{employee.employment_type?.replace("_", " ") || "—"}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Manager</p>
-                      <p className="font-medium">{employee.managerId || "—"}</p>
+                      <p className="font-medium">{employee.manager_name || "—"}</p>
                     </div>
                   </div>
                 </CardContent>

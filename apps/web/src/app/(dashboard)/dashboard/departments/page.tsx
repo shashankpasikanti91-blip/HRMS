@@ -11,15 +11,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Plus, Building2, Users, Edit, Trash2, Loader2 } from "lucide-react";
 import { departmentService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
-import type { Department } from "@/types";
+import type { Department, DepartmentSummary } from "@/types";
 
 export default function DepartmentsPage() {
   const { toast } = useToast();
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departments, setDepartments] = useState<DepartmentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Department | null>(null);
+  const [editing, setEditing] = useState<DepartmentSummary | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", code: "", description: "" });
@@ -28,7 +28,7 @@ export default function DepartmentsPage() {
     setLoading(true);
     try {
       const result = await departmentService.list();
-      setDepartments(Array.isArray(result) ? result : []);
+      setDepartments(Array.isArray(result) ? result : result?.data || []);
     } catch {
       setDepartments([]);
     } finally {
@@ -44,7 +44,7 @@ export default function DepartmentsPage() {
     setDialogOpen(true);
   }
 
-  function openEdit(dept: Department) {
+  function openEdit(dept: DepartmentSummary) {
     setEditing(dept);
     setForm({ name: dept.name, code: dept.code || "", description: dept.description || "" });
     setDialogOpen(true);
@@ -63,7 +63,7 @@ export default function DepartmentsPage() {
     setSaving(true);
     try {
       if (editing) {
-        await departmentService.update(editing.id, form);
+        await departmentService.update(editing.business_id, form);
         toast({ title: "Updated", description: "Department updated successfully", variant: "success" });
       } else {
         await departmentService.create(form);
@@ -123,14 +123,14 @@ export default function DepartmentsPage() {
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    {dept._count?.employees || 0} employees
+                    {0} employees
                   </span>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <Badge variant="outline">{dept.code}</Badge>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => openEdit(dept)}><Edit className="h-3 w-3" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => openDelete(dept.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => openDelete(dept.business_id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                   </div>
                 </div>
               </CardContent>

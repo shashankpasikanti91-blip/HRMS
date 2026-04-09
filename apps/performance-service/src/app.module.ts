@@ -6,6 +6,7 @@ import { GoalsModule } from './modules/goals/goals.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { CyclesModule } from './modules/cycles/cycles.module';
 import { SkillsModule } from './modules/skills/skills.module';
+import { PerformanceNatsController } from './nats.controller';
 
 @Module({
   imports: [
@@ -17,5 +18,6 @@ import { SkillsModule } from './modules/skills/skills.module';
     CyclesModule,
     SkillsModule,
   ],
+  controllers: [PerformanceNatsController],
 })
 export class AppModule {}

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy import String, ForeignKey, DateTime
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -30,6 +31,11 @@ class User(BaseModel):
     )
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+
+    # ── OAuth / SSO fields ─────────────────────────────────────────────────
+    google_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    provider: Mapped[str] = mapped_column(String(30), default="local", nullable=False)
+    product_access: Mapped[Optional[List[str]]] = mapped_column(JSONB, nullable=True)
 
     # ── Unique per company ─────────────────────────────────────────────────
     __table_args__ = (

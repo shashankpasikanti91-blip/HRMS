@@ -5,6 +5,7 @@ import { PrismaModule } from './config/prisma.module';
 import { DashboardsModule } from './modules/dashboards/dashboards.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { WorkforceAnalyticsModule } from './modules/workforce-analytics/workforce-analytics.module';
+import { AnalyticsNatsController } from './nats.controller';
 
 @Module({
   imports: [
@@ -15,5 +16,6 @@ import { WorkforceAnalyticsModule } from './modules/workforce-analytics/workforc
     ReportsModule,
     WorkforceAnalyticsModule,
   ],
+  controllers: [AnalyticsNatsController],
 })
 export class AppModule {}

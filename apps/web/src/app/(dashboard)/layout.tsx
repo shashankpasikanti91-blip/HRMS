@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { getInitials } from "@/lib/utils";
+import GlobalSearch from "@/components/search/GlobalSearch";
+import NotificationBell from "@/components/layout/NotificationBell";
 import {
   LayoutDashboard, Users, Building2, Clock, DollarSign, Briefcase,
   Target, Bell, BarChart3, Bot, Settings, LogOut, ChevronLeft, Menu,
@@ -120,23 +122,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex-1" />
+          <div className="hidden flex-1 lg:flex lg:max-w-sm">
+            <GlobalSearch />
+          </div>
           <div className="flex items-center gap-4">
-            <Link href="/dashboard/notifications">
-              <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
-            </Link>
+            <NotificationBell />
             <Separator orientation="vertical" className="h-8" />
             <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="text-xs">
-                  {user ? getInitials(`${user.firstName} ${user.lastName}`) : "U"}
+                  {user ? getInitials(user.full_name ?? user.email) : "U"}
                 </AvatarFallback>
               </Avatar>
               {user && (
                 <div className="hidden text-sm lg:block">
-                  <p className="font-medium">{user.firstName} {user.lastName}</p>
+                  <p className="font-medium">{user.full_name}</p>
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
               )}

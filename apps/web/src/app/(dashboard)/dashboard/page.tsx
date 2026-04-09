@@ -5,56 +5,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  Users, UserCheck, UserMinus, Clock, DollarSign, Briefcase, Target, TrendingUp, Loader2,
+  Users, UserCheck, UserMinus, DollarSign, Briefcase, Target, TrendingUp, Loader2,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
 import { analyticsService, departmentService, notificationService } from "@/services/api-services";
-import type { Department } from "@/types";
-
-interface DashboardMetrics {
-  totalEmployees: number;
-  activeEmployees: number;
-  onLeave: number;
-  newJoinsThisMonth: number;
-  attendanceRate: number;
-  openPositions: number;
-  pendingLeaves: number;
-  payrollTotal: number;
-}
-
-interface ActivityItem {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  createdAt: string;
-}
+import type { DepartmentSummary, DashboardStats, Notification } from "@/types";
 
 export default function DashboardPage() {
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    totalEmployees: 0, activeEmployees: 0, onLeave: 0, newJoinsThisMonth: 0,
-    attendanceRate: 0, openPositions: 0, pendingLeaves: 0, payrollTotal: 0,
-  });
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [departments, setDepartments] = useState<DepartmentSummary[]>([]);
+  const [activity, setActivity] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [execRes, deptRes, notifRes] = await Promise.allSettled([
-        analyticsService.getExecutiveDashboard({}),
+      const [statsRes, deptRes, notifRes] = await Promise.allSettled([
+        analyticsService.getDashboard(),
         departmentService.list(),
         notificationService.list(),
       ]);
-      if (execRes.status === "fulfilled" && execRes.value) {
-        setMetrics((prev) => ({ ...prev, ...execRes.value }));
+      if (statsRes.status === "fulfilled" && statsRes.value) {
+        setStats(statsRes.value);
       }
       if (deptRes.status === "fulfilled") {
-        setDepartments(Array.isArray(deptRes.value) ? deptRes.value : []);
+        const deptData = deptRes.value;
+        setDepartments(Array.isArray(deptData) ? deptData : (deptData as { data?: DepartmentSummary[] })?.data || []);
       }
       if (notifRes.status === "fulfilled") {
-        setActivity(Array.isArray(notifRes.value) ? notifRes.value.slice(0, 5) : []);
+        const notifData = notifRes.value;
+        const items = Array.isArray(notifData) ? notifData : (notifData as { data?: Notification[] })?.data || [];
+        setActivity(items.slice(0, 5));
       }
     } catch {
       // silent
@@ -65,17 +45,17 @@ export default function DashboardPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const totalDeptEmployees = departments.reduce((sum, d) => sum + (d._count?.employees || 0), 0) || 1;
+  const totalDeptEmployees = stats?.total_employees || 1;
 
   const cards = [
-    { title: "Total Employees", value: metrics.totalEmployees, icon: Users, change: "+3.2%", color: "text-blue-600" },
-    { title: "Active Today", value: metrics.activeEmployees, icon: UserCheck, change: `${metrics.attendanceRate}%`, color: "text-green-600" },
-    { title: "On Leave", value: metrics.onLeave, icon: UserMinus, change: `${metrics.pendingLeaves} pending`, color: "text-yellow-600" },
-    { title: "New Joins", value: metrics.newJoinsThisMonth, icon: TrendingUp, change: "This month", color: "text-purple-600" },
-    { title: "Attendance Rate", value: `${metrics.attendanceRate}%`, icon: Clock, color: "text-cyan-600" },
-    { title: "Open Positions", value: metrics.openPositions, icon: Briefcase, color: "text-orange-600" },
-    { title: "Payroll (Monthly)", value: formatCurrency(metrics.payrollTotal), icon: DollarSign, color: "text-emerald-600" },
-    { title: "Performance Avg", value: "—", icon: Target, color: "text-rose-600" },
+    { title: "Total Employees", value: stats?.total_employees ?? 0, icon: Users, change: "+3.2%", color: "text-blue-600" },
+    { title: "Active Today", value: stats?.present_today ?? 0, icon: UserCheck, change: stats ? `${Math.round((stats.present_today / Math.max(stats.total_employees, 1)) * 100)}%` : "0%", color: "text-green-600" },
+    { title: "On Leave", value: stats?.on_leave_today ?? 0, icon: UserMinus, change: `${stats?.leave_requests_pending ?? 0} pending`, color: "text-yellow-600" },
+    { title: "New Hires", value: stats?.hires_this_month ?? 0, icon: TrendingUp, change: "This month", color: "text-purple-600" },
+    { title: "Open Positions", value: stats?.open_jobs ?? 0, icon: Briefcase, color: "text-orange-600" },
+    { title: "Pending Leaves", value: stats?.leave_requests_pending ?? 0, icon: DollarSign, color: "text-emerald-600" },
+    { title: "Departments", value: stats?.departments_count ?? 0, icon: Target, color: "text-rose-600" },
+    { title: "Active Employees", value: stats?.active_employees ?? 0, icon: UserCheck, change: "Currently active", color: "text-cyan-600" },
   ];
 
   function timeAgo(dateStr: string) {
@@ -150,8 +130,8 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {departments.length > 0 ? departments.slice(0, 6).map((dept) => {
-                  const count = dept._count?.employees || 0;
-                  const percent = Math.round((count / totalDeptEmployees) * 100);
+                  const count = 0;
+                  const percent = 0;
                   return (
                     <div key={dept.id} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
@@ -183,7 +163,7 @@ export default function DashboardPage() {
                         <p className="text-sm font-medium">{item.title}</p>
                         <p className="text-xs text-muted-foreground">{item.message}</p>
                       </div>
-                      <Badge variant="secondary">{timeAgo(item.createdAt)}</Badge>
+                      <Badge variant="secondary">{timeAgo(item.created_at)}</Badge>
                     </div>
                   ))}
                 </div>

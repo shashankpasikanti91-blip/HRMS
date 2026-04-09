@@ -28,6 +28,8 @@ from app.models.company import Company
 from app.models.user import User
 from app.schemas.auth import (
     RegisterCompanyRequest,
+    RegisterRequest,
+    GoogleSyncRequest,
     LoginRequest,
     TokenResponse,
     InviteUserRequest,
@@ -100,6 +102,195 @@ class AuthService:
         # Generate tokens
         tokens = self._issue_tokens(admin)
         return company, admin, tokens
+
+    # ── Helpers ────────────────────────────────────────────────────────────────
+    async def _create_personal_workspace(self, email: str, full_name: str) -> Company:
+        """Create a personal workspace (company) for a self-registered user."""
+        company_bid = await BusinessIdService.generate(self.db, "company")
+        slug = slugify_name(full_name or email.split("@")[0])
+        # ensure slug uniqueness
+        existing_slug = await self.db.execute(select(Company).where(Company.slug == slug))
+        if existing_slug.scalar_one_or_none():
+            slug = f"{slug}-{company_bid.lower()}"
+        company = Company(
+            id=str(uuid.uuid4()),
+            business_id=company_bid,
+            name=f"{full_name or email.split('@')[0]}'s Workspace",
+            slug=slug,
+            email=email,
+            status=CompanyStatus.TRIAL.value,
+            subscription_plan=SubscriptionPlan.TRIAL.value,
+            subscription_status=SubscriptionStatus.TRIAL.value,
+        )
+        self.db.add(company)
+        await self.db.flush()
+        return company
+
+    # ── Self-Registration ──────────────────────────────────────────────────────
+
+    async def register(self, data: RegisterRequest) -> Tuple[User, TokenResponse]:
+        """Create a standalone user with a personal workspace."""
+        # Check if email already registered globally
+        existing = await self.db.execute(
+            select(User).where(User.email == data.email, User.is_deleted == False)
+        )
+        if existing.scalar_one_or_none():
+            raise ConflictException(f"Email '{data.email}' is already registered")
+
+        company = await self._create_personal_workspace(data.email, data.full_name)
+
+        user_bid = await BusinessIdService.generate(self.db, "user")
+        user = User(
+            id=str(uuid.uuid4()),
+            business_id=user_bid,
+            company_id=company.id,
+            full_name=data.full_name,
+            email=data.email,
+            password_hash=hash_password(data.password),
+            role=UserRole.COMPANY_ADMIN.value,
+            status=UserStatus.ACTIVE.value,
+            provider="local",
+            product_access=["recruit"],
+        )
+        self.db.add(user)
+        await self.db.flush()
+        tokens = self._issue_tokens(user)
+        # Fire-and-forget: notify owner
+        import asyncio as _asyncio
+        from app.utils.notifications import notify_owner_new_signup
+        _asyncio.create_task(
+            notify_owner_new_signup(
+                email=data.email,
+                name=data.full_name,
+                provider="local",
+                product_access=["recruit"],
+            )
+        )
+        return user, tokens
+
+    # ── Google OAuth Sync ──────────────────────────────────────────────────────
+
+    async def google_sync(self, data: GoogleSyncRequest) -> Tuple[User, TokenResponse]:
+        """Find or create a user after successful Google OAuth, issue JWT."""
+        # 1. Find by google_id
+        result = await self.db.execute(
+            select(User).where(User.google_id == data.google_id, User.is_deleted == False)
+        )
+        user = result.scalar_one_or_none()
+
+        # 2. Find by email (link accounts)
+        if not user:
+            result = await self.db.execute(
+                select(User).where(User.email == data.email, User.is_deleted == False)
+            )
+            user = result.scalar_one_or_none()
+
+        if user:
+            # Link Google account if not already linked
+            if not user.google_id:
+                user.google_id = data.google_id
+                user.provider = "google"
+            if not user.avatar_url and data.image:
+                user.avatar_url = data.image
+            if user.status == UserStatus.SUSPENDED.value:
+                raise UnauthorizedException(detail="Account is suspended")
+        else:
+            # New user — create personal workspace
+            company = await self._create_personal_workspace(data.email, data.name)
+            user_bid = await BusinessIdService.generate(self.db, "user")
+            user = User(
+                id=str(uuid.uuid4()),
+                business_id=user_bid,
+                company_id=company.id,
+                full_name=data.name or data.email.split("@")[0],
+                email=data.email,
+                google_id=data.google_id,
+                provider="google",
+                avatar_url=data.image,
+                role=UserRole.COMPANY_ADMIN.value,
+                status=UserStatus.ACTIVE.value,
+                product_access=["recruit"],
+            )
+            self.db.add(user)
+
+        user.last_login_at = datetime.now(tz=timezone.utc)
+        await self.db.flush()
+        tokens = self._issue_tokens(user)
+        # Fire-and-forget: notify owner only for brand-new users
+        import asyncio as _asyncio
+        from app.utils.notifications import notify_owner_google_login
+        _is_new = not bool(result.scalar_one_or_none() if False else None)  # evaluated below
+        _asyncio.create_task(
+            notify_owner_google_login(
+                email=data.email,
+                name=data.name or data.email,
+                is_new=user.created_at == user.updated_at,  # freshly created
+            )
+        )
+        return user, tokens
+
+    # ── Google OAuth Redirect Flow (backend-driven) ────────────────────────────
+
+    async def google_oauth_redirect(self) -> str:
+        """Return the Google OAuth authorization URL."""
+        from app.core.config import settings
+        import urllib.parse
+        if not settings.GOOGLE_CLIENT_ID:
+            raise BadRequestException("Google OAuth is not configured")
+        params = {
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            "response_type": "code",
+            "scope": "openid email profile",
+            "access_type": "offline",
+            "prompt": "select_account",
+        }
+        return "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+
+    async def google_oauth_callback(self, code: str) -> Tuple[User, TokenResponse]:
+        """Exchange Google authorization code for user info and issue JWT."""
+        import httpx
+        from app.core.config import settings
+
+        if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+            raise BadRequestException("Google OAuth is not configured")
+
+        # Exchange code for tokens
+        async with httpx.AsyncClient(timeout=15) as client:
+            token_resp = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                    "grant_type": "authorization_code",
+                },
+            )
+        if token_resp.status_code != 200:
+            raise BadRequestException("Failed to exchange Google auth code")
+        token_data = token_resp.json()
+        access_token_google = token_data.get("access_token")
+        if not access_token_google:
+            raise BadRequestException("No access token returned from Google")
+
+        # Get user info
+        async with httpx.AsyncClient(timeout=10) as client:
+            user_resp = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {access_token_google}"},
+            )
+        if user_resp.status_code != 200:
+            raise BadRequestException("Failed to fetch Google user info")
+        info = user_resp.json()
+
+        sync_data = GoogleSyncRequest(
+            google_id=info["id"],
+            email=info["email"],
+            name=info.get("name") or info.get("given_name", ""),
+            image=info.get("picture"),
+        )
+        return await self.google_sync(sync_data)
 
     async def login(self, data: LoginRequest) -> Tuple[User, TokenResponse]:
         """Authenticate user and return tokens."""

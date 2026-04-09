@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+// FastAPI backend base URL – set NEXT_PUBLIC_API_URL in .env.local / .env.production
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NEXT_PUBLIC_API_BASE_URL as string) ||
+  "http://localhost:8000";
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
@@ -8,35 +12,41 @@ const api = axios.create({
   timeout: 30000,
 });
 
+// ── Request interceptor: attach JWT + company header ────────────────────
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("access_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    const tenantId = localStorage.getItem("tenant_id");
-    if (tenantId) {
-      config.headers["X-Tenant-Id"] = tenantId;
-    }
   }
   return config;
 });
 
+// ── Response interceptor: automatic token refresh on 401 ────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes("/auth/refresh")
+    ) {
       originalRequest._retry = true;
       try {
         const refreshToken = localStorage.getItem("refresh_token");
         if (refreshToken) {
-          const { data } = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
-            refreshToken,
-          });
-          localStorage.setItem("access_token", data.data.accessToken);
-          localStorage.setItem("refresh_token", data.data.refreshToken);
-          originalRequest.headers.Authorization = `Bearer ${data.data.accessToken}`;
+          // FastAPI token format: { access_token, refresh_token, token_type, expires_in }
+          const { data } = await axios.post(
+            `${API_BASE_URL}/api/v1/auth/refresh`,
+            { refresh_token: refreshToken },
+          );
+          const newAccess: string = data.access_token;
+          const newRefresh: string = data.refresh_token ?? refreshToken;
+          localStorage.setItem("access_token", newAccess);
+          localStorage.setItem("refresh_token", newRefresh);
+          originalRequest.headers.Authorization = `Bearer ${newAccess}`;
           return api(originalRequest);
         }
       } catch {
@@ -48,7 +58,8 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
+export { API_BASE_URL };

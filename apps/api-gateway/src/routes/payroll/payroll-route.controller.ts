@@ -59,4 +59,10 @@ export class PayrollRouteController {
   upsertSalary(@Body() body: Record<string, unknown>) {
     return firstValueFrom(this.client.send('salary.upsert', body));
   }
+
+  @Get('stats')
+  @ApiOperation({ summary: 'Get payroll stats' })
+  getStats(@Query() query: Record<string, unknown>) {
+    return firstValueFrom(this.client.send('payroll.stats', query));
+  }
 }

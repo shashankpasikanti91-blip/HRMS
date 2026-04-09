@@ -5,6 +5,7 @@ import { PrismaModule } from './config/prisma.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { CandidatesModule } from './modules/candidates/candidates.module';
 import { InterviewsModule } from './modules/interviews/interviews.module';
+import { RecruitmentNatsController } from './nats.controller';
 
 @Module({
   imports: [
@@ -15,5 +16,6 @@ import { InterviewsModule } from './modules/interviews/interviews.module';
     CandidatesModule,
     InterviewsModule,
   ],
+  controllers: [RecruitmentNatsController],
 })
 export class AppModule {}

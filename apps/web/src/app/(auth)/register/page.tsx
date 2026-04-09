@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import GoogleLoginButton from "@/components/GoogleLoginButton";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -41,7 +42,18 @@ export default function RegisterPage() {
       });
       router.push("/dashboard");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Registration failed";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const axiosErr = err as any;
+      const detail = axiosErr?.response?.data?.detail;
+      // FastAPI returns detail as string or as an array of validation errors
+      const message =
+        Array.isArray(detail)
+          ? detail.map((d: { msg?: string }) => d.msg || String(d)).join("; ")
+          : typeof detail === "string"
+          ? detail
+          : axiosErr?.response?.data?.message ||
+            axiosErr?.message ||
+            "Registration failed. Please try again.";
       setError(message);
     } finally {
       setLoading(false);
@@ -60,6 +72,16 @@ export default function RegisterPage() {
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+
+          {/* One-click sign up via Google */}
+          <GoogleLoginButton callbackUrl="/dashboard" label="Sign up with Google" />
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or register with email</span>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First name</Label>

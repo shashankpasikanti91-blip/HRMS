@@ -67,7 +67,29 @@ class ActivateAccountRequest(BaseSchema):
     password: str
 
 
-class TokenResponse(BaseSchema):
+class RegisterRequest(BaseSchema):
+    """Simple self-registration (creates a personal workspace)."""
+    email: EmailStr
+    password: str
+    full_name: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
+class GoogleSyncRequest(BaseSchema):
+    """Payload sent by NextAuth after successful Google login."""
+    google_id: str
+    email: EmailStr
+    name: str
+    image: Optional[str] = None
+
+
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -81,3 +103,5 @@ class AuthUserResponse(BaseResponse):
     status: str
     company_id: Optional[str] = None
     avatar_url: Optional[str] = None
+    provider: Optional[str] = None
+    product_access: Optional[list] = None

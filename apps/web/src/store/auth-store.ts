@@ -1,28 +1,17 @@
 import { create } from "zustand";
 import api from "@/lib/api";
-import type { User } from "@/types";
+import type { AuthUser } from "@/types";
 
-function getTenantId(): string {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("tenant_id");
-    if (stored) return stored;
-
-    // Extract from cookie set by middleware
-    const match = document.cookie.match(/tenant-slug=([^;]+)/);
-    if (match) return match[1];
-  }
-  // Default to demo tenant for development
-  return "a0000000-0000-4000-8000-000000000001";
-}
+// ── Auth State ───────────────────────────────────────────────────────────────
 
 interface AuthState {
-  user: User | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; firstName: string; lastName: string; tenantId?: string }) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
+  register: (payload: { firstName: string; lastName: string; email: string; password: string }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -30,49 +19,51 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   isLoading: true,
 
-  login: async (email, password) => {
-    const tenantId = getTenantId();
-    const { data } = await api.post("/auth/login", { email, password, tenantId });
-    const result = data.data || data;
-    localStorage.setItem("access_token", result.tokens?.accessToken || result.accessToken);
-    localStorage.setItem("refresh_token", result.tokens?.refreshToken || result.refreshToken);
-    if (result.user?.tenantId) {
-      localStorage.setItem("tenant_id", result.user.tenantId);
-    } else if (result.tenant?.id) {
-      localStorage.setItem("tenant_id", result.tenant.id);
-    }
-    set({ user: result.user, isAuthenticated: true, isLoading: false });
-  },
+  /** Sign in with email/password against the FastAPI backend. */
+  login: async (email: string, password: string) => {
+    // FastAPI returns: { access_token, refresh_token, token_type, expires_in, user: { ... } }
+    const { data } = await api.post("/auth/login", { email, password });
 
-  register: async (formData) => {
-    const tenantId = formData.tenantId || getTenantId();
-    const { data } = await api.post("/auth/register", { ...formData, tenantId });
-    const result = data.data || data;
-    if (result.tokens?.accessToken || result.accessToken) {
-      localStorage.setItem("access_token", result.tokens?.accessToken || result.accessToken);
-      localStorage.setItem("refresh_token", result.tokens?.refreshToken || result.refreshToken);
-    }
-    if (result.user?.tenantId) {
-      localStorage.setItem("tenant_id", result.user.tenantId);
-    } else if (result.tenant?.id) {
-      localStorage.setItem("tenant_id", result.tenant.id);
-    }
-    set({ user: result.user, isAuthenticated: true, isLoading: false });
+    const accessToken: string = data.access_token;
+    const refreshToken: string = data.refresh_token;
+    const user: AuthUser = data.user;
+
+    localStorage.setItem("access_token", accessToken);
+    localStorage.setItem("refresh_token", refreshToken);
+
+    set({ user, isAuthenticated: true, isLoading: false });
   },
 
   logout: async () => {
     try {
       const refreshToken = localStorage.getItem("refresh_token");
-      await api.post("/auth/logout", { refreshToken });
+      if (refreshToken) {
+        await api.post("/auth/logout", { refresh_token: refreshToken }).catch(() => void 0);
+      }
     } catch {
-      // Ignore logout API errors
+      // Ignore logout API errors – always clear session locally
     }
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
-    localStorage.removeItem("tenant_id");
     set({ user: null, isAuthenticated: false, isLoading: false });
   },
 
+  /** Register a new account. */
+  register: async (payload: { firstName: string; lastName: string; email: string; password: string }) => {
+    const { data } = await api.post("/auth/register", {
+      full_name: `${payload.firstName} ${payload.lastName}`.trim(),
+      email: payload.email,
+      password: payload.password,
+    });
+    const accessToken: string = data.access_token;
+    const refreshToken: string = data.refresh_token;
+    const user: AuthUser = data.user;
+    localStorage.setItem("access_token", accessToken);
+    localStorage.setItem("refresh_token", refreshToken);
+    set({ user, isAuthenticated: true, isLoading: false });
+  },
+
+  /** Called on every page load to restore the session from stored tokens. */
   loadUser: async () => {
     try {
       const token = localStorage.getItem("access_token");
@@ -80,8 +71,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ isLoading: false });
         return;
       }
-      const { data } = await api.get("/auth/users/me");
-      const user = data.data || data;
+      // FastAPI /users/me or /auth/me endpoint returns the current user
+      const { data } = await api.get("/users/me");
+      // Handle both direct response and wrapped { data: ... }
+      const user: AuthUser = (data as { data?: AuthUser }).data ?? (data as AuthUser);
       set({ user, isAuthenticated: true, isLoading: false });
     } catch {
       localStorage.removeItem("access_token");

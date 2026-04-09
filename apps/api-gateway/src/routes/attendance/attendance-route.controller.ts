@@ -73,6 +73,18 @@ export class AttendanceRouteController {
     return firstValueFrom(this.client.send('leaves.balance', { employeeId }));
   }
 
+  @Get('leaves/types')
+  @ApiOperation({ summary: 'Leave types' })
+  getLeaveTypes(@Query() query: Record<string, unknown>) {
+    return firstValueFrom(this.client.send('leaves.types', query));
+  }
+
+  @Get('leaves/employee/:employeeId')
+  @ApiOperation({ summary: 'Employee leave requests' })
+  getEmployeeLeaves(@Param('employeeId') employeeId: string, @Query() query: Record<string, unknown>) {
+    return firstValueFrom(this.client.send('leaves.employee', { employeeId, ...query }));
+  }
+
   // ── Holidays ──
   @Get('holidays')
   @ApiOperation({ summary: 'List holidays' })

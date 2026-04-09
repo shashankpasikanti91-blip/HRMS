@@ -20,8 +20,7 @@ export default function SettingsPage() {
 
   // Profile form
   const [profileForm, setProfileForm] = useState({
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
+    full_name: user?.full_name || "",
   });
 
   // Organization form
@@ -113,16 +112,10 @@ export default function SettingsPage() {
               <CardDescription>Update your personal details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>First Name</Label>
-                  <Input value={profileForm.firstName} onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })} />
+              <div className="space-y-2">
+                  <Label>Full Name</Label>
+                  <Input value={profileForm.full_name} onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })} />
                 </div>
-                <div className="space-y-2">
-                  <Label>Last Name</Label>
-                  <Input value={profileForm.lastName} onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })} />
-                </div>
-              </div>
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input type="email" value={user?.email || ""} disabled />

@@ -30,7 +30,7 @@ export default function RecruitmentPage() {
     type: "full_time", openings: "1", requirements: "",
   });
   const [candidateForm, setCandidateForm] = useState({
-    firstName: "", lastName: "", email: "", phone: "", jobPostingId: "", resumeUrl: "",
+    full_name: "", email: "", phone: "", job_id: "", resume_url: "",
   });
 
   const loadData = useCallback(async () => {
@@ -57,11 +57,11 @@ export default function RecruitmentPage() {
 
   // Calculate pipeline from candidates
   const pipeline = [
-    { stage: "Applied", count: candidates.filter((c) => c.stage === "applied").length, color: "bg-blue-500" },
-    { stage: "Screening", count: candidates.filter((c) => c.stage === "screening").length, color: "bg-yellow-500" },
-    { stage: "Interview", count: candidates.filter((c) => c.stage === "interview").length, color: "bg-purple-500" },
-    { stage: "Offer", count: candidates.filter((c) => c.stage === "offer").length, color: "bg-green-500" },
-    { stage: "Hired", count: candidates.filter((c) => c.stage === "hired").length, color: "bg-emerald-500" },
+    { stage: "Applied", count: candidates.filter((c) => c.status === "applied").length, color: "bg-blue-500" },
+    { stage: "Screening", count: candidates.filter((c) => c.status === "screening").length, color: "bg-yellow-500" },
+    { stage: "Interview", count: candidates.filter((c) => c.status === "interview").length, color: "bg-purple-500" },
+    { stage: "Offer", count: candidates.filter((c) => c.status === "offer").length, color: "bg-green-500" },
+    { stage: "Hired", count: candidates.filter((c) => c.status === "hired").length, color: "bg-emerald-500" },
   ];
 
   async function handleCreateJob() {
@@ -72,10 +72,13 @@ export default function RecruitmentPage() {
     setSaving(true);
     try {
       await recruitmentService.createJob({
-        ...jobForm,
+        title: jobForm.title,
+        department_id: jobForm.departmentId || undefined,
+        description: jobForm.description || undefined,
+        employment_type: jobForm.type || undefined,
+        location: jobForm.location || undefined,
         openings: parseInt(jobForm.openings) || 1,
-        requirements: jobForm.requirements.split("\n").filter(Boolean),
-      } as unknown as Partial<JobPosting>);
+      });
       toast({ title: "Success", description: "Job posted successfully", variant: "success" });
       setJobDialogOpen(false);
       setJobForm({ title: "", departmentId: "", description: "", location: "", type: "full_time", openings: "1", requirements: "" });
@@ -88,7 +91,7 @@ export default function RecruitmentPage() {
   }
 
   async function handleCreateCandidate() {
-    if (!candidateForm.firstName || !candidateForm.lastName || !candidateForm.email) {
+    if (!candidateForm.full_name || !candidateForm.email) {
       toast({ title: "Validation Error", description: "Name and email are required", variant: "destructive" });
       return;
     }
@@ -97,7 +100,7 @@ export default function RecruitmentPage() {
       await recruitmentService.createCandidate(candidateForm);
       toast({ title: "Success", description: "Candidate added successfully", variant: "success" });
       setCandidateDialogOpen(false);
-      setCandidateForm({ firstName: "", lastName: "", email: "", phone: "", jobPostingId: "", resumeUrl: "" });
+      setCandidateForm({ full_name: "", email: "", phone: "", job_id: "", resume_url: "" });
       loadData();
     } catch {
       toast({ title: "Error", description: "Failed to add candidate", variant: "destructive" });
@@ -108,7 +111,7 @@ export default function RecruitmentPage() {
 
   async function updateCandidateStage(id: string, stage: string) {
     try {
-      await recruitmentService.updateCandidate(id, { stage } as Partial<Candidate>);
+      await recruitmentService.updateCandidate(id, { status: stage } as Partial<Candidate>);
       toast({ title: "Updated", description: `Candidate moved to ${stage}`, variant: "success" });
       loadData();
     } catch {
@@ -179,14 +182,14 @@ export default function RecruitmentPage() {
                       <CardTitle className="text-base">{job.title}</CardTitle>
                       <Badge variant={statusColors[job.status] || "secondary"}>{job.status?.replace("_", " ")}</Badge>
                     </div>
-                    <CardDescription>{job.department?.name || "No department"}</CardDescription>
+                    <CardDescription>{job.department_name || "No department"}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2"><MapPin className="h-3 w-3" />{job.location || "Not specified"}</div>
-                      <div className="flex items-center gap-2"><Clock className="h-3 w-3" />{job.type?.replace("_", " ") || "Full time"}</div>
+                      <div className="flex items-center gap-2"><Clock className="h-3 w-3" />{job.employment_type?.replace("_", " ") || "Full time"}</div>
                       <div className="flex items-center gap-2"><Briefcase className="h-3 w-3" />{job.openings} openings</div>
-                      <div className="flex items-center gap-2"><Users className="h-3 w-3" />{job.applicationsCount || 0} applications</div>
+                      <div className="flex items-center gap-2"><Users className="h-3 w-3" />{job.applications_count || 0} applications</div>
                     </div>
                   </CardContent>
                 </Card>
@@ -223,19 +226,19 @@ export default function RecruitmentPage() {
                   <tbody>
                     {candidates.map((c) => (
                       <tr key={c.id} className="border-b last:border-0">
-                        <td className="p-3 text-sm font-medium">{c.firstName} {c.lastName}</td>
+                        <td className="p-3 text-sm font-medium">{c.full_name}</td>
                         <td className="p-3 text-sm text-muted-foreground">{c.email}</td>
                         <td className="p-3 text-sm">
-                          {c.aiScore != null ? (
+                          {c.ai_score != null ? (
                             <div className="flex items-center gap-1">
                               <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                              {Number(c.aiScore).toFixed(0)}%
+                              {Number(c.ai_score).toFixed(0)}%
                             </div>
                           ) : "—"}
                         </td>
-                        <td className="p-3"><Badge variant={stageColors[c.stage] || "default"}>{c.stage}</Badge></td>
+                        <td className="p-3"><Badge variant={stageColors[c.status] || "default"}>{c.status}</Badge></td>
                         <td className="p-3">
-                          <Select value={c.stage} onValueChange={(val) => updateCandidateStage(c.id, val)}>
+                          <Select value={c.status} onValueChange={(val) => updateCandidateStage(c.business_id, val)}>
                             <SelectTrigger className="h-8 w-[130px]"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="applied">Applied</SelectItem>
@@ -342,15 +345,9 @@ export default function RecruitmentPage() {
             <DialogDescription>Manually add a candidate to the pipeline</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>First Name *</Label>
-                <Input value={candidateForm.firstName} onChange={(e) => setCandidateForm({ ...candidateForm, firstName: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Last Name *</Label>
-                <Input value={candidateForm.lastName} onChange={(e) => setCandidateForm({ ...candidateForm, lastName: e.target.value })} />
-              </div>
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input value={candidateForm.full_name} onChange={(e) => setCandidateForm({ ...candidateForm, full_name: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label>Email *</Label>
@@ -362,16 +359,16 @@ export default function RecruitmentPage() {
             </div>
             <div className="space-y-2">
               <Label>Job Posting</Label>
-              <Select value={candidateForm.jobPostingId} onValueChange={(val) => setCandidateForm({ ...candidateForm, jobPostingId: val })}>
+              <Select value={candidateForm.job_id} onValueChange={(val) => setCandidateForm({ ...candidateForm, job_id: val })}>
                 <SelectTrigger><SelectValue placeholder="Select job" /></SelectTrigger>
                 <SelectContent>
-                  {jobs.map((j) => <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>)}
+                  {jobs.map((j) => <SelectItem key={j.id} value={j.business_id}>{j.title}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Resume URL</Label>
-              <Input value={candidateForm.resumeUrl} onChange={(e) => setCandidateForm({ ...candidateForm, resumeUrl: e.target.value })} placeholder="https://..." />
+              <Input value={candidateForm.resume_url} onChange={(e) => setCandidateForm({ ...candidateForm, resume_url: e.target.value })} placeholder="https://..." />
             </div>
           </div>
           <DialogFooter>

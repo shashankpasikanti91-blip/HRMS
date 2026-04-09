@@ -1,81 +1,420 @@
-export interface User {
+// ─── Shared base ────────────────────────────────────────────
+export interface BaseRecord {
   id: string;
+  business_id: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PageMeta {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+export interface Page<T> {
+  data: T[];
+  meta: PageMeta;
+}
+
+// ─── Auth / User ─────────────────────────────────────────────
+export interface AuthUser {
+  id: string;
+  business_id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  avatar?: string;
-  roles: string[];
-  tenantId: string;
+  full_name: string;
+  first_name?: string;
+  last_name?: string;
+  role: string;
+  company_id: string;
+  company_name?: string;
+  avatar_url?: string;
+  // legacy alias kept for compatibility
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
-export interface Employee {
+export interface LoginResponse extends AuthTokens {
+  user: AuthUser;
+}
+
+// ─── Company ─────────────────────────────────────────────────
+export interface Company extends BaseRecord {
+  name: string;
+  legal_name?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  timezone?: string;
+  industry?: string;
+  size?: string;
+  logo_url?: string;
+}
+
+// ─── Department ──────────────────────────────────────────────
+export interface Department extends BaseRecord {
+  company_id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  parent_department_id?: string;
+  head_employee_id?: string;
+  employee_count?: number;
+}
+
+export interface DepartmentSummary {
   id: string;
-  employeeCode: string;
-  firstName: string;
-  lastName: string;
+  business_id: string;
+  name: string;
+  code?: string;
+  description?: string;
+}
+
+// ─── Employee ────────────────────────────────────────────────
+export interface Employee extends BaseRecord {
+  company_id: string;
+  user_id?: string;
+  employee_code: string;
+  full_name: string;
+  first_name?: string;
+  last_name?: string;
+  work_email: string;
+  personal_email?: string;
+  phone?: string;
+  gender?: string;
+  date_of_birth?: string;
+  joining_date?: string;
+  employment_type?: string;
+  work_mode?: string;
+  department_id?: string;
+  department_name?: string;
+  designation?: string;
+  manager_id?: string;
+  manager_name?: string;
+  employment_status: string;
+  location?: string;
+  profile_photo_url?: string;
+  documents_count?: number;
+}
+
+export interface EmployeeSummary {
+  id: string;
+  business_id: string;
+  employee_code: string;
+  full_name: string;
+  work_email: string;
+  department_name?: string;
+  designation?: string;
+  employment_status: string;
+  joining_date?: string;
+}
+
+// ─── Attendance ──────────────────────────────────────────────
+export interface AttendanceRecord extends BaseRecord {
+  company_id: string;
+  employee_id: string;
+  employee_name?: string;
+  employee_code?: string;
+  attendance_date: string;
+  check_in_time?: string;
+  check_out_time?: string;
+  total_hours?: number;
+  overtime_hours?: number;
+  late_minutes?: number;
+  status: string;
+  check_in_method?: string;
+  check_out_method?: string;
+  check_in_location?: string;
+  check_out_location?: string;
+  remarks?: string;
+  is_approved: boolean;
+}
+
+// ─── Leave ───────────────────────────────────────────────────
+export interface LeaveRequest extends BaseRecord {
+  company_id: string;
+  employee_id: string;
+  employee_name?: string;
+  employee_code?: string;
+  leave_type: string;
+  start_date: string;
+  end_date: string;
+  total_days?: number;
+  reason?: string;
+  status: string;
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
+}
+
+// ─── Job Posting ─────────────────────────────────────────────
+export interface JobPosting extends BaseRecord {
+  company_id: string;
+  title: string;
+  department_id?: string;
+  department_name?: string;
+  hiring_manager_id?: string;
+  recruiter_id?: string;
+  employment_type?: string;
+  experience_level?: string;
+  location?: string;
+  salary_min?: number;
+  salary_max?: number;
+  currency: string;
+  openings: number;
+  description?: string;
+  requirements?: string;
+  status: string;
+  posted_at?: string;
+  closing_date?: string;
+  applications_count?: number;
+}
+
+// ─── Candidate ───────────────────────────────────────────────
+export interface Candidate extends BaseRecord {
+  company_id: string;
+  full_name: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   phone?: string;
-  departmentId?: string;
-  department?: Department;
-  positionId?: string;
-  position?: Position;
-  managerId?: string;
-  dateOfJoining: string;
-  status: "active" | "inactive" | "on_leave" | "terminated" | "probation";
-  employmentType: "full_time" | "part_time" | "contract" | "intern";
-  gender?: string;
-  dateOfBirth?: string;
-  address?: string;
-  avatar?: string;
+  current_location?: string;
+  years_of_experience?: number;
+  current_company?: string;
+  current_role?: string;
+  expected_salary?: number;
+  notice_period?: number;
+  resume_url?: string;
+  linkedin_url?: string;
+  portfolio_url?: string;
+  source?: string;
+  ai_score?: number;
+  ai_summary?: string;
+  status: string;
 }
 
-export interface Department {
-  id: string;
-  name: string;
-  code: string;
-  parentId?: string;
-  headId?: string;
+// ─── Application ─────────────────────────────────────────────
+export type ApplicationStage =
+  | "applied" | "screening" | "shortlisted" | "interview"
+  | "offer" | "hired" | "rejected" | "on_hold";
+
+export interface Application extends BaseRecord {
+  company_id: string;
+  candidate_id: string;
+  job_posting_id: string;
+  candidate_name?: string;
+  candidate_email?: string;
+  job_title?: string;
+  current_stage: ApplicationStage;
+  application_status: string;
+  ai_screening_score?: number;
+  ai_screening_status?: string;
+  applied_at?: string;
+  notes?: string;
+}
+
+// ─── Interview ───────────────────────────────────────────────
+export interface Interview extends BaseRecord {
+  company_id: string;
+  application_id: string;
+  candidate_id?: string;
+  candidate_name?: string;
+  job_posting_id?: string;
+  job_title?: string;
+  round_name?: string;
+  interview_type?: string;
+  scheduled_at?: string;
+  duration_minutes?: number;
+  interviewer_ids?: string[];
+  status: string;
+  feedback?: string;
+  score?: number;
+}
+
+// ─── Offer ───────────────────────────────────────────────────
+export interface Offer extends BaseRecord {
+  company_id: string;
+  application_id: string;
+  candidate_id: string;
+  candidate_name?: string;
+  job_posting_id?: string;
+  offered_role?: string;
+  offered_salary?: number;
+  currency: string;
+  joining_date?: string;
+  offer_status: string;
+  valid_until?: string;
+  sent_at?: string;
+  accepted_at?: string;
+}
+
+// ─── Payroll ─────────────────────────────────────────────────
+export interface PayrollRun extends BaseRecord {
+  company_id: string;
+  period_month: number;
+  period_year: number;
+  status: string;
+  total_employees?: number;
+  total_gross?: number;
+  total_deductions?: number;
+  total_net?: number;
+  currency: string;
+  processed_at?: string;
+  approved_at?: string;
+}
+
+export interface PayrollItem extends BaseRecord {
+  company_id: string;
+  payroll_run_id: string;
+  employee_id: string;
+  employee_name?: string;
+  employee_code?: string;
+  basic_salary: number;
+  gross_salary: number;
+  total_deductions: number;
+  net_salary: number;
+  currency: string;
+  status: string;
+}
+
+// ─── Performance ─────────────────────────────────────────────
+export interface PerformanceReview extends BaseRecord {
+  company_id: string;
+  employee_id: string;
+  employee_name?: string;
+  reviewer_id?: string;
+  cycle_id?: string;
+  status: string;
+  overall_rating?: number;
+  submitted_at?: string;
+}
+
+// ─── Document ────────────────────────────────────────────────
+export interface Document extends BaseRecord {
+  company_id: string;
+  employee_id?: string;
+  candidate_id?: string;
+  document_type?: string;
+  file_name: string;
+  file_url: string;
+  mime_type?: string;
+  file_size?: number;
+  uploaded_by?: string;
+  verification_status: string;
   description?: string;
-  _count?: { employees: number };
 }
 
-export interface Position {
-  id: string;
+// ─── Notification ────────────────────────────────────────────
+export interface Notification extends BaseRecord {
+  company_id: string;
+  user_id: string;
   title: string;
-  code: string;
-  departmentId: string;
-  grade?: string;
-  minSalary?: number;
-  maxSalary?: number;
+  message?: string;
+  category: string;
+  is_read: boolean;
+  action_url?: string;
+  entity_type?: string;
+  entity_id?: string;
 }
 
-export interface AttendanceRecord {
+// ─── Search ──────────────────────────────────────────────────
+export interface SearchResultItem {
+  entity_type: string;
   id: string;
-  employeeId: string;
+  business_id: string;
+  title: string;
+  subtitle?: string;
+  status?: string;
+  open_route: string;
+  extra?: Record<string, unknown>;
+}
+
+export interface GlobalSearchResponse {
+  query: string;
+  total: number;
+  results: SearchResultItem[];
+}
+
+// ─── Analytics ───────────────────────────────────────────────
+export interface DashboardStats {
+  total_employees: number;
+  active_employees: number;
+  present_today: number;
+  absent_today: number;
+  on_leave_today: number;
+  open_jobs: number;
+  total_candidates: number;
+  candidates_in_screening: number;
+  interviews_scheduled: number;
+  offers_pending: number;
+  hires_this_month: number;
+  leave_requests_pending: number;
+  departments_count: number;
+  new_employees_this_month: number;
+}
+
+export interface AttendanceSummaryItem {
   date: string;
-  clockIn?: string;
-  clockOut?: string;
-  status: "present" | "absent" | "late" | "half_day" | "on_leave";
-  hoursWorked?: number;
+  present: number;
+  absent: number;
+  late: number;
+  half_day: number;
+  on_leave: number;
+  work_from_home: number;
+  total_employees: number;
+  attendance_percentage: number;
 }
 
-export interface LeaveRequest {
-  id: string;
-  employeeId: string;
-  leaveTypeId: string;
-  leaveType?: LeaveType;
-  startDate: string;
-  endDate: string;
-  days: number;
-  reason: string;
-  status: "pending" | "approved" | "rejected" | "cancelled";
+export interface RecruitmentFunnelItem {
+  stage: string;
+  count: number;
+  percentage: number;
 }
 
+export interface HeadcountByDept {
+  department_id: string;
+  department_name: string;
+  total: number;
+  active: number;
+}
+
+export interface LeaveSummaryItem {
+  leave_type: string;
+  total_requests: number;
+  approved: number;
+  pending: number;
+  rejected: number;
+}
+
+export interface PayrollSummaryItem {
+  period_month: number;
+  period_year: number;
+  total_employees: number;
+  total_gross: number;
+  total_deductions: number;
+  total_net: number;
+  currency: string;
+  status: string;
+}
+
+// ─── Legacy aliases (kept to avoid breaking non-updated pages) ──────────────
+/** @deprecated use AuthUser */
+export type User = AuthUser;
+/** @deprecated use LeaveRequest */
 export interface LeaveType {
   id: string;
   name: string;
@@ -83,90 +422,32 @@ export interface LeaveType {
   maxDays: number;
   carryForward: boolean;
 }
-
-export interface PayrollRun {
-  id: string;
-  month: number;
-  year: number;
-  status: "draft" | "processing" | "completed" | "approved";
-  totalGross: number;
-  totalDeductions: number;
-  totalNet: number;
-  employeeCount: number;
-}
-
-export interface Payslip {
-  id: string;
-  employeeId: string;
-  employee?: Employee;
-  payrollRunId: string;
-  basicSalary: number;
-  hra: number;
-  da: number;
-  allowances: number;
-  grossSalary: number;
-  pf: number;
-  esi: number;
-  tds: number;
-  deductions: number;
-  netSalary: number;
-}
-
-export interface JobPosting {
-  id: string;
-  title: string;
-  departmentId: string;
-  department?: Department;
-  description: string;
-  requirements: string[];
-  location: string;
-  type: "full_time" | "part_time" | "contract" | "intern";
-  status: "draft" | "open" | "closed" | "on_hold";
-  openings: number;
-  applicationsCount: number;
-}
-
-export interface Candidate {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  jobPostingId: string;
-  stage: "applied" | "screening" | "interview" | "offer" | "hired" | "rejected";
-  resumeUrl?: string;
-  aiScore?: number;
-}
-
+/** @deprecated */
 export interface Goal {
   id: string;
-  employeeId: string;
+  employee_id: string;
   title: string;
   description?: string;
   targetDate: string;
   progress: number;
-  status: "not_started" | "in_progress" | "completed" | "cancelled";
+  status: string;
+}
+/** @deprecated */
+export interface Payslip {
+  id: string;
+  employee_id: string;
+  payrollRunId: string;
+  grossSalary: number;
+  netSalary: number;
+}
+/** @deprecated */
+export interface PerformanceReviewLegacy {
+  id: string;
+  employee_id: string;
+  status: string;
 }
 
-export interface PerformanceReview {
-  id: string;
-  employeeId: string;
-  employee?: Employee;
-  reviewerId: string;
-  cycleId: string;
-  rating?: number;
-  status: "draft" | "submitted" | "approved";
-  selfRating?: number;
-}
 
-export interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  read: boolean;
-  createdAt: string;
-}
 
 export interface DashboardMetrics {
   totalEmployees: number;

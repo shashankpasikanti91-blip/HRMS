@@ -12,12 +12,12 @@ import { DollarSign, FileText, Calculator, TrendingUp, Loader2, Play, CheckCircl
 import { payrollService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
-import type { PayrollRun, Payslip } from "@/types";
+import type { PayrollRun, PayrollItem } from "@/types";
 
 export default function PayrollPage() {
   const { toast } = useToast();
   const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>([]);
-  const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const [payslips, setPayslips] = useState<PayrollItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [runDialogOpen, setRunDialogOpen] = useState(false);
   const [payslipDialogOpen, setPayslipDialogOpen] = useState(false);
@@ -30,15 +30,12 @@ export default function PayrollPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [runsResult, statsResult] = await Promise.allSettled([
-        payrollService.getRuns(),
-        payrollService.getStats(),
+      const [runsResult] = await Promise.allSettled([
+        payrollService.listRuns(),
       ]);
       if (runsResult.status === "fulfilled") {
-        setPayrollRuns(Array.isArray(runsResult.value) ? runsResult.value : []);
-      }
-      if (statsResult.status === "fulfilled" && statsResult.value) {
-        setStats(statsResult.value);
+        const data = runsResult.value;
+        setPayrollRuns(Array.isArray(data) ? data : data?.data || []);
       }
     } catch {
       toast({ title: "Error", description: "Failed to load payroll data", variant: "destructive" });
@@ -54,7 +51,7 @@ export default function PayrollPage() {
   async function handleInitiatePayroll() {
     setProcessing(true);
     try {
-      await payrollService.initiate(parseInt(runMonth), parseInt(runYear));
+      await payrollService.createRun({ period_month: parseInt(runMonth), period_year: parseInt(runYear) });
       toast({ title: "Payroll Initiated", description: `Payroll run created for ${runMonth}/${runYear}`, variant: "success" });
       setRunDialogOpen(false);
       loadData();
@@ -69,7 +66,7 @@ export default function PayrollPage() {
   async function handleProcessRun(run: PayrollRun) {
     setProcessing(true);
     try {
-      await payrollService.process(run.id);
+      await payrollService.processRun(run.business_id);
       toast({ title: "Payroll Processing", description: "Payroll is being processed...", variant: "success" });
       loadData();
     } catch (err: unknown) {
@@ -83,7 +80,7 @@ export default function PayrollPage() {
   async function handleApproveRun(run: PayrollRun) {
     setProcessing(true);
     try {
-      await payrollService.approve(run.id);
+      await payrollService.processRun(run.business_id);
       toast({ title: "Payroll Approved", variant: "success" });
       loadData();
     } catch {
@@ -96,8 +93,8 @@ export default function PayrollPage() {
   async function viewPayslips(run: PayrollRun) {
     setSelectedRun(run);
     try {
-      const slips = await payrollService.getPayslips(run.id);
-      setPayslips(Array.isArray(slips) ? slips : []);
+      const result = await payrollService.getItems(run.business_id);
+      setPayslips(Array.isArray(result) ? result : result?.data || []);
     } catch {
       setPayslips([]);
     }
@@ -172,11 +169,11 @@ export default function PayrollPage() {
                   <tbody>
                     {payrollRuns.map((run) => (
                       <tr key={run.id} className="border-b last:border-0">
-                        <td className="p-3 text-sm font-medium">{monthNames[(run.month || 1) - 1]} {run.year}</td>
-                        <td className="p-3 text-sm">{run.employeeCount}</td>
-                        <td className="p-3 text-sm">{formatCurrency(run.totalGross || 0)}</td>
-                        <td className="p-3 text-sm">{formatCurrency(run.totalDeductions || 0)}</td>
-                        <td className="p-3 text-sm font-medium">{formatCurrency(run.totalNet || 0)}</td>
+                        <td className="p-3 text-sm font-medium">{monthNames[(run.period_month || 1) - 1]} {run.period_year}</td>
+                        <td className="p-3 text-sm">{run.total_employees}</td>
+                        <td className="p-3 text-sm">{formatCurrency(run.total_gross || 0)}</td>
+                        <td className="p-3 text-sm">{formatCurrency(run.total_deductions || 0)}</td>
+                        <td className="p-3 text-sm font-medium">{formatCurrency(run.total_net || 0)}</td>
                         <td className="p-3"><Badge variant={statusColors[run.status]}>{run.status}</Badge></td>
                         <td className="p-3">
                           <div className="flex gap-2">
@@ -268,7 +265,7 @@ export default function PayrollPage() {
       <Dialog open={payslipDialogOpen} onOpenChange={setPayslipDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Payslips — {selectedRun ? `${monthNames[(selectedRun.month || 1) - 1]} ${selectedRun.year}` : ""}</DialogTitle>
+            <DialogTitle>Payslips — {selectedRun ? `${monthNames[(selectedRun.period_month || 1) - 1]} ${selectedRun.period_year}` : ""}</DialogTitle>
             <DialogDescription>{payslips.length} payslips generated</DialogDescription>
           </DialogHeader>
           {payslips.length > 0 ? (
@@ -285,11 +282,11 @@ export default function PayrollPage() {
               <tbody>
                 {payslips.map((ps) => (
                   <tr key={ps.id} className="border-b last:border-0">
-                    <td className="p-2">{ps.employee ? `${ps.employee.firstName} ${ps.employee.lastName}` : ps.employeeId}</td>
-                    <td className="p-2 text-right">{formatCurrency(ps.basicSalary || 0)}</td>
-                    <td className="p-2 text-right">{formatCurrency(ps.grossSalary || 0)}</td>
-                    <td className="p-2 text-right">{formatCurrency(ps.deductions || 0)}</td>
-                    <td className="p-2 text-right font-medium">{formatCurrency(ps.netSalary || 0)}</td>
+                    <td className="p-2">{ps.employee_name || ps.employee_id}</td>
+                    <td className="p-2 text-right">{formatCurrency(ps.basic_salary || 0)}</td>
+                    <td className="p-2 text-right">{formatCurrency(ps.gross_salary || 0)}</td>
+                    <td className="p-2 text-right">{formatCurrency(ps.total_deductions || 0)}</td>
+                    <td className="p-2 text-right font-medium">{formatCurrency(ps.net_salary || 0)}</td>
                   </tr>
                 ))}
               </tbody>

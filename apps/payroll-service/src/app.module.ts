@@ -6,6 +6,7 @@ import { PrismaModule } from './config/prisma.module';
 import { RedisModule } from './config/redis.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { SalaryModule } from './modules/salary/salary.module';
+import { PayrollNatsController } from './nats.controller';
 
 @Module({
   imports: [
@@ -17,5 +18,6 @@ import { SalaryModule } from './modules/salary/salary.module';
     PayrollModule,
     SalaryModule,
   ],
+  controllers: [PayrollNatsController],
 })
 export class AppModule {}

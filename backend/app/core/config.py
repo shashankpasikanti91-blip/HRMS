@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "SRP AI HRMS"
     APP_VERSION: str = "1.0.0"
     APP_ENV: str = "development"
+    ENVIRONMENT: str = "development"
     DEBUG: bool = False
     PORT: int = 8080
     HOST: str = "0.0.0.0"
@@ -47,6 +48,14 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     JWT_RESET_TOKEN_EXPIRE_MINUTES: int = 60
+
+    # ── Google OAuth ─────────────────────────────────────────
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: str = "https://api.hrms.srpailabs.com/api/v1/auth/google/callback"
+
+    # ── NextAuth Internal Secret ──────────────────────────────
+    NEXTAUTH_SECRET: Optional[str] = None
 
     # ── Super Admin ────────────────────────────────────────
     SUPER_ADMIN_EMAIL: str = "superadmin@srpailabs.com"
@@ -81,6 +90,14 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     SMTP_FROM_NAME: str = "SRP AI HRMS"
     SMTP_TLS: bool = True
+
+    # ── Owner Notifications ────────────────────────────────
+    # Telegram bot token from @BotFather
+    TELEGRAM_BOT_TOKEN: Optional[str] = None
+    # Your personal Telegram chat ID (send /start to bot, then GET /getUpdates)
+    TELEGRAM_OWNER_CHAT_ID: Optional[str] = None
+    # Email that receives all owner alerts
+    OWNER_NOTIFICATION_EMAIL: Optional[str] = None
 
     # ── OpenAPI ────────────────────────────────────────────
     OPENAPI_TITLE: str = "SRP AI HRMS API"

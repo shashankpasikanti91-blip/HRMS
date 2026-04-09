@@ -7,6 +7,7 @@ import { RedisModule } from './config/redis.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { LeavesModule } from './modules/leaves/leaves.module';
 import { HolidaysModule } from './modules/holidays/holidays.module';
+import { AttendanceNatsController } from './nats.controller';
 
 @Module({
   imports: [
@@ -19,5 +20,6 @@ import { HolidaysModule } from './modules/holidays/holidays.module';
     LeavesModule,
     HolidaysModule,
   ],
+  controllers: [AttendanceNatsController],
 })
 export class AppModule {}

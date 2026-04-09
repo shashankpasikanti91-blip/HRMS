@@ -7,58 +7,44 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Download, Users, DollarSign, Clock, Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import { BarChart3, Download, Users, Clock, Loader2, TrendingUp } from "lucide-react";
 import { analyticsService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
+import type { DashboardStats, AttendanceSummaryItem, HeadcountByDept } from "@/types";
+
+interface RecruitmentFunnelData {
+  stages?: Array<{ stage: string; count: number; conversion?: number }>;
+  total_applications?: number;
+  open_positions?: number;
+  avg_time_to_hire?: number;
+}
 
 interface AnalyticsData {
-  executive?: {
-    totalEmployees?: number;
-    attritionRate?: number;
-    avgTenure?: number;
-    costPerHire?: number;
-    timeToFill?: number;
-    headcountTrend?: Array<{ month: string; count: number; change: number }>;
-    departmentDistribution?: Array<{ name: string; count: number; percent: number }>;
-  };
-  workforce?: {
-    genderDistribution?: Array<{ label: string; count: number; percent: number }>;
-    ageDistribution?: Array<{ label: string; count: number; percent: number }>;
-    tenureDistribution?: Array<{ label: string; count: number; percent: number }>;
-  };
-  attendance?: {
-    avgAttendance?: number;
-    latePercentage?: number;
-    leaveUtilization?: number;
-    overtimeHours?: number;
-  };
-  recruitment?: {
-    openPositions?: number;
-    totalApplications?: number;
-    interviewToOffer?: number;
-    avgTimeToHire?: number;
-  };
+  dashboard: DashboardStats | null;
+  attendance: AttendanceSummaryItem[];
+  headcount: HeadcountByDept[];
+  recruitment: RecruitmentFunnelData;
 }
 
 export default function AnalyticsPage() {
   const { toast } = useToast();
-  const [data, setData] = useState<AnalyticsData>({});
+  const [data, setData] = useState<AnalyticsData>({ dashboard: null, attendance: [], headcount: [], recruitment: {} });
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("last_30_days");
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [execRes, workforceRes, attendanceRes, recruitRes] = await Promise.allSettled([
-        analyticsService.getExecutiveDashboard({ period }),
-        analyticsService.getWorkforceAnalytics({ period }),
-        analyticsService.getAttendanceAnalytics({ period }),
-        analyticsService.getRecruitmentAnalytics({ period }),
+      const [dashRes, attendRes, headRes, recruitRes] = await Promise.allSettled([
+        analyticsService.getDashboard(),
+        analyticsService.getAttendanceSummary(),
+        analyticsService.getHeadcount(),
+        analyticsService.getRecruitmentFunnel(),
       ]);
       setData({
-        executive: execRes.status === "fulfilled" ? execRes.value : {},
-        workforce: workforceRes.status === "fulfilled" ? workforceRes.value : {},
-        attendance: attendanceRes.status === "fulfilled" ? attendanceRes.value : {},
+        dashboard: dashRes.status === "fulfilled" ? dashRes.value : null,
+        attendance: attendRes.status === "fulfilled" ? attendRes.value : [],
+        headcount: headRes.status === "fulfilled" ? headRes.value : [],
         recruitment: recruitRes.status === "fulfilled" ? recruitRes.value : {},
       });
     } catch {
@@ -66,16 +52,14 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const exec = data.executive || {};
-  const dept = exec.departmentDistribution || [];
-  const headcount = exec.headcountTrend || [];
-  const workforce = data.workforce || {};
-  const attendance = data.attendance || {};
-  const recruitment = data.recruitment || {};
+  const dash = data.dashboard;
+  const attendSummary = data.attendance;
+  const headcountData = data.headcount;
+  const recruitData = data.recruitment;
 
   const DEPT_COLORS = ["bg-blue-500", "bg-green-500", "bg-orange-500", "bg-purple-500", "bg-pink-500", "bg-cyan-500", "bg-red-500", "bg-yellow-500"];
 
@@ -112,10 +96,10 @@ export default function AnalyticsPage() {
           {/* KPI Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: "Total Employees", value: exec.totalEmployees ?? "—", icon: Users, color: "text-blue-600" },
-              { label: "Attrition Rate", value: exec.attritionRate != null ? `${exec.attritionRate}%` : "—", icon: TrendingDown, color: "text-green-600" },
-              { label: "Avg. Attendance", value: attendance.avgAttendance != null ? `${attendance.avgAttendance}%` : "—", icon: Clock, color: "text-orange-600" },
-              { label: "Open Positions", value: recruitment.openPositions ?? "—", icon: BarChart3, color: "text-purple-600" },
+              { label: "Total Employees", value: dash?.total_employees ?? "—", icon: Users, color: "text-blue-600" },
+              { label: "Active Employees", value: dash?.active_employees ?? "—", icon: TrendingUp, color: "text-green-600" },
+              { label: "Present Today", value: dash?.present_today ?? "—", icon: Clock, color: "text-orange-600" },
+              { label: "Open Positions", value: dash?.open_jobs ?? recruitData.open_positions ?? "—", icon: BarChart3, color: "text-purple-600" },
             ].map((kpi) => (
               <Card key={kpi.label}>
                 <CardContent className="p-4">
@@ -140,126 +124,99 @@ export default function AnalyticsPage() {
 
             <TabsContent value="workforce" className="mt-4">
               <div className="grid gap-6 lg:grid-cols-2">
-                {/* Headcount Trend */}
+                {/* Headcount by Department */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Headcount Trend</CardTitle>
-                    <CardDescription>Employee headcount over time</CardDescription>
+                    <CardTitle>Headcount by Department</CardTitle>
+                    <CardDescription>Employee distribution across departments</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {headcount.length > 0 ? (
+                    {headcountData.length > 0 ? (
                       <div className="space-y-3">
-                        {headcount.map((m) => (
-                          <div key={m.month} className="flex items-center justify-between text-sm">
-                            <span className="w-20">{m.month}</span>
-                            <div className="flex items-center gap-2">
-                              <Progress value={Math.min((m.count / (exec.totalEmployees || m.count) ) * 80 + 20, 100)} className="h-2 w-32" />
-                              <span className="w-8 text-right font-medium">{m.count}</span>
-                              <span className={`w-10 text-right ${m.change >= 0 ? "text-green-600" : "text-red-600"}`}>
-                                {m.change >= 0 ? "+" : ""}{m.change}
-                              </span>
-                            </div>
+                        {headcountData.map((d, i) => (
+                          <div key={d.department_name} className="flex items-center gap-3">
+                            <div className={`h-3 w-3 rounded-full ${DEPT_COLORS[i % DEPT_COLORS.length]}`} />
+                            <span className="w-28 text-sm truncate">{d.department_name}</span>
+                            <Progress value={dash?.total_employees ? Math.round((d.total / dash.total_employees) * 100) : 0} className="h-2 flex-1" />
+                            <span className="w-8 text-right text-sm font-medium">{d.total}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="py-8 text-center text-muted-foreground">No headcount trend data available.</p>
+                      <p className="py-8 text-center text-muted-foreground">No headcount data available.</p>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Department Distribution */}
+                {/* Attendance Summary */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Department Distribution</CardTitle>
-                    <CardDescription>Employees by department</CardDescription>
+                    <CardTitle>Attendance Summary</CardTitle>
+                    <CardDescription>Recent attendance patterns</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {dept.length > 0 ? (
-                      <div className="space-y-4">
-                        {dept.map((d, i) => (
-                          <div key={d.name} className="flex items-center gap-3">
-                            <div className={`h-3 w-3 rounded-full ${DEPT_COLORS[i % DEPT_COLORS.length]}`} />
-                            <span className="w-24 text-sm">{d.name}</span>
-                            <Progress value={d.percent} className="h-2 flex-1" />
-                            <span className="w-20 text-right text-sm text-muted-foreground">{d.count} ({d.percent}%)</span>
+                    {attendSummary.length > 0 ? (
+                      <div className="space-y-2">
+                        {attendSummary.slice(0, 7).map((a) => (
+                          <div key={a.date} className="flex items-center justify-between text-sm">
+                            <span className="w-24 text-muted-foreground">{new Date(a.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
+                            <Progress value={a.attendance_percentage ?? 0} className="h-2 flex-1 mx-3" />
+                            <span className="w-12 text-right">{a.present ?? 0}/{a.total_employees ?? 0}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="py-8 text-center text-muted-foreground">No department distribution data available.</p>
+                      <p className="py-8 text-center text-muted-foreground">No attendance summary available.</p>
                     )}
                   </CardContent>
                 </Card>
-
-                {/* Demographics */}
-                {(workforce.genderDistribution || workforce.ageDistribution) && (
-                  <Card className="lg:col-span-2">
-                    <CardHeader>
-                      <CardTitle>Workforce Demographics</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-6 sm:grid-cols-2">
-                        {workforce.genderDistribution && (
-                          <div>
-                            <p className="mb-3 text-sm font-medium">Gender Distribution</p>
-                            <div className="space-y-2">
-                              {workforce.genderDistribution.map((g) => (
-                                <div key={g.label} className="flex items-center gap-2 text-sm">
-                                  <span className="w-16">{g.label}</span>
-                                  <Progress value={g.percent} className="h-2 flex-1" />
-                                  <span className="w-16 text-right text-muted-foreground">{g.count} ({g.percent}%)</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {workforce.ageDistribution && (
-                          <div>
-                            <p className="mb-3 text-sm font-medium">Age Distribution</p>
-                            <div className="space-y-2">
-                              {workforce.ageDistribution.map((a) => (
-                                <div key={a.label} className="flex items-center gap-2 text-sm">
-                                  <span className="w-16">{a.label}</span>
-                                  <Progress value={a.percent} className="h-2 flex-1" />
-                                  <span className="w-16 text-right text-muted-foreground">{a.count} ({a.percent}%)</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
               </div>
             </TabsContent>
 
             <TabsContent value="attendance" className="mt-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {[
-                  { label: "Avg Attendance Rate", value: attendance.avgAttendance != null ? `${attendance.avgAttendance}%` : "—" },
-                  { label: "Late Arrival %", value: attendance.latePercentage != null ? `${attendance.latePercentage}%` : "—" },
-                  { label: "Leave Utilization", value: attendance.leaveUtilization != null ? `${attendance.leaveUtilization}%` : "—" },
-                  { label: "Overtime Hours", value: attendance.overtimeHours != null ? `${attendance.overtimeHours}h` : "—" },
-                ].map((s) => (
-                  <Card key={s.label}>
-                    <CardContent className="p-4 text-center">
-                      <p className="text-2xl font-bold">{s.value}</p>
-                      <p className="text-xs text-muted-foreground">{s.label}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Attendance Trend</CardTitle>
+                  <CardDescription>Daily attendance statistics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {attendSummary.length > 0 ? (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="p-3 text-left text-sm font-medium">Date</th>
+                          <th className="p-3 text-left text-sm font-medium">Present</th>
+                          <th className="p-3 text-left text-sm font-medium">Absent</th>
+                          <th className="p-3 text-left text-sm font-medium">Rate</th>
+                          <th className="p-3 text-left text-sm font-medium">Late</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attendSummary.map((a) => (
+                          <tr key={a.date} className="border-b last:border-0">
+                            <td className="p-3 text-sm">{new Date(a.date).toLocaleDateString()}</td>
+                            <td className="p-3 text-sm">{a.present ?? 0}</td>
+                            <td className="p-3 text-sm">{a.absent ?? 0}</td>
+                            <td className="p-3 text-sm">{a.attendance_percentage != null ? `${a.attendance_percentage.toFixed(1)}%` : "—"}</td>
+                            <td className="p-3 text-sm">{a.late ?? 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="py-8 text-center text-muted-foreground">No attendance data available.</p>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="recruitment" className="mt-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  { label: "Open Positions", value: recruitment.openPositions ?? "—" },
-                  { label: "Total Applications", value: recruitment.totalApplications ?? "—" },
-                  { label: "Interview to Offer %", value: recruitment.interviewToOffer != null ? `${recruitment.interviewToOffer}%` : "—" },
-                  { label: "Avg Time to Hire", value: recruitment.avgTimeToHire != null ? `${recruitment.avgTimeToHire} days` : "—" },
+                  { label: "Open Positions", value: dash?.open_jobs ?? recruitData.open_positions ?? "—" },
+                  { label: "Total Applications", value: recruitData.total_applications ?? "—" },
+                  { label: "Pipeline Stages", value: recruitData.stages?.length ?? "—" },
+                  { label: "Avg Time to Hire", value: recruitData.avg_time_to_hire != null ? `${recruitData.avg_time_to_hire} days` : "—" },
                 ].map((s) => (
                   <Card key={s.label}>
                     <CardContent className="p-4 text-center">
@@ -269,6 +226,23 @@ export default function AnalyticsPage() {
                   </Card>
                 ))}
               </div>
+              {recruitData.stages && recruitData.stages.length > 0 && (
+                <Card className="mt-4">
+                  <CardHeader><CardTitle>Recruitment Funnel</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {recruitData.stages.map((s) => (
+                        <div key={s.stage} className="flex items-center gap-3">
+                          <span className="w-24 text-sm capitalize">{s.stage}</span>
+                          <Progress value={recruitData.total_applications ? Math.round((s.count / recruitData.total_applications) * 100) : 0} className="h-2 flex-1" />
+                          <span className="w-8 text-right text-sm font-medium">{s.count}</span>
+                          {s.conversion != null && <span className="w-12 text-right text-xs text-muted-foreground">{s.conversion}%</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </>

@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
 from app.schemas.auth import (
     RegisterCompanyRequest,
+    RegisterRequest,
+    GoogleSyncRequest,
     LoginRequest,
     RefreshTokenRequest,
     ForgotPasswordRequest,
@@ -22,6 +26,87 @@ from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+settings = get_settings()
+
+
+@router.post("/register", response_model=dict, status_code=201)
+async def register(
+    data: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Self-registration: creates a personal workspace for the user."""
+    service = AuthService(db)
+    user, tokens = await service.register(data)
+    return {
+        "message": "Account created successfully",
+        **tokens.model_dump(),
+        "user": AuthUserResponse.model_validate(user).model_dump(),
+    }
+
+
+@router.post("/google-sync", response_model=dict)
+async def google_sync(
+    data: GoogleSyncRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Called by NextAuth after Google OAuth succeeds.
+    Finds or creates the user and returns a FastAPI JWT.
+    Requires X-Nextauth-Secret header matching NEXTAUTH_SECRET env var.
+    """
+    # Validate internal secret to prevent abuse
+    secret = request.headers.get("x-nextauth-secret", "")
+    if settings.NEXTAUTH_SECRET and secret != settings.NEXTAUTH_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    service = AuthService(db)
+    user, tokens = await service.google_sync(data)
+    return {
+        **tokens.model_dump(),
+        "user": AuthUserResponse.model_validate(user).model_dump(),
+    }
+
+
+@router.get("/google")
+async def google_login():
+    """Redirect browser to Google OAuth consent screen (backend-driven flow)."""
+    service = AuthService(None)  # type: ignore[arg-type]
+    url = await service.google_oauth_redirect()
+    return RedirectResponse(url=url)
+
+
+@router.get("/google/callback")
+async def google_callback(
+    code: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Google OAuth callback — backend-driven flow.
+    Exchanges code for tokens, creates/finds user, redirects to frontend.
+    """
+    frontend_url = settings.FRONTEND_URL
+    if error or not code:
+        return RedirectResponse(
+            url=f"{frontend_url}/login?error={error or 'authentication_failed'}"
+        )
+    try:
+        service = AuthService(db)
+        user, tokens = await service.google_oauth_callback(code)
+        return RedirectResponse(
+            url=(
+                f"{frontend_url}/auth/google/callback"
+                f"?access_token={tokens.access_token}"
+                f"&refresh_token={tokens.refresh_token}"
+                f"&tenant_id={user.company_id or ''}"
+            )
+        )
+    except Exception:
+        return RedirectResponse(
+            url=f"{frontend_url}/login?error=Google+authentication+failed"
+        )
 
 
 @router.post("/register-company", response_model=dict, status_code=201)

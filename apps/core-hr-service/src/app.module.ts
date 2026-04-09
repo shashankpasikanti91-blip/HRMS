@@ -11,6 +11,7 @@ import { EmployeesModule } from './modules/employees/employees.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { PositionsModule } from './modules/positions/positions.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { CoreHrNatsController } from './nats.controller';
 
 @Module({
   imports: [
@@ -23,5 +24,6 @@ import { DocumentsModule } from './modules/documents/documents.module';
     PositionsModule,
     DocumentsModule,
   ],
+  controllers: [CoreHrNatsController],
 })
 export class AppModule {}

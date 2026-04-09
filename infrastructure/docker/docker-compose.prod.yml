@@ -311,8 +311,16 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=https://api.hrms.srpailabs.com
       - NEXT_PUBLIC_APP_URL=https://app.hrms.srpailabs.com
+      - NEXTAUTH_URL=https://app.hrms.srpailabs.com
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      # Internal container-to-container call for NextAuth → FastAPI google-sync
+      - BACKEND_INTERNAL_URL=http://fastapi-backend:8000
     ports:
       - "127.0.0.1:3000:3000"
+    depends_on:
+      - fastapi-backend
     deploy:
       resources:
         limits:
@@ -338,9 +346,22 @@ services:
       - SUPER_ADMIN_EMAIL=${FASTAPI_SUPER_ADMIN_EMAIL}
       - SUPER_ADMIN_PASSWORD=${FASTAPI_SUPER_ADMIN_PASSWORD}
       - ALLOWED_ORIGINS=https://app.hrms.srpailabs.com,https://hrms.srpailabs.com
+      - FRONTEND_URL=https://app.hrms.srpailabs.com
       - DOCS_ENABLED=false
       - LOCAL_UPLOAD_DIR=/app/uploads
       - STORAGE_BACKEND=local
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=https://api.hrms.srpailabs.com/api/v1/auth/google/callback
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_OWNER_CHAT_ID=${TELEGRAM_OWNER_CHAT_ID}
+      - OWNER_NOTIFICATION_EMAIL=${OWNER_NOTIFICATION_EMAIL}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_TLS=true
     ports:
       - "127.0.0.1:8003:8000"
     volumes:
