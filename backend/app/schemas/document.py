@@ -51,5 +51,15 @@ class NotificationResponse(BaseResponse):
     entity_id: Optional[str] = None
 
 
+class NotificationCreate(BaseSchema):
+    user_id: str
+    title: str
+    message: Optional[str] = None
+    category: str
+    action_url: Optional[str] = None
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+
+
 class NotificationMarkRead(BaseSchema):
     pass  # no body needed, business_id comes from path
