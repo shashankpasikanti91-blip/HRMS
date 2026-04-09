@@ -89,7 +89,7 @@ class GoogleSyncRequest(BaseSchema):
     image: Optional[str] = None
 
 
-
+class TokenResponse(BaseSchema):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
