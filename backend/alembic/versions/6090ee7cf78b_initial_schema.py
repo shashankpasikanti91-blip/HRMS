@@ -75,7 +75,6 @@ def upgrade() -> None:
     sa.Column('created_by', sa.String(length=36), nullable=True),
     sa.Column('updated_by', sa.String(length=36), nullable=True),
     sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['head_employee_id'], ['employees.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['parent_department_id'], ['departments.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -122,7 +121,6 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['department_id'], ['departments.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['manager_id'], ['employees.id'], ondelete='SET NULL'),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('employee_code', 'company_id', name='uq_employee_code_company'),
     sa.UniqueConstraint('work_email', 'company_id', name='uq_employee_email_company')
@@ -255,6 +253,9 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=False)
     op.create_index(op.f('ix_users_role'), 'users', ['role'], unique=False)
     op.create_index(op.f('ix_users_status'), 'users', ['status'], unique=False)
+    # Deferred FKs (circular / forward references resolved after all base tables exist)
+    op.create_foreign_key('fk_dept_head_employee', 'departments', 'employees', ['head_employee_id'], ['id'], ondelete='SET NULL')
+    op.create_foreign_key('fk_emp_user_id', 'employees', 'users', ['user_id'], ['id'], ondelete='SET NULL')
     op.create_table('attendance',
     sa.Column('company_id', sa.String(length=36), nullable=False),
     sa.Column('employee_id', sa.String(length=36), nullable=False),
@@ -731,7 +732,9 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_employees_department_id'), table_name='employees')
     op.drop_index(op.f('ix_employees_company_id'), table_name='employees')
     op.drop_index(op.f('ix_employees_business_id'), table_name='employees')
+    op.drop_constraint('fk_emp_user_id', 'employees', type_='foreignkey')
     op.drop_table('employees')
+    op.drop_constraint('fk_dept_head_employee', 'departments', type_='foreignkey')
     op.drop_index(op.f('ix_departments_company_id'), table_name='departments')
     op.drop_index(op.f('ix_departments_code'), table_name='departments')
     op.drop_index(op.f('ix_departments_business_id'), table_name='departments')
