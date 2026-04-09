@@ -71,3 +71,12 @@ class PayrollSummary(BaseSchema):
     total_net: float = 0.0
     currency: str = "INR"
     status: str
+
+
+# Route-friendly Response aliases
+DashboardStatsResponse = DashboardStats
+AttendanceSummaryResponse = AttendanceSummary
+RecruitmentFunnelResponse = RecruitmentFunnel
+HeadcountByDepartmentResponse = HeadcountByDepartment
+LeaveSummaryResponse = LeaveSummary
+PayrollSummaryResponse = PayrollSummary

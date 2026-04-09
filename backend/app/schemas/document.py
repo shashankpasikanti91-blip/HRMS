@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Optional
 
 from app.schemas.base import BaseSchema, BaseResponse
-from app.utils.enums import DocumentType, VerificationStatus, NotificationCategory
 
 
 class DocumentResponse(BaseResponse):
@@ -17,6 +16,14 @@ class DocumentResponse(BaseResponse):
     file_size: Optional[int] = None
     uploaded_by: Optional[str] = None
     verification_status: str
+    description: Optional[str] = None
+
+
+class DocumentCreate(BaseSchema):
+    """Used when creating a document record (metadata only; file upload uses Form fields)."""
+    employee_id: Optional[str] = None
+    candidate_id: Optional[str] = None
+    document_type: Optional[str] = None
     description: Optional[str] = None
 
 

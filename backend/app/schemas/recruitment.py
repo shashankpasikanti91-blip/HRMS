@@ -242,6 +242,10 @@ class OfferStatusUpdate(BaseSchema):
     notes: Optional[str] = None
 
 
+# Alias for full update support
+OfferUpdate = OfferStatusUpdate
+
+
 class OfferResponse(BaseResponse):
     company_id: str
     application_id: str
