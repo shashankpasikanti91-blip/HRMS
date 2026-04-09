@@ -37,10 +37,10 @@ class DocumentService:
             created_by=uploaded_by,
             updated_by=uploaded_by,
             file_url=file_url,
-            file_name=file.filename or data.file_name,
+            file_name=file.filename or data.file_name or data.title or "document",
             file_size=file.size or 0,
             mime_type=file.content_type or "application/octet-stream",
-            **data.model_dump(exclude={"file_name"}),
+            **data.model_dump(exclude={"file_name", "title"}),
         )
         self.db.add(doc)
         await self.db.commit()
