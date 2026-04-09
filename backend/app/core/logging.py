@@ -32,7 +32,7 @@ def configure_logging(level_name: str | None = None) -> None:
         ],
         wrapper_class=structlog.make_filtering_bound_logger(level),
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(),
     )
 
     logging.basicConfig(
