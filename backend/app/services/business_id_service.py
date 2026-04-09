@@ -56,17 +56,10 @@ class BusinessIdService:
         if not table_name:
             raise ValueError(f"No table mapping for entity type: {entity_type}")
 
-        # Count existing (including deleted) to maintain continuity
-        result = await db.execute(
-            func.count().select().select_from(
-                __import__("sqlalchemy").text(f"SELECT 1 FROM {table_name}")
-            )
-        )
-        # simpler approach: raw count
+        # Count existing rows (including deleted) to maintain continuity.
+        # `table_name` is chosen from a fixed internal allow-list above.
         count_result = await db.execute(
-            __import__("sqlalchemy").text(
-                f"SELECT COUNT(*) FROM {table_name}"
-            )
+            __import__("sqlalchemy").text(f"SELECT COUNT(*) FROM {table_name}")
         )
         count = count_result.scalar() or 0
         sequence = count + 1
