@@ -8,9 +8,16 @@ import structlog
 from app.core.config import settings
 
 
-def configure_logging() -> None:
-    """Configure structured JSON logging for production."""
-    level = logging.DEBUG if settings.DEBUG else logging.INFO
+def configure_logging(level_name: str | None = None) -> None:
+    """Configure structured logging for production.
+
+    Accepts an optional log level name for compatibility with callers like
+    `configure_logging("INFO")`.
+    """
+    if level_name:
+        level = getattr(logging, level_name.upper(), logging.INFO)
+    else:
+        level = logging.DEBUG if settings.DEBUG else logging.INFO
 
     structlog.configure(
         processors=[
