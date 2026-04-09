@@ -78,7 +78,7 @@ class AuthService:
             country=data.country,
             timezone=data.timezone,
             status=CompanyStatus.TRIAL.value,
-            subscription_plan=SubscriptionPlan.TRIAL.value,
+            subscription_plan=SubscriptionPlan.FREE.value,
             subscription_status=SubscriptionStatus.TRIAL.value,
         )
         self.db.add(company)
@@ -119,7 +119,7 @@ class AuthService:
             slug=slug,
             email=email,
             status=CompanyStatus.TRIAL.value,
-            subscription_plan=SubscriptionPlan.TRIAL.value,
+            subscription_plan=SubscriptionPlan.FREE.value,
             subscription_status=SubscriptionStatus.TRIAL.value,
         )
         self.db.add(company)

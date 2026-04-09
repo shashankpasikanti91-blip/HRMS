@@ -19,7 +19,7 @@ class CompanyCreate(BaseSchema):
     timezone: Optional[str] = "Asia/Kolkata"
     legal_name: Optional[str] = None
     employee_limit: Optional[int] = 100
-    subscription_plan: SubscriptionPlan = SubscriptionPlan.TRIAL
+    subscription_plan: SubscriptionPlan = SubscriptionPlan.FREE
 
 
 class CompanyUpdate(BaseSchema):
