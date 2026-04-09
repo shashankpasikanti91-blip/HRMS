@@ -128,7 +128,7 @@ async def _upsert_company_admin(session: AsyncSession, company_id: str) -> str:
         full_name="Jane HR",
         first_name="Jane",
         last_name="HR",
-        role=UserRole.HR_ADMIN.value,
+        role=UserRole.HR_MANAGER.value,
         status=UserStatus.ACTIVE.value,
         company_id=company_id,
     )
