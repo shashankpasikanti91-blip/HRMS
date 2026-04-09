@@ -71,8 +71,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ isLoading: false });
         return;
       }
-      // FastAPI /users/me or /auth/me endpoint returns the current user
-      const { data } = await api.get("/users/me");
+      // FastAPI current-user endpoint
+      const { data } = await api.get("/auth/me");
       // Handle both direct response and wrapped { data: ... }
       const user: AuthUser = (data as { data?: AuthUser }).data ?? (data as AuthUser);
       set({ user, isAuthenticated: true, isLoading: false });

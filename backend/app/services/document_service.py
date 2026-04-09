@@ -31,9 +31,8 @@ class DocumentService:
         storage = StorageService()
         file_url = await storage.upload(file, folder="documents", company_id=company_id)
 
-        bid_svc = BusinessIdService(self.db)
         doc = Document(
-            business_id=await bid_svc.generate("document"),
+            business_id=await BusinessIdService.generate(self.db, "document"),
             company_id=company_id,
             created_by=uploaded_by,
             updated_by=uploaded_by,
@@ -100,9 +99,8 @@ class NotificationService:
         company_id: str,
         created_by: str,
     ) -> Notification:
-        bid_svc = BusinessIdService(self.db)
         notif = Notification(
-            business_id=await bid_svc.generate("notification"),
+            business_id=await BusinessIdService.generate(self.db, "notification"),
             company_id=company_id,
             created_by=created_by,
             updated_by=created_by,

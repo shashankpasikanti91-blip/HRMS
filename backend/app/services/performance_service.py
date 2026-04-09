@@ -21,9 +21,8 @@ class PerformanceService:
         company_id: str,
         created_by: str,
     ) -> PerformanceReview:
-        bid_svc = BusinessIdService(self.db)
         review = PerformanceReview(
-            business_id=await bid_svc.generate("performance_review"),
+            business_id=await BusinessIdService.generate(self.db, "performance_review"),
             company_id=company_id,
             created_by=created_by,
             updated_by=created_by,

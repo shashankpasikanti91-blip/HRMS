@@ -348,7 +348,7 @@ services:
       - ALLOWED_ORIGINS=https://app.hrms.srpailabs.com,https://hrms.srpailabs.com
       - FRONTEND_URL=https://app.hrms.srpailabs.com
       - DOCS_ENABLED=false
-      - LOCAL_UPLOAD_DIR=/app/uploads
+      - LOCAL_UPLOAD_DIR=/tmp/uploads
       - STORAGE_BACKEND=local
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}

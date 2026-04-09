@@ -48,7 +48,8 @@ class StorageService:
             await f.write(content)
 
         logger.info("File saved locally", path=str(dest))
-        return f"/static/{key}"
+        base_url = settings.FRONTEND_URL.rstrip("/")
+        return f"{base_url}/files/{key}"
 
     @classmethod
     async def _upload_s3(cls, file: UploadFile, key: str) -> str:
@@ -86,8 +87,12 @@ class StorageService:
         """Delete a file. Best effort, does not raise."""
         try:
             if settings.STORAGE_BACKEND == "local":
-                if file_url.startswith("/static/"):
-                    path = Path(settings.LOCAL_UPLOAD_DIR) / file_url[len("/static/"):]
+                normalized = file_url
+                base_url = settings.FRONTEND_URL.rstrip("/")
+                if normalized.startswith(base_url):
+                    normalized = normalized[len(base_url):]
+                if normalized.startswith("/files/"):
+                    path = Path(settings.LOCAL_UPLOAD_DIR) / normalized[len("/files/"):]
                     if path.exists():
                         path.unlink()
         except Exception as e:
