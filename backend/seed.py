@@ -67,7 +67,7 @@ async def _upsert_company(session: AsyncSession) -> str:
         country="US",
         status=CompanyStatus.ACTIVE,
         subscription_plan=SubscriptionPlan.PROFESSIONAL,
-        max_employees=500,
+        employee_limit=500,
     )
     session.add(company)
     await session.flush()
