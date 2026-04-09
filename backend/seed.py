@@ -82,7 +82,7 @@ async def _upsert_super_admin(session: AsyncSession) -> str:
     from app.models.user import User
 
     result = await session.execute(
-        select(User).where(User.email == settings.SUPER_ADMIN_EMAIL)
+        select(User).where(User.email == settings.effective_super_admin_email)
     )
     user = result.scalar_one_or_none()
     if user:
@@ -94,8 +94,8 @@ async def _upsert_super_admin(session: AsyncSession) -> str:
     user = User(
         id=uid,
         business_id=_bid("USR", 1),
-        email=settings.SUPER_ADMIN_EMAIL,
-        password_hash=hash_password(settings.SUPER_ADMIN_PASSWORD),
+        email=settings.effective_super_admin_email,
+        password_hash=hash_password(settings.effective_super_admin_password),
         full_name="Super Admin",
         first_name="Super",
         last_name="Admin",

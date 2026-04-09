@@ -58,8 +58,19 @@ class Settings(BaseSettings):
     NEXTAUTH_SECRET: Optional[str] = None
 
     # ── Super Admin ────────────────────────────────────────
+    # Accepts both SUPER_ADMIN_EMAIL and FASTAPI_SUPER_ADMIN_EMAIL (legacy)
     SUPER_ADMIN_EMAIL: str = "superadmin@srpailabs.com"
     SUPER_ADMIN_PASSWORD: str = "SuperAdmin@2026!"
+    FASTAPI_SUPER_ADMIN_EMAIL: Optional[str] = None
+    FASTAPI_SUPER_ADMIN_PASSWORD: Optional[str] = None
+
+    @property
+    def effective_super_admin_email(self) -> str:
+        return self.FASTAPI_SUPER_ADMIN_EMAIL or self.SUPER_ADMIN_EMAIL
+
+    @property
+    def effective_super_admin_password(self) -> str:
+        return self.FASTAPI_SUPER_ADMIN_PASSWORD or self.SUPER_ADMIN_PASSWORD
 
     # ── File Storage ───────────────────────────────────────
     STORAGE_BACKEND: str = "local"
