@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.rate_limit import limiter
 from app.models.user import User, TokenBlacklist
 from app.core.security import decode_token
 from app.schemas.auth import (
@@ -33,6 +34,7 @@ settings = get_settings()
 
 
 @router.post("/register", response_model=dict, status_code=201)
+@limiter.limit("5/minute")
 async def register(
     data: RegisterRequest | RegisterCompanyRequest,
     request: Request,
@@ -59,6 +61,7 @@ async def register(
 
 
 @router.post("/google-sync", response_model=dict)
+@limiter.limit("10/minute")
 async def google_sync(
     data: GoogleSyncRequest,
     request: Request,
@@ -123,8 +126,10 @@ async def google_callback(
 
 
 @router.post("/register-company", response_model=dict, status_code=201)
+@limiter.limit("3/minute")
 async def register_company(
     data: RegisterCompanyRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Register a new company with an admin user account."""
@@ -139,6 +144,7 @@ async def register_company(
 
 
 @router.post("/login", response_model=dict)
+@limiter.limit("10/minute")
 async def login(
     data: LoginRequest,
     request: Request,
@@ -175,6 +181,7 @@ async def refresh_token(
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
+@limiter.limit("3/minute")
 async def forgot_password(
     data: ForgotPasswordRequest,
     request: Request,
@@ -189,8 +196,10 @@ async def forgot_password(
 
 
 @router.post("/reset-password", response_model=MessageResponse)
+@limiter.limit("5/minute")
 async def reset_password(
     data: ResetPasswordRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Reset password using the reset token."""

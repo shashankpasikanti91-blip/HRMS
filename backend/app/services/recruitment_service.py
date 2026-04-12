@@ -111,6 +111,10 @@ class RecruitmentService:
         await self.db.refresh(job)
         return job
 
+    async def delete_job(self, business_id: str, company_id: str) -> None:
+        job = await self.job_repo.get_or_404(business_id, company_id)
+        await self.job_repo.soft_delete(job)
+
     # ── Candidates ─────────────────────────────────────────────────────────
     async def create_candidate(self, data: CandidateCreate, company_id: str, created_by: str) -> Candidate:
         # Check email uniqueness
@@ -244,12 +248,15 @@ class RecruitmentService:
         company_id: str,
         params: PaginationParams,
         job_id: Optional[str] = None,
+        candidate_id: Optional[str] = None,
         stage: Optional[str] = None,
         status: Optional[str] = None,
     ) -> Tuple[List[Application], int]:
         filters = {}
         if job_id:
             filters["job_posting_id"] = job_id
+        if candidate_id:
+            filters["candidate_id"] = candidate_id
         if stage:
             filters["current_stage"] = stage
         if status:
@@ -331,10 +338,13 @@ class InterviewService:
         company_id: str,
         params: PaginationParams,
         application_id: Optional[str] = None,
+        status: Optional[str] = None,
     ) -> Tuple[List[Interview], int]:
         filters = {}
         if application_id:
             filters["application_id"] = application_id
+        if status:
+            filters["interview_status"] = status
         return await self.repo.list(company_id=company_id, params=params, filters=filters)
 
     async def get(self, business_id: str, company_id: str) -> Interview:
@@ -348,6 +358,10 @@ class InterviewService:
                 update_dict[key] = update_dict[key].value
         update_dict["updated_by"] = updated_by
         return await self.repo.update(interview, update_dict)
+
+    async def delete(self, business_id: str, company_id: str) -> None:
+        interview = await self.repo.get_or_404(business_id, company_id)
+        await self.repo.soft_delete(interview)
 
 
 class OfferService:
@@ -388,11 +402,30 @@ class OfferService:
         await self.db.refresh(offer)
         return offer
 
-    async def list(self, company_id: str, params: PaginationParams) -> Tuple[List[Offer], int]:
-        return await self.repo.list(company_id=company_id, params=params)
+    async def list(
+        self,
+        company_id: str,
+        params: PaginationParams,
+        application_id: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Tuple[List[Offer], int]:
+        filters = {}
+        if application_id:
+            filters["application_id"] = application_id
+        if status:
+            filters["offer_status"] = status
+        return await self.repo.list(company_id=company_id, params=params, filters=filters)
 
     async def get(self, business_id: str, company_id: str) -> Offer:
         return await self.repo.get_or_404(business_id, company_id)
+
+    async def update(self, business_id: str, data, company_id: str, updated_by: str) -> Offer:
+        offer = await self.repo.get_or_404(business_id, company_id)
+        update_dict = data.model_dump(exclude_unset=True)
+        if "offer_status" in update_dict and update_dict["offer_status"] and hasattr(update_dict["offer_status"], "value"):
+            update_dict["offer_status"] = update_dict["offer_status"].value
+        update_dict["updated_by"] = updated_by
+        return await self.repo.update(offer, update_dict)
 
     async def update_status(self, business_id: str, data: OfferStatusUpdate, company_id: str, updated_by: str) -> Offer:
         offer = await self.repo.get_or_404(business_id, company_id)
