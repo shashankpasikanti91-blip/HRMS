@@ -72,3 +72,26 @@ class LeaveRequest(BaseModel):
 
     # ── Relationships ──────────────────────────────────────────────────────
     employee: Mapped["Employee"] = relationship("Employee", back_populates="leave_requests", foreign_keys=[employee_id], lazy="noload")  # type: ignore[name-defined]
+
+
+class Holiday(BaseModel):
+    __tablename__ = "holidays"
+
+    company_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    holiday_type: Mapped[str] = mapped_column(
+        String(50), default="public", nullable=False
+    )  # public, restricted, optional
+    country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    state: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    __table_args__ = (
+        __import__("sqlalchemy").UniqueConstraint(
+            "company_id", "date", "name", name="uq_holiday_company_date_name"
+        ),
+    )

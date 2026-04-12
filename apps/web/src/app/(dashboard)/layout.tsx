@@ -12,7 +12,7 @@ import GlobalSearch from "@/components/search/GlobalSearch";
 import NotificationBell from "@/components/layout/NotificationBell";
 import {
   LayoutDashboard, Users, Building2, Clock, DollarSign, Briefcase,
-  Target, Bell, BarChart3, Bot, Settings, LogOut, ChevronLeft, Menu,
+  Target, Bell, BarChart3, Bot, Settings, LogOut, ChevronLeft, Menu, CalendarDays,
 } from "lucide-react";
 
 const navItems = [
@@ -20,6 +20,7 @@ const navItems = [
   { href: "/dashboard/employees", label: "Employees", icon: Users, roles: ["super_admin", "company_admin", "hr_manager"] },
   { href: "/dashboard/departments", label: "Departments", icon: Building2, roles: null },
   { href: "/dashboard/attendance", label: "Attendance", icon: Clock, roles: null },
+  { href: "/dashboard/holidays", label: "Holidays", icon: CalendarDays, roles: null },
   { href: "/dashboard/payroll", label: "Payroll", icon: DollarSign, roles: ["super_admin", "company_admin", "hr_manager"] },
   { href: "/dashboard/recruitment", label: "Recruitment", icon: Briefcase, roles: ["super_admin", "company_admin", "hr_manager", "recruiter", "employee"] },
   { href: "/dashboard/performance", label: "Performance", icon: Target, roles: null },

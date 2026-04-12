@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -208,6 +208,24 @@ async def delete_employee(
     svc = EmployeeService(db)
     await svc.delete(business_id, current_user.company_id, current_user.id)
     return MessageResponse(message=f"Employee {business_id} deleted successfully")
+
+
+@emp_router.post("/{business_id}/photo", response_model=EmployeeResponse)
+async def upload_employee_photo(
+    business_id: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload a profile photo for an employee."""
+    from app.integrations.storage_service import StorageService
+    svc = EmployeeService(db)
+    emp = await svc.get(business_id, current_user.company_id)
+    url = await StorageService.upload(file, folder="photos", company_id=current_user.company_id)
+    emp.profile_photo_url = url
+    await db.flush()
+    await db.refresh(emp)
+    return EmployeeResponse.model_validate(emp)
 
 
 def _format_employee(emp, db, company_id):

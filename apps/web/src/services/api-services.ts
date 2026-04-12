@@ -17,6 +17,7 @@ import type {
   Page,
   LoginResponse, Company,
   AIScreeningResult, AIJobPosts,
+  Holiday,
 } from "@/types";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -141,6 +142,14 @@ export const employeeService = {
   async getSummary(businessId: string) {
     const { data } = await api.get(`/employees/${businessId}/summary`);
     return data;
+  },
+  async uploadPhoto(businessId: string, file: File): Promise<Employee> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post(`/employees/${businessId}/photo`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data as Employee;
   },
 };
 
@@ -324,6 +333,14 @@ export const candidateService = {
   },
   async update(businessId: string, payload: Partial<Candidate>): Promise<Candidate> {
     const { data } = await api.put(`/candidates/${businessId}`, payload);
+    return data as Candidate;
+  },
+  async uploadResume(businessId: string, file: File): Promise<Candidate> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post(`/candidates/${businessId}/resume`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
     return data as Candidate;
   },
 };
@@ -684,5 +701,34 @@ export const aiRecruitmentService = {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return data as AIJobPosts;
+  },
+};
+
+// ─── Holidays ────────────────────────────────────────────────────────────────
+export const holidayService = {
+  async list(params?: {
+    page?: number; page_size?: number; year?: number;
+    country?: string; state?: string;
+  }): Promise<Page<Holiday>> {
+    const { data } = await api.get("/holidays", { params });
+    return data as Page<Holiday>;
+  },
+  async getByBusinessId(businessId: string): Promise<Holiday> {
+    const { data } = await api.get(`/holidays/${businessId}`);
+    return data as Holiday;
+  },
+  async create(payload: {
+    name: string; date: string; holiday_type?: string;
+    country?: string; state?: string; description?: string; is_paid?: boolean;
+  }): Promise<Holiday> {
+    const { data } = await api.post("/holidays", payload);
+    return data as Holiday;
+  },
+  async update(businessId: string, payload: Partial<Holiday>): Promise<Holiday> {
+    const { data } = await api.put(`/holidays/${businessId}`, payload);
+    return data as Holiday;
+  },
+  async delete(businessId: string): Promise<void> {
+    await api.delete(`/holidays/${businessId}`);
   },
 };

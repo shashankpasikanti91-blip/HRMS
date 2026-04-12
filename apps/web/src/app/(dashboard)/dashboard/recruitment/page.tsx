@@ -158,7 +158,7 @@ export default function RecruitmentPage() {
       if (isValidResumeFile(file)) {
         setResumeFile(file);
       } else {
-        toast({ title: "Invalid file", description: "Please upload PDF, DOC, or DOCX files only", variant: "destructive" });
+        toast({ title: "Invalid file", description: "Please upload PDF, DOC, DOCX, XLS, XLSX, CSV, or TXT files", variant: "destructive" });
       }
     }
   }
@@ -170,7 +170,7 @@ export default function RecruitmentPage() {
       if (isValidResumeFile(file)) {
         setResumeFile(file);
       } else {
-        toast({ title: "Invalid file", description: "Please upload PDF, DOC, or DOCX files only", variant: "destructive" });
+        toast({ title: "Invalid file", description: "Please upload PDF, DOC, DOCX, XLS, XLSX, CSV, or TXT files", variant: "destructive" });
       }
     }
   }
@@ -180,8 +180,13 @@ export default function RecruitmentPage() {
       "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+      "text/csv",
+      "text/plain",
+      "application/rtf",
     ];
-    return validTypes.includes(file.type) || /\.(pdf|doc|docx)$/i.test(file.name);
+    return validTypes.includes(file.type) || /\.(pdf|doc|docx|xlsx|xls|csv|txt|rtf)$/i.test(file.name);
   }
 
   async function handleCreateCandidate() {
@@ -190,7 +195,7 @@ export default function RecruitmentPage() {
     }
     setProcessing(true);
     try {
-      await candidateService.create({
+      const created = await candidateService.create({
         full_name: candidateForm.full_name,
         email: candidateForm.email,
         phone: candidateForm.phone || undefined,
@@ -199,6 +204,14 @@ export default function RecruitmentPage() {
         source: candidateForm.source || undefined,
         resume_url: candidateForm.resume_url || undefined,
       });
+      // Upload resume file if selected
+      if (resumeFile && created.business_id) {
+        try {
+          await candidateService.uploadResume(created.business_id, resumeFile);
+        } catch {
+          toast({ title: "Warning", description: "Candidate created but resume upload failed", variant: "destructive" });
+        }
+      }
       toast({ title: "Candidate Added", description: `${candidateForm.full_name} has been added`, variant: "success" });
       setCandidateDialogOpen(false);
       setCandidateForm({ full_name: "", email: "", phone: "", current_role: "", years_of_experience: 0, source: "direct", resume_url: "" });
@@ -555,7 +568,7 @@ export default function RecruitmentPage() {
                     <input
                       ref={screenFileRef}
                       type="file"
-                      accept=".pdf,.doc,.docx"
+                      accept=".pdf,.doc,.docx,.xlsx,.xls,.csv,.txt,.rtf"
                       className="hidden"
                       onChange={(e) => {
                         if (e.target.files?.[0]) setScreenFile(e.target.files[0]);
@@ -576,7 +589,7 @@ export default function RecruitmentPage() {
                           Drag & drop resume here, or{" "}
                           <button className="text-primary underline" onClick={() => screenFileRef.current?.click()}>browse</button>
                         </p>
-                        <p className="text-xs text-muted-foreground">PDF, DOC, DOCX (max 10MB)</p>
+                        <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, XLS, XLSX, CSV, TXT (max 10MB)</p>
                       </>
                     )}
                   </div>
@@ -981,7 +994,7 @@ export default function RecruitmentPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.doc,.docx"
+                  accept=".pdf,.doc,.docx,.xlsx,.xls,.csv,.txt,.rtf"
                   className="hidden"
                   onChange={handleFileSelect}
                 />
@@ -1001,8 +1014,8 @@ export default function RecruitmentPage() {
                       Drag & drop resume here, or{" "}
                       <button type="button" className="text-primary underline" onClick={() => fileInputRef.current?.click()}>browse files</button>
                     </p>
-                    <p className="text-xs text-muted-foreground">PDF, DOC, DOCX (max 10MB)</p>
-                  </>
+                    <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, XLS, XLSX, CSV, TXT (max 10MB)</p>
+                  <>
                 )}
               </div>
             </div>
@@ -1025,64 +1038,15 @@ export default function RecruitmentPage() {
             <DialogDescription>Full candidate profile and screening information</DialogDescription>
           </DialogHeader>
           {selectedCandidate && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="text-sm font-medium">{selectedCandidate.email}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-xs text-muted-foreground">Phone</p>
-                  <p className="text-sm font-medium">{selectedCandidate.phone || "—"}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-xs text-muted-foreground">Current Role</p>
-                  <p className="text-sm font-medium">{selectedCandidate.current_role || "—"}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-xs text-muted-foreground">Company</p>
-                  <p className="text-sm font-medium">{selectedCandidate.current_company || "—"}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-xs text-muted-foreground">Experience</p>
-                  <p className="text-sm font-medium">{selectedCandidate.years_of_experience ?? "—"} years</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-xs text-muted-foreground">Source</p>
-                  <p className="text-sm font-medium">{selectedCandidate.source || "—"}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-xs text-muted-foreground">Status</p>
-                  <Badge variant={selectedCandidate.status === "active" ? "success" : "secondary"}>{selectedCandidate.status}</Badge>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-xs text-muted-foreground">AI Score</p>
-                  <p className="text-sm font-medium">
-                    {selectedCandidate.ai_score != null ? (
-                      <span className={scoreColor(selectedCandidate.ai_score)}>{selectedCandidate.ai_score}/100</span>
-                    ) : "Not screened"}
-                  </p>
-                </div>
-              </div>
-              {selectedCandidate.ai_summary && (
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs font-semibold text-muted-foreground mb-1">AI Summary</p>
-                  <p className="text-sm">{selectedCandidate.ai_summary}</p>
-                </div>
-              )}
-              {selectedCandidate.resume_url && (
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  <a href={selectedCandidate.resume_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
-                    View Resume
-                  </a>
-                </div>
-              )}
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">Business ID</p>
-                <code className="text-xs">{selectedCandidate.business_id}</code>
-              </div>
-            </div>
+            <CandidateDetailPanel
+              candidate={selectedCandidate}
+              onUpdate={async (updated) => {
+                setCandidates((prev) => prev.map((c) => c.business_id === updated.business_id ? { ...c, ...updated } : c));
+                setSelectedCandidate((prev) => prev ? { ...prev, ...updated } : prev);
+              }}
+              scoreColor={scoreColor}
+              toast={toast}
+            />
           )}
         </DialogContent>
       </Dialog>
@@ -1148,6 +1112,222 @@ export default function RecruitmentPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ── Candidate Detail Panel (with edit, resume upload/view) ────────────────
+function CandidateDetailPanel({
+  candidate,
+  onUpdate,
+  scoreColor,
+  toast,
+}: {
+  candidate: Candidate;
+  onUpdate: (c: Partial<Candidate>) => void;
+  scoreColor: (s: number) => string;
+  toast: ReturnType<typeof useToast>["toast"];
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const resumeUploadRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [form, setForm] = useState({
+    full_name: candidate.full_name || "",
+    email: candidate.email || "",
+    phone: candidate.phone || "",
+    current_role: candidate.current_role || "",
+    current_company: candidate.current_company || "",
+    years_of_experience: candidate.years_of_experience ?? 0,
+    source: candidate.source || "",
+  });
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const updated = await candidateService.update(candidate.business_id, form);
+      onUpdate(updated);
+      setEditing(false);
+      toast({ title: "Saved", description: "Candidate updated successfully", variant: "success" });
+    } catch {
+      toast({ title: "Error", description: "Failed to update candidate", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleResumeUpload(file: File) {
+    setUploading(true);
+    try {
+      const updated = await candidateService.uploadResume(candidate.business_id, file);
+      onUpdate(updated);
+      toast({ title: "Uploaded", description: "Resume uploaded successfully", variant: "success" });
+    } catch {
+      toast({ title: "Error", description: "Resume upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4 py-4">
+      {/* Edit toggle */}
+      <div className="flex justify-end gap-2">
+        {editing ? (
+          <>
+            <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Save
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+            Edit
+          </Button>
+        )}
+      </div>
+
+      {/* Profile fields */}
+      <div className="grid grid-cols-2 gap-4">
+        {editing ? (
+          <>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Full Name</Label>
+              <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Email</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Phone</Label>
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Current Role</Label>
+              <Input value={form.current_role} onChange={(e) => setForm({ ...form, current_role: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Company</Label>
+              <Input value={form.current_company} onChange={(e) => setForm({ ...form, current_company: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Experience (years)</Label>
+              <Input type="number" min={0} value={form.years_of_experience} onChange={(e) => setForm({ ...form, years_of_experience: parseInt(e.target.value) || 0 })} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Source</Label>
+              <Input value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Email</p>
+              <p className="text-sm font-medium">{candidate.email}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Phone</p>
+              <p className="text-sm font-medium">{candidate.phone || "—"}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Current Role</p>
+              <p className="text-sm font-medium">{candidate.current_role || "—"}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Company</p>
+              <p className="text-sm font-medium">{candidate.current_company || "—"}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Experience</p>
+              <p className="text-sm font-medium">{candidate.years_of_experience ?? "—"} years</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Source</p>
+              <p className="text-sm font-medium">{candidate.source || "—"}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Status</p>
+              <Badge variant={candidate.status === "active" ? "success" : "secondary"}>{candidate.status}</Badge>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">AI Score</p>
+              <p className="text-sm font-medium">
+                {candidate.ai_score != null ? (
+                  <span className={scoreColor(candidate.ai_score)}>{candidate.ai_score}/100</span>
+                ) : "Not screened"}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {candidate.ai_summary && (
+        <div className="rounded-lg border p-3">
+          <p className="text-xs font-semibold text-muted-foreground mb-1">AI Summary</p>
+          <p className="text-sm">{candidate.ai_summary}</p>
+        </div>
+      )}
+
+      {/* Resume section with upload/view/drag-drop */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">Resume</p>
+        {candidate.resume_url ? (
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <a href={candidate.resume_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+                View / Download Resume
+              </a>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => resumeUploadRef.current?.click()}>
+              <Upload className="mr-1 h-3 w-3" />Replace
+            </Button>
+          </div>
+        ) : (
+          <div
+            className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${dragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragActive(false);
+              if (e.dataTransfer.files?.[0]) handleResumeUpload(e.dataTransfer.files[0]);
+            }}
+          >
+            {uploading ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm">Uploading...</span>
+              </div>
+            ) : (
+              <>
+                <Upload className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Drag & drop resume here, or{" "}
+                  <button className="text-primary underline" onClick={() => resumeUploadRef.current?.click()}>browse files</button>
+                </p>
+                <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, XLS, XLSX, CSV, TXT (max 10MB)</p>
+              </>
+            )}
+          </div>
+        )}
+        <input
+          ref={resumeUploadRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.xlsx,.xls,.csv,.txt,.rtf"
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files?.[0]) handleResumeUpload(e.target.files[0]);
+          }}
+        />
+      </div>
+
+      <div className="rounded-lg border p-3">
+        <p className="text-xs text-muted-foreground">Business ID</p>
+        <code className="text-xs">{candidate.business_id}</code>
+      </div>
     </div>
   );
 }

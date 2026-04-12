@@ -1,18 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, MapPin, Briefcase, UploadCloud, FileText, Trash2, Download, Loader2, Clock3 } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, MapPin, Briefcase, UploadCloud, FileText, Trash2, Download, Loader2, Clock3, Camera } from "lucide-react";
 import { employeeService, attendanceService, leaveService, documentService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { getInitials, formatDate } from "@/lib/utils";
@@ -33,6 +33,8 @@ export default function EmployeeDetailPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [documentType, setDocumentType] = useState("contract");
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const loadEmployeeData = useCallback(async () => {
     if (!employeeId) return;
@@ -106,6 +108,25 @@ export default function EmployeeDetailPage() {
     }
   }
 
+  async function handlePhotoUpload(file: File) {
+    if (!employee) return;
+    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!validTypes.includes(file.type)) {
+      toast({ title: "Invalid file", description: "Please upload JPG, PNG, WEBP, or GIF images", variant: "destructive" });
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const updated = await employeeService.uploadPhoto(employee.business_id, file);
+      setEmployee((prev) => prev ? { ...prev, profile_photo_url: updated.profile_photo_url } : prev);
+      toast({ title: "Photo Updated", description: "Profile photo uploaded successfully", variant: "success" });
+    } catch {
+      toast({ title: "Upload Failed", description: "Could not upload profile photo", variant: "destructive" });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -147,9 +168,34 @@ export default function EmployeeDetailPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center">
-              <Avatar className="h-20 w-20">
-                <AvatarFallback className="text-xl">{getInitials(employee.full_name)}</AvatarFallback>
-              </Avatar>
+              <div className="relative group">
+                <Avatar className="h-20 w-20">
+                  {employee.profile_photo_url && (
+                    <AvatarImage src={employee.profile_photo_url} alt={employee.full_name} />
+                  )}
+                  <AvatarFallback className="text-xl">{getInitials(employee.full_name)}</AvatarFallback>
+                </Avatar>
+                <button
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white" />
+                  )}
+                </button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) handlePhotoUpload(e.target.files[0]);
+                  }}
+                />
+              </div>
               <h2 className="mt-4 text-lg font-semibold">{employee.full_name}</h2>
               <p className="text-sm text-muted-foreground">{employee.designation || "Employee"}</p>
               <Badge className="mt-2" variant={employee.employment_status === "active" ? "success" : employee.employment_status === "on_leave" ? "warning" : "secondary"}>
@@ -220,6 +266,10 @@ export default function EmployeeDetailPage() {
                       <p className="text-muted-foreground">Manager</p>
                       <p className="font-medium">{employee.manager_name || "—"}</p>
                     </div>
+                    <div>
+                      <p className="text-muted-foreground">Nationality</p>
+                      <p className="font-medium">{employee.nationality || "—"}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -244,6 +294,64 @@ export default function EmployeeDetailPage() {
                     <div>
                       <p className="text-muted-foreground">Work Mode</p>
                       <p className="font-medium">{employee.work_mode?.replace("_", " ") || "Hybrid"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              {/* Visa / Immigration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Visa & Immigration</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Visa Status</p>
+                      <p className="font-medium">
+                        {employee.visa_status ? (
+                          <Badge variant={
+                            employee.visa_status === "valid" ? "success" :
+                            employee.visa_status === "expired" ? "destructive" :
+                            employee.visa_status === "pending" ? "warning" : "secondary"
+                          }>
+                            {employee.visa_status}
+                          </Badge>
+                        ) : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Visa Type</p>
+                      <p className="font-medium">{employee.visa_type || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Visa Expiry</p>
+                      <p className="font-medium">
+                        {employee.visa_expiry_date ? (
+                          <>
+                            {formatDate(employee.visa_expiry_date)}
+                            {new Date(employee.visa_expiry_date) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) && (
+                              <Badge className="ml-2" variant="destructive">Expiring Soon</Badge>
+                            )}
+                          </>
+                        ) : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Passport Number</p>
+                      <p className="font-medium">{employee.passport_number || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Passport Expiry</p>
+                      <p className="font-medium">
+                        {employee.passport_expiry_date ? (
+                          <>
+                            {formatDate(employee.passport_expiry_date)}
+                            {new Date(employee.passport_expiry_date) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) && (
+                              <Badge className="ml-2" variant="destructive">Expiring Soon</Badge>
+                            )}
+                          </>
+                        ) : "—"}
+                      </p>
                     </div>
                   </div>
                 </CardContent>

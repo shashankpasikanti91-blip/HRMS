@@ -105,6 +105,12 @@ class EmployeeUpdate(BaseSchema):
     employment_status: Optional[EmploymentStatus] = None
     notes: Optional[str] = None
     profile_photo_url: Optional[str] = None
+    visa_status: Optional[str] = None
+    visa_type: Optional[str] = None
+    visa_expiry_date: Optional[date] = None
+    passport_number: Optional[str] = None
+    passport_expiry_date: Optional[date] = None
+    nationality: Optional[str] = None
 
 
 class EmployeeResponse(BaseResponse):
@@ -131,6 +137,12 @@ class EmployeeResponse(BaseResponse):
     location: Optional[str] = None
     profile_photo_url: Optional[str] = None
     documents_count: int = 0
+    visa_status: Optional[str] = None
+    visa_type: Optional[str] = None
+    visa_expiry_date: Optional[date] = None
+    passport_number: Optional[str] = None
+    passport_expiry_date: Optional[date] = None
+    nationality: Optional[str] = None
 
 
 class EmployeeSummary(BaseSchema):

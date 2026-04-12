@@ -110,6 +110,12 @@ export interface Employee extends BaseRecord {
   location?: string;
   profile_photo_url?: string;
   documents_count?: number;
+  visa_status?: string;
+  visa_type?: string;
+  visa_expiry_date?: string;
+  passport_number?: string;
+  passport_expiry_date?: string;
+  nationality?: string;
 }
 
 export interface EmployeeSummary {
@@ -415,6 +421,18 @@ export interface Notification extends BaseRecord {
   action_url?: string;
   entity_type?: string;
   entity_id?: string;
+}
+
+// ─── Holiday ─────────────────────────────────────────────────
+export interface Holiday extends BaseRecord {
+  company_id: string;
+  name: string;
+  date: string;
+  holiday_type: string; // public, restricted, optional
+  country?: string;
+  state?: string;
+  description?: string;
+  is_paid: boolean;
 }
 
 // ─── Search ──────────────────────────────────────────────────

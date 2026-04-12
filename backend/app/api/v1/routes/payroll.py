@@ -113,9 +113,11 @@ async def get_payroll_item_detail(
     current_user: User = Depends(require_hr_or_above()),
 ):
     """Get detailed payslip for a single employee including company info."""
-    from sqlalchemy import select as sa_select
-    from app.models.employee import Employee
+    from sqlalchemy import select as sa_select, outerjoin
+    from app.models.employee import Employee, Department
     from app.models.payroll import PayrollItem, PayrollRun
+    from app.models.company import Company
+    from app.core.exceptions import NotFoundException
 
     # Find payroll item
     item_result = await db.execute(
@@ -127,14 +129,17 @@ async def get_payroll_item_detail(
     )
     item = item_result.scalar_one_or_none()
     if not item:
-        from app.core.exceptions import NotFoundException
         raise NotFoundException("Payslip not found")
 
-    # Get employee details
+    # Get employee details with department name via join
     emp_result = await db.execute(
-        sa_select(Employee).where(Employee.id == item.employee_id)
+        sa_select(Employee, Department.name.label("dept_name"))
+        .outerjoin(Department, Employee.department_id == Department.id)
+        .where(Employee.id == item.employee_id)
     )
-    emp = emp_result.scalar_one_or_none()
+    emp_row = emp_result.first()
+    emp = emp_row[0] if emp_row else None
+    dept_name = emp_row[1] if emp_row else None
 
     # Get payroll run
     run_result = await db.execute(
@@ -143,7 +148,6 @@ async def get_payroll_item_detail(
     run = run_result.scalar_one_or_none()
 
     # Get company info
-    from app.models.company import Company
     company_result = await db.execute(
         sa_select(Company).where(Company.id == current_user.company_id)
     )
@@ -152,38 +156,38 @@ async def get_payroll_item_detail(
     return {
         "payslip": {
             "business_id": item.business_id,
-            "gross_salary": item.gross_salary,
-            "allowances": item.allowances,
-            "deductions": item.deductions,
-            "tax_amount": item.tax_amount,
-            "net_salary": item.net_salary,
-            "currency": item.currency,
-            "payment_status": item.payment_status,
+            "gross_salary": float(item.gross_salary or 0),
+            "allowances": float(item.allowances or 0),
+            "deductions": float(item.deductions or 0),
+            "tax_amount": float(item.tax_amount or 0),
+            "net_salary": float(item.net_salary or 0),
+            "currency": item.currency or "INR",
+            "payment_status": item.payment_status or "pending",
             "payment_date": str(item.payment_date) if item.payment_date else None,
         },
         "employee": {
-            "business_id": emp.business_id if emp else None,
-            "full_name": f"{emp.first_name or ''} {emp.last_name or ''}".strip() if emp else "Unknown",
-            "employee_code": emp.employee_code if emp else None,
-            "work_email": emp.work_email if emp else None,
-            "department_name": emp.department_name if emp and hasattr(emp, "department_name") else None,
-            "designation": emp.designation if emp else None,
-            "joining_date": str(emp.joining_date) if emp and emp.joining_date else None,
+            "business_id": emp.business_id,
+            "full_name": f"{emp.first_name or ''} {emp.last_name or ''}".strip() or emp.full_name or "Unknown",
+            "employee_code": emp.employee_code,
+            "work_email": emp.work_email,
+            "department_name": dept_name,
+            "designation": emp.designation,
+            "joining_date": str(emp.joining_date) if emp.joining_date else None,
         } if emp else None,
         "payroll_run": {
-            "business_id": run.business_id if run else None,
-            "period_month": run.period_month if run else None,
-            "period_year": run.period_year if run else None,
-            "status": run.status if run else None,
+            "business_id": run.business_id,
+            "period_month": run.period_month,
+            "period_year": run.period_year,
+            "status": run.status,
         } if run else None,
         "company": {
-            "name": company.name if company else None,
-            "legal_name": company.legal_name if company and hasattr(company, "legal_name") else None,
-            "email": company.email if company and hasattr(company, "email") else None,
-            "phone": company.phone if company and hasattr(company, "phone") else None,
-            "address": company.address if company and hasattr(company, "address") else None,
-            "city": company.city if company and hasattr(company, "city") else None,
-            "country": company.country if company and hasattr(company, "country") else None,
-            "logo_url": company.logo_url if company and hasattr(company, "logo_url") else None,
+            "name": company.name,
+            "legal_name": getattr(company, "legal_name", None),
+            "email": getattr(company, "email", None),
+            "phone": getattr(company, "phone", None),
+            "address": getattr(company, "address", None),
+            "city": getattr(company, "city", None),
+            "country": getattr(company, "country", None),
+            "logo_url": getattr(company, "logo_url", None),
         } if company else None,
     }

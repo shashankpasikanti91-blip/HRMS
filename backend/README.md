@@ -13,12 +13,13 @@ Production-ready, multi-tenant HRMS SaaS backend built with **FastAPI + PostgreS
 | Auth | 8 | Register, login, refresh, forgot/reset, invite, activate |
 | Companies | 4 | Tenant management, admin company CRUD |
 | Users | 5 | User CRUD with role-based access |
-| Employees | 8 | Employee + Department CRUD with auto business IDs |
+| Employees | 9 | Employee + Department CRUD, profile photo upload, visa tracking |
 | Attendance | 8 | Check-in/out, manual entry, leave requests & approvals |
+| Holidays | 5 | Holiday calendar CRUD with country/state filtering |
 | Recruitment | 18 | Jobs, candidates, applications, interviews, offers + stage pipeline |
 | Payroll | 5 | Payroll runs, processing, pay slips |
 | Performance | 5 | Performance reviews |
-| Documents | 4 | File upload (local/S3) |
+| Documents | 4 | File upload (local/S3) — supports PDF, DOC, DOCX, XLS, XLSX, CSV, TXT, RTF |
 | Notifications | 3 | In-app notification read/mark-all |
 | Analytics | 6 | Dashboard, attendance, recruitment funnel, headcount, leave, payroll |
 | Search | 1 | `GET /api/v1/search/global?q=` — searches all entities |
@@ -37,6 +38,7 @@ Every entity has a unique, human-readable, searchable Business ID:
 | Application | APP-NNNNNN | APP-000200 |
 | Attendance | ATT-NNNNNN | ATT-001234 |
 | Leave | LVE-NNNNNN | LVE-000050 |
+| Holiday | HOL-NNNNNN | HOL-000012 |
 | Payroll Run | PAY-NNNNNN | PAY-000001 |
 | Payroll Item | PAYI-NNNNNN | PAYI-000050 |
 | Performance | PERF-NNNNNN | PERF-000010 |
@@ -177,11 +179,12 @@ See [`.env.example`](.env.example) for the full list. Key vars:
 ├── companies/               # Company management  
 ├── users/                   # User CRUD
 ├── departments/             # Department CRUD
-├── employees/               # Employee CRUD
+├── employees/               # Employee CRUD + photo upload + visa tracking
 ├── attendance/              # Attendance management
 ├── leaves/                  # Leave requests
+├── holidays/                # Holiday calendar (country/state-wise)
 ├── jobs/                    # Job postings
-├── candidates/              # Candidate profiles
+├── candidates/              # Candidate profiles + resume upload
 ├── applications/            # Job applications + stage pipeline
 ├── interviews/              # Interviews
 ├── offers/                  # Offer letters

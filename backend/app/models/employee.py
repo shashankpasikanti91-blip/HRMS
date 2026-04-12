@@ -82,6 +82,14 @@ class Employee(BaseModel):
     documents_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Visa / Immigration fields
+    visa_status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # valid, expired, pending, not_applicable
+    visa_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    visa_expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    passport_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    passport_expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    nationality: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
     __table_args__ = (
         __import__("sqlalchemy").UniqueConstraint("employee_code", "company_id", name="uq_employee_code_company"),
         __import__("sqlalchemy").UniqueConstraint("work_email", "company_id", name="uq_employee_email_company"),
