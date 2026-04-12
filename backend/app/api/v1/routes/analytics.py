@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,7 +32,7 @@ async def get_dashboard(
     return stats
 
 
-@router.get("/attendance", response_model=AttendanceSummaryResponse)
+@router.get("/attendance", response_model=List[AttendanceSummaryResponse])
 async def get_attendance_summary(
     days: int = Query(30, ge=1, le=365),
     db: AsyncSession = Depends(get_db),
@@ -38,8 +40,8 @@ async def get_attendance_summary(
 ):
     """Attendance rate per day for the last N days."""
     svc = AnalyticsService(db)
-    summary = await svc.get_attendance_summary(current_user.company_id, days=days)
-    return summary
+    summaries = await svc.get_attendance_summary_range(current_user.company_id, days=days)
+    return summaries
 
 
 @router.get("/recruitment-funnel", response_model=RecruitmentFunnelResponse)
@@ -53,7 +55,7 @@ async def get_recruitment_funnel(
     return funnel
 
 
-@router.get("/headcount", response_model=HeadcountByDepartmentResponse)
+@router.get("/headcount", response_model=List[HeadcountByDepartmentResponse])
 async def get_headcount_by_department(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_hr_or_above()),
@@ -64,7 +66,7 @@ async def get_headcount_by_department(
     return headcount
 
 
-@router.get("/leave-summary", response_model=LeaveSummaryResponse)
+@router.get("/leave-summary", response_model=List[LeaveSummaryResponse])
 async def get_leave_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_hr_or_above()),
@@ -75,7 +77,7 @@ async def get_leave_summary(
     return leave
 
 
-@router.get("/payroll-summary", response_model=PayrollSummaryResponse)
+@router.get("/payroll-summary", response_model=List[PayrollSummaryResponse])
 async def get_payroll_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_hr_or_above()),

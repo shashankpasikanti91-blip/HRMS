@@ -146,6 +146,17 @@ class AnalyticsService:
             attendance_percentage=round(pct, 1),
         )
 
+    async def get_attendance_summary_range(self, company_id: str, days: int = 30) -> List[AttendanceSummary]:
+        """Return attendance summaries for the last N days."""
+        from datetime import timedelta
+        today = date.today()
+        results = []
+        for i in range(days - 1, -1, -1):
+            d = today - timedelta(days=i)
+            summary = await self.get_attendance_summary(company_id, target_date=d)
+            results.append(summary)
+        return results
+
     async def get_recruitment_funnel(self, company_id: str, job_id: Optional[str] = None) -> RecruitmentFunnel:
         stages = [s.value for s in ApplicationStage]
         stage_counts = []

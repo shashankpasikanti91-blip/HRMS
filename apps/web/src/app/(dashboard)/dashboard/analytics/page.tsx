@@ -7,10 +7,38 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Download, Users, Clock, Loader2, TrendingUp } from "lucide-react";
+import {
+  BarChart3,
+  Download,
+  Users,
+  Clock,
+  Loader2,
+  TrendingUp,
+  Activity,
+  Briefcase,
+  Target,
+  ArrowUpRight,
+  ArrowDownRight,
+} from "lucide-react";
 import { analyticsService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import type { DashboardStats, AttendanceSummaryItem, HeadcountByDept } from "@/types";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+} from "recharts";
 
 interface RecruitmentFunnelData {
   stages?: Array<{ stage: string; count: number; conversion?: number }>;
@@ -26,6 +54,32 @@ interface AnalyticsData {
   recruitment: RecruitmentFunnelData;
 }
 
+const PERIOD_DAYS: Record<string, number> = {
+  last_7_days: 7,
+  last_30_days: 30,
+  last_90_days: 90,
+  last_12_months: 365,
+};
+
+const DEPT_COLORS = ["#2563eb", "#16a34a", "#ea580c", "#7c3aed", "#db2777", "#0891b2", "#dc2626", "#ca8a04"];
+
+function shortDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function avg(nums: number[]) {
+  if (!nums.length) return 0;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+function clamp(n: number, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function formatPct(n: number) {
+  return `${n.toFixed(1)}%`;
+}
+
 export default function AnalyticsPage() {
   const { toast } = useToast();
   const [data, setData] = useState<AnalyticsData>({ dashboard: null, attendance: [], headcount: [], recruitment: {} });
@@ -35,9 +89,10 @@ export default function AnalyticsPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const days = PERIOD_DAYS[period] ?? 30;
       const [dashRes, attendRes, headRes, recruitRes] = await Promise.allSettled([
         analyticsService.getDashboard(),
-        analyticsService.getAttendanceSummary(),
+        analyticsService.getAttendanceSummary(days),
         analyticsService.getHeadcount(),
         analyticsService.getRecruitmentFunnel(),
       ]);
@@ -52,7 +107,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [period]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -61,7 +116,79 @@ export default function AnalyticsPage() {
   const headcountData = data.headcount;
   const recruitData = data.recruitment;
 
-  const DEPT_COLORS = ["bg-blue-500", "bg-green-500", "bg-orange-500", "bg-purple-500", "bg-pink-500", "bg-cyan-500", "bg-red-500", "bg-yellow-500"];
+  const attendancePoints = attendSummary.map((a) => ({
+    label: shortDate(a.date),
+    attendance: a.attendance_percentage ?? 0,
+    present: a.present ?? 0,
+    absent: a.absent ?? 0,
+    late: a.late ?? 0,
+  }));
+
+  const headcountPie = headcountData.map((h, idx) => ({
+    name: h.department_name,
+    value: h.total,
+    color: DEPT_COLORS[idx % DEPT_COLORS.length],
+  }));
+
+  const recentSlice = attendSummary.slice(-7);
+  const prevSlice = attendSummary.slice(-14, -7);
+  const recentAttendance = avg(recentSlice.map((a) => a.attendance_percentage ?? 0));
+  const prevAttendance = avg(prevSlice.map((a) => a.attendance_percentage ?? 0));
+  const attendanceDelta = recentAttendance - prevAttendance;
+  const attendanceTrendUp = attendanceDelta >= 0;
+
+  const totalHeadcount = headcountData.reduce((sum, dept) => sum + dept.total, 0);
+  const totalActive = headcountData.reduce((sum, dept) => sum + dept.active, 0);
+  const utilizationRate = totalHeadcount ? (totalActive / totalHeadcount) * 100 : 0;
+  const presentTodayRate = dash?.total_employees ? ((dash.present_today ?? 0) / dash.total_employees) * 100 : 0;
+
+  const baseForecast = attendancePoints.slice(-5).map((p) => p.attendance);
+  const baseline = avg(baseForecast);
+  const slope = baseForecast.length > 1 ? (baseForecast[baseForecast.length - 1] - baseForecast[0]) / (baseForecast.length - 1) : 0;
+  const attendanceForecast = Array.from({ length: 3 }, (_, idx) => {
+    const next = clamp(baseline + slope * (idx + 1));
+    return {
+      period: `+${idx + 1} wk`,
+      forecast: Number(next.toFixed(1)),
+    };
+  });
+
+  const pipelineStages = recruitData.stages ?? [];
+  const totalApps = recruitData.total_applications ?? pipelineStages.reduce((sum, stage) => sum + stage.count, 0);
+  const topDepartment = [...headcountData].sort((a, b) => b.total - a.total)[0];
+  const healthScore = clamp((presentTodayRate * 0.45) + (utilizationRate * 0.25) + (Math.max(0, 100 - (dash?.leave_requests_pending ?? 0) * 3) * 0.15) + (Math.max(0, 100 - (dash?.offers_pending ?? 0) * 2) * 0.15));
+
+  const kpis = [
+    {
+      label: "Total Employees",
+      value: dash?.total_employees ?? 0,
+      helper: topDepartment ? `${topDepartment.department_name} leads` : "No department mix yet",
+      icon: Users,
+      color: "text-blue-600",
+    },
+    {
+      label: "Attendance Rate",
+      value: formatPct(recentAttendance || presentTodayRate),
+      helper: `${attendanceTrendUp ? "+" : ""}${attendanceDelta.toFixed(1)} pts vs previous window`,
+      icon: Activity,
+      color: "text-emerald-600",
+      trendUp: attendanceTrendUp,
+    },
+    {
+      label: "Open Positions",
+      value: dash?.open_jobs ?? recruitData.open_positions ?? 0,
+      helper: `${pipelineStages.length} hiring stages active`,
+      icon: Briefcase,
+      color: "text-amber-600",
+    },
+    {
+      label: "Workforce Health",
+      value: `${Math.round(healthScore)}/100`,
+      helper: `${formatPct(utilizationRate)} active utilization`,
+      icon: Target,
+      color: "text-violet-600",
+    },
+  ];
 
   function handleExport() {
     toast({ title: "Exporting", description: "Generating report..." });
@@ -112,22 +239,39 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
       ) : (
         <>
-          {/* KPI Cards */}
+          <Card className="border-blue-200/60 bg-gradient-to-r from-blue-50 to-cyan-50">
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Executive Snapshot</p>
+                  <p className="text-sm text-blue-800/80">
+                    Attendance is {formatPct(recentAttendance || 0)} with projected trend {attendanceForecast[2] ? formatPct(attendanceForecast[2].forecast) : "0.0%"} in 3 weeks.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-blue-300 text-blue-800">Power BI Mode</Badge>
+                  <Badge variant="outline" className="border-cyan-300 text-cyan-800">Future Ready</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Total Employees", value: dash?.total_employees ?? "—", icon: Users, color: "text-blue-600" },
-              { label: "Active Employees", value: dash?.active_employees ?? "—", icon: TrendingUp, color: "text-green-600" },
-              { label: "Present Today", value: dash?.present_today ?? "—", icon: Clock, color: "text-orange-600" },
-              { label: "Open Positions", value: dash?.open_jobs ?? recruitData.open_positions ?? "—", icon: BarChart3, color: "text-purple-600" },
-            ].map((kpi) => (
+            {kpis.map((kpi) => (
               <Card key={kpi.label}>
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
-                    <div>
-                      <p className="text-2xl font-bold">{kpi.value}</p>
-                      <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+                        <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                      </div>
+                      {typeof kpi.trendUp === "boolean" && (
+                        kpi.trendUp ? <ArrowUpRight className="h-4 w-4 text-emerald-600" /> : <ArrowDownRight className="h-4 w-4 text-red-600" />
+                      )}
                     </div>
+                    <p className="text-2xl font-bold">{kpi.value}</p>
+                    <p className="text-xs text-muted-foreground">{kpi.helper}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -142,24 +286,25 @@ export default function AnalyticsPage() {
             </TabsList>
 
             <TabsContent value="workforce" className="mt-4">
-              <div className="grid gap-6 lg:grid-cols-2">
-                {/* Headcount by Department */}
+              <div className="grid gap-6 lg:grid-cols-3">
                 <Card>
                   <CardHeader>
                     <CardTitle>Headcount by Department</CardTitle>
-                    <CardDescription>Employee distribution across departments</CardDescription>
+                    <CardDescription>Distribution and ownership mix</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {headcountData.length > 0 ? (
-                      <div className="space-y-3">
-                        {headcountData.map((d, i) => (
-                          <div key={d.department_name} className="flex items-center gap-3">
-                            <div className={`h-3 w-3 rounded-full ${DEPT_COLORS[i % DEPT_COLORS.length]}`} />
-                            <span className="w-28 text-sm truncate">{d.department_name}</span>
-                            <Progress value={dash?.total_employees ? Math.round((d.total / dash.total_employees) * 100) : 0} className="h-2 flex-1" />
-                            <span className="w-8 text-right text-sm font-medium">{d.total}</span>
-                          </div>
-                        ))}
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={headcountPie} dataKey="value" nameKey="name" innerRadius={58} outerRadius={90} paddingAngle={2}>
+                              {headcountPie.map((entry) => (
+                                <Cell key={entry.name} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
                       </div>
                     ) : (
                       <p className="py-8 text-center text-muted-foreground">No headcount data available.</p>
@@ -167,25 +312,32 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Attendance Summary */}
-                <Card>
+                <Card className="lg:col-span-2">
                   <CardHeader>
-                    <CardTitle>Attendance Summary</CardTitle>
-                    <CardDescription>Recent attendance patterns</CardDescription>
+                    <CardTitle>Departmental Strength and Utilization</CardTitle>
+                    <CardDescription>Active vs total employees by department</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {attendSummary.length > 0 ? (
-                      <div className="space-y-2">
-                        {attendSummary.slice(0, 7).map((a) => (
-                          <div key={a.date} className="flex items-center justify-between text-sm">
-                            <span className="w-24 text-muted-foreground">{new Date(a.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
-                            <Progress value={a.attendance_percentage ?? 0} className="h-2 flex-1 mx-3" />
-                            <span className="w-12 text-right">{a.present ?? 0}/{a.total_employees ?? 0}</span>
-                          </div>
-                        ))}
+                    {headcountData.length > 0 ? (
+                      <div className="space-y-3">
+                        {headcountData.map((d, i) => {
+                          const activeRate = d.total ? (d.active / d.total) * 100 : 0;
+                          return (
+                            <div key={d.department_name} className="rounded-lg border p-3">
+                              <div className="mb-2 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: DEPT_COLORS[i % DEPT_COLORS.length] }} />
+                                  <span className="text-sm font-medium">{d.department_name}</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">{d.active}/{d.total} active</span>
+                              </div>
+                              <Progress value={activeRate} className="h-2" />
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
-                      <p className="py-8 text-center text-muted-foreground">No attendance summary available.</p>
+                      <p className="py-8 text-center text-muted-foreground">No workforce distribution available.</p>
                     )}
                   </CardContent>
                 </Card>
@@ -193,35 +345,89 @@ export default function AnalyticsPage() {
             </TabsContent>
 
             <TabsContent value="attendance" className="mt-4">
-              <Card>
+              <div className="grid gap-6 lg:grid-cols-3">
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Attendance Trend</CardTitle>
+                    <CardDescription>Daily present vs absent distribution</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {attendancePoints.length > 0 ? (
+                      <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={attendancePoints} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="presentFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#16a34a" stopOpacity={0.35} />
+                                <stop offset="95%" stopColor="#16a34a" stopOpacity={0.05} />
+                              </linearGradient>
+                              <linearGradient id="absentFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#dc2626" stopOpacity={0.24} />
+                                <stop offset="95%" stopColor="#dc2626" stopOpacity={0.04} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Area type="monotone" dataKey="present" stroke="#16a34a" fill="url(#presentFill)" strokeWidth={2} />
+                            <Area type="monotone" dataKey="absent" stroke="#dc2626" fill="url(#absentFill)" strokeWidth={2} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="py-8 text-center text-muted-foreground">No attendance summary available.</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Forecast (Next 3 Weeks)</CardTitle>
+                    <CardDescription>Projected attendance rate</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {attendanceForecast.length > 0 ? (
+                      <div className="space-y-3">
+                        {attendanceForecast.map((item) => (
+                          <div key={item.period} className="rounded-lg border p-3">
+                            <div className="mb-2 flex items-center justify-between text-sm">
+                              <span className="font-medium">{item.period}</span>
+                              <span>{formatPct(item.forecast)}</span>
+                            </div>
+                            <Progress value={item.forecast} className="h-2" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="py-8 text-center text-muted-foreground">Not enough attendance data to forecast.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="mt-6">
                 <CardHeader>
-                  <CardTitle>Attendance Trend</CardTitle>
-                  <CardDescription>Daily attendance statistics</CardDescription>
+                  <CardTitle>Attendance Quality Curve</CardTitle>
+                  <CardDescription>Observed and projected attendance percentages</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {attendSummary.length > 0 ? (
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="p-3 text-left text-sm font-medium">Date</th>
-                          <th className="p-3 text-left text-sm font-medium">Present</th>
-                          <th className="p-3 text-left text-sm font-medium">Absent</th>
-                          <th className="p-3 text-left text-sm font-medium">Rate</th>
-                          <th className="p-3 text-left text-sm font-medium">Late</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {attendSummary.map((a) => (
-                          <tr key={a.date} className="border-b last:border-0">
-                            <td className="p-3 text-sm">{new Date(a.date).toLocaleDateString()}</td>
-                            <td className="p-3 text-sm">{a.present ?? 0}</td>
-                            <td className="p-3 text-sm">{a.absent ?? 0}</td>
-                            <td className="p-3 text-sm">{a.attendance_percentage != null ? `${a.attendance_percentage.toFixed(1)}%` : "—"}</td>
-                            <td className="p-3 text-sm">{a.late ?? 0}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  {attendancePoints.length > 0 ? (
+                    <div className="h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={[
+                          ...attendancePoints.map((p) => ({ period: p.label, observed: p.attendance })),
+                          ...attendanceForecast.map((f) => ({ period: f.period, forecast: f.forecast })),
+                        ]}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="period" tick={{ fontSize: 12 }} />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                          <Tooltip />
+                          <Line type="monotone" dataKey="observed" stroke="#2563eb" strokeWidth={2.5} dot={false} name="Observed" />
+                          <Line type="monotone" dataKey="forecast" stroke="#ea580c" strokeDasharray="6 4" strokeWidth={2.5} dot={false} name="Forecast" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   ) : (
                     <p className="py-8 text-center text-muted-foreground">No attendance data available.</p>
                   )}
@@ -232,10 +438,10 @@ export default function AnalyticsPage() {
             <TabsContent value="recruitment" className="mt-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  { label: "Open Positions", value: dash?.open_jobs ?? recruitData.open_positions ?? "—" },
-                  { label: "Total Applications", value: recruitData.total_applications ?? "—" },
-                  { label: "Pipeline Stages", value: recruitData.stages?.length ?? "—" },
-                  { label: "Avg Time to Hire", value: recruitData.avg_time_to_hire != null ? `${recruitData.avg_time_to_hire} days` : "—" },
+                  { label: "Open Positions", value: dash?.open_jobs ?? recruitData.open_positions ?? 0 },
+                  { label: "Total Applications", value: totalApps },
+                  { label: "Pipeline Stages", value: pipelineStages.length },
+                  { label: "Avg Time to Hire", value: recruitData.avg_time_to_hire != null ? `${recruitData.avg_time_to_hire} days` : "N/A" },
                 ].map((s) => (
                   <Card key={s.label}>
                     <CardContent className="p-4 text-center">
@@ -245,23 +451,63 @@ export default function AnalyticsPage() {
                   </Card>
                 ))}
               </div>
-              {recruitData.stages && recruitData.stages.length > 0 && (
-                <Card className="mt-4">
-                  <CardHeader><CardTitle>Recruitment Funnel</CardTitle></CardHeader>
+
+              <div className="mt-4 grid gap-6 lg:grid-cols-3">
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Recruitment Funnel</CardTitle>
+                    <CardDescription>Stage concentration and throughput</CardDescription>
+                  </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {recruitData.stages.map((s) => (
-                        <div key={s.stage} className="flex items-center gap-3">
-                          <span className="w-24 text-sm capitalize">{s.stage}</span>
-                          <Progress value={recruitData.total_applications ? Math.round((s.count / recruitData.total_applications) * 100) : 0} className="h-2 flex-1" />
-                          <span className="w-8 text-right text-sm font-medium">{s.count}</span>
-                          {s.conversion != null && <span className="w-12 text-right text-xs text-muted-foreground">{s.conversion}%</span>}
-                        </div>
-                      ))}
-                    </div>
+                    {pipelineStages.length > 0 ? (
+                      <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={pipelineStages.map((stage) => ({
+                            stage: stage.stage,
+                            count: stage.count,
+                            share: totalApps ? Number(((stage.count / totalApps) * 100).toFixed(1)) : 0,
+                          }))}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="py-8 text-center text-muted-foreground">No recruitment funnel data available.</p>
+                    )}
                   </CardContent>
                 </Card>
-              )}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pipeline Efficiency</CardTitle>
+                    <CardDescription>Conversion outlook for upcoming hiring</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {pipelineStages.length > 0 ? (
+                      <div className="space-y-3">
+                        {pipelineStages.map((s) => {
+                          const share = totalApps ? (s.count / totalApps) * 100 : 0;
+                          return (
+                            <div key={s.stage}>
+                              <div className="mb-1 flex items-center justify-between text-sm">
+                                <span className="capitalize">{s.stage}</span>
+                                <span>{formatPct(share)}</span>
+                              </div>
+                              <Progress value={share} className="h-2" />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="py-8 text-center text-muted-foreground">No recruitment data to analyze.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </>
