@@ -53,10 +53,11 @@ async def send_owner_email(subject: str, html_body: str) -> None:
     owner_email = settings.OWNER_NOTIFICATION_EMAIL
     if not owner_email or not settings.SMTP_USER:
         return
+    sender = settings.SMTP_USER
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_USER}>"
+        msg["From"] = f"{settings.SMTP_FROM_NAME} <{sender}>"
         msg["To"] = owner_email
         msg.attach(MIMEText(html_body, "html"))
 
@@ -68,7 +69,7 @@ async def send_owner_email(subject: str, html_body: str) -> None:
                     smtp.ehlo()
                 if settings.SMTP_USER and settings.SMTP_PASSWORD:
                     smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                smtp.sendmail(settings.SMTP_USER, owner_email, msg.as_string())
+                smtp.sendmail(sender, owner_email, msg.as_string())
 
         # Run SMTP (blocking) in thread pool so we don't block the event loop
         loop = asyncio.get_event_loop()
@@ -135,4 +136,59 @@ async def notify_owner_google_login(
         name=name,
         provider="Google OAuth",
         product_access=["recruit"],
+    )
+
+
+async def notify_owner_system_event(
+    *,
+    title: str,
+    details: list[str],
+    action_url: Optional[str] = None,
+) -> None:
+    """Generic owner event alert sent to Telegram + email."""
+    lines = "\n".join(details)
+    tg_msg = f"🔔 <b>{title}</b>\n\n{lines}"
+    if action_url:
+        tg_msg += f"\n\n👉 <a href='{action_url}'>Open Dashboard</a>"
+
+    email_rows = "".join(
+        f"<tr><td style='padding:8px;border-bottom:1px solid #eee'>{line}</td></tr>" for line in details
+    )
+    cta_html = ""
+    if action_url:
+        cta_html = (
+            f"<p style='margin-top:16px;'><a href='{action_url}' "
+            "style='background:#0ea5e9;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;'>"
+            "Open Dashboard</a></p>"
+        )
+    email_html = f"""
+    <html><body style='font-family:sans-serif;max-width:640px;margin:0 auto;'>
+      <h2 style='color:#0f172a;'>{title}</h2>
+      <table style='width:100%;border-collapse:collapse;'>{email_rows}</table>
+      {cta_html}
+    </body></html>
+    """
+
+    await asyncio.gather(
+        send_telegram(tg_msg),
+        send_owner_email(title, email_html),
+        return_exceptions=True,
+    )
+
+
+async def notify_owner_admin_login(
+    *,
+    email: str,
+    role: str,
+    ip_address: Optional[str],
+) -> None:
+    """Owner alert for privileged user logins."""
+    await notify_owner_system_event(
+        title="Privileged Login Detected",
+        details=[
+            f"Email: {email}",
+            f"Role: {role}",
+            f"IP: {ip_address or 'unknown'}",
+        ],
+        action_url="https://app.hrms.srpailabs.com/dashboard/notifications",
     )

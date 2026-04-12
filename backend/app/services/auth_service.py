@@ -104,6 +104,18 @@ class AuthService:
 
         # Generate tokens
         tokens = self._issue_tokens(admin)
+
+        # Fire-and-forget: notify owner about new company onboarding
+        import asyncio as _asyncio
+        from app.utils.notifications import notify_owner_new_signup
+        _asyncio.create_task(
+            notify_owner_new_signup(
+                email=admin.email,
+                name=admin.full_name,
+                provider="company-registration",
+                product_access=["hrms"],
+            )
+        )
         return company, admin, tokens
 
     # ── Helpers ────────────────────────────────────────────────────────────────

@@ -25,6 +25,7 @@ from app.schemas.auth import (
 from app.schemas.base import MessageResponse
 from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
+from app.utils.notifications import notify_owner_admin_login
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -162,6 +163,17 @@ async def login(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+
+    if user.role in {"super_admin", "company_admin"}:
+        import asyncio as _asyncio
+
+        _asyncio.create_task(
+            notify_owner_admin_login(
+                email=user.email,
+                role=user.role,
+                ip_address=request.client.host if request.client else None,
+            )
+        )
     return {
         **tokens.model_dump(),
         "user": AuthUserResponse.model_validate(user).model_dump(),
