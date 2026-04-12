@@ -33,6 +33,17 @@ class BusinessIdService:
         "document": "documents",
         "notification": "notifications",
         "audit_log": "audit_logs",
+        "branch": "branches",
+        "designation": "designations",
+        "shift": "shifts",
+        "org_settings": "organization_settings",
+        "leave_policy": "leave_policies",
+        "leave_type": "leave_policy_types",
+        "leave_balance": "leave_balances",
+        "attendance_policy": "attendance_policies",
+        "salary_structure": "salary_structures",
+        "salary_component": "salary_components",
+        "employee_salary": "employee_salaries",
     }
 
     @classmethod
@@ -99,3 +110,15 @@ class BusinessIdService:
             if not await cls.exists(db, entity_type, bid):
                 return bid
         raise RuntimeError(f"Could not generate unique business_id for {entity_type} after {max_retries} retries")
+
+
+# Build reverse map: prefix → entity_type  (e.g. "SALSTR" → "salary_structure")
+_PREFIX_TO_ENTITY: dict[str, str] = {v: k for k, v in BUSINESS_ID_PREFIXES.items()}
+
+
+async def generate_business_id(db: AsyncSession, prefix: str) -> str:
+    """Standalone helper that accepts a prefix (e.g. 'SALSTR') and generates the next ID."""
+    entity_type = _PREFIX_TO_ENTITY.get(prefix)
+    if entity_type is None:
+        raise ValueError(f"Unknown business ID prefix: {prefix}")
+    return await BusinessIdService.generate(db, entity_type)
