@@ -13,7 +13,7 @@ import { Eye, EyeOff, ShieldCheck, Sparkles } from "lucide-react";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
 
 const DEMO_ACCOUNTS = {
-  superadmin: { email: "superadmin@srpailabs.com", password: "SuperAdmin@2026!", label: "Super Admin" },
+  superadmin: { email: "superadmin@srpailabs.com", password: "SrpAdmin@2026!", label: "Super Admin" },
   owner: { email: "hr@acme.com", password: "Admin@1234", label: "HR Manager" },
   employee: { email: "alice@acme.com", password: "Employee@1234", label: "Employee" },
 };
