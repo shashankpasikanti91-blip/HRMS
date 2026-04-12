@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, Body, Depends, HTTPException, BackgroundTasks, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
