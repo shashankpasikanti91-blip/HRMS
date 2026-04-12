@@ -37,10 +37,12 @@ class PayrollItemResponse(BaseResponse):
     employee_id: str
     employee_name: Optional[str] = None
     employee_code: Optional[str] = None
+    basic_salary: float = 0.0
     gross_salary: float
     allowances: float
     deductions: float
     tax_amount: float
+    total_deductions: float = 0.0
     net_salary: float
     currency: str
     payment_status: str

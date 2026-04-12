@@ -193,6 +193,9 @@ export default function RecruitmentPage() {
     if (!candidateForm.full_name.trim() || !candidateForm.email.trim()) {
       toast({ title: "Name and email required", variant: "destructive" }); return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateForm.email)) {
+      toast({ title: "Validation Error", description: "Please enter a valid email address", variant: "destructive" }); return;
+    }
     setProcessing(true);
     try {
       const created = await candidateService.create({
@@ -231,19 +234,41 @@ export default function RecruitmentPage() {
   const [screenFile, setScreenFile] = useState<File | null>(null);
   const screenFileRef = useRef<HTMLInputElement>(null);
   const [screenDrag, setScreenDrag] = useState(false);
+  const [screenJDFile, setScreenJDFile] = useState<File | null>(null);
+  const screenJDFileRef = useRef<HTMLInputElement>(null);
+  const [screenJDDrag, setScreenJDDrag] = useState(false);
+
+  async function readFileText(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  }
 
   async function handleAIScreen() {
-    if (!screenJD.trim()) {
-      toast({ title: "Job description required", variant: "destructive" }); return;
+    let jdText = screenJD.trim();
+    // If a JD file was uploaded, read its text
+    if (!jdText && screenJDFile) {
+      try {
+        jdText = await readFileText(screenJDFile);
+      } catch {
+        toast({ title: "Error", description: "Could not read JD file", variant: "destructive" });
+        return;
+      }
+    }
+    if (!jdText) {
+      toast({ title: "Job description required", description: "Paste text or upload a file", variant: "destructive" }); return;
     }
     setScreening(true);
     setScreeningResult(null);
     try {
       let result: AIScreeningResult;
       if (screenFile) {
-        result = await aiRecruitmentService.screenCandidateFile(screenJD, screenFile);
+        result = await aiRecruitmentService.screenCandidateFile(jdText, screenFile);
       } else if (screenResume.trim()) {
-        result = await aiRecruitmentService.screenCandidate(screenJD, screenResume);
+        result = await aiRecruitmentService.screenCandidate(jdText, screenResume);
       } else {
         toast({ title: "Resume required", description: "Paste resume text or upload a file", variant: "destructive" });
         setScreening(false);
@@ -531,27 +556,62 @@ export default function RecruitmentPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="screen-jd">Job Description *</Label>
+                  <Label htmlFor="screen-jd">Job Description * (paste text or upload file)</Label>
                   <Textarea
                     id="screen-jd"
                     placeholder="Paste the full job description here..."
                     value={screenJD}
                     onChange={(e) => setScreenJD(e.target.value)}
-                    rows={6}
+                    rows={5}
                   />
+                  {/* JD File Upload */}
+                  <div
+                    className={`relative rounded-lg border-2 border-dashed p-4 text-center transition-colors ${screenJDDrag ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+                    onDragOver={(e) => { e.preventDefault(); setScreenJDDrag(true); }}
+                    onDragLeave={() => setScreenJDDrag(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setScreenJDDrag(false);
+                      const files = e.dataTransfer.files;
+                      if (files.length > 0 && isValidResumeFile(files[0])) {
+                        setScreenJDFile(files[0]);
+                      }
+                    }}
+                  >
+                    <input
+                      ref={screenJDFileRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx,.txt,.rtf"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) setScreenJDFile(e.target.files[0]);
+                      }}
+                    />
+                    {screenJDFile ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <FileText className="h-5 w-5 text-green-600" />
+                        <span className="text-sm font-medium">{screenJDFile.name}</span>
+                        <Button size="sm" variant="ghost" onClick={() => setScreenJDFile(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="mx-auto h-6 w-6 text-muted-foreground/50" />
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Or upload JD file:{" "}
+                          <button className="text-primary underline" onClick={() => screenJDFileRef.current?.click()}>browse</button>
+                        </p>
+                        <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, TXT</p>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Resume (paste text or upload file)</Label>
-                  <Textarea
-                    id="screen-resume"
-                    placeholder="Paste resume text here..."
-                    value={screenResume}
-                    onChange={(e) => setScreenResume(e.target.value)}
-                    rows={6}
-                  />
+                  <Label>Resume * (paste text or upload file)</Label>
 
-                  {/* Drag & Drop for Resume */}
+                  {/* Resume File Upload - shown first for prominence */}
                   <div
                     className={`relative rounded-lg border-2 border-dashed p-6 text-center transition-colors ${screenDrag ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
                     onDragOver={(e) => { e.preventDefault(); setScreenDrag(true); }}
@@ -593,6 +653,15 @@ export default function RecruitmentPage() {
                       </>
                     )}
                   </div>
+
+                  <p className="text-xs text-center text-muted-foreground">— or paste resume text below —</p>
+                  <Textarea
+                    id="screen-resume"
+                    placeholder="Paste resume text here..."
+                    value={screenResume}
+                    onChange={(e) => setScreenResume(e.target.value)}
+                    rows={4}
+                  />
                 </div>
 
                 <Button onClick={handleAIScreen} disabled={screening} className="w-full">

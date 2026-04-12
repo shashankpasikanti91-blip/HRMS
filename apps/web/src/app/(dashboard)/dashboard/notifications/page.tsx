@@ -36,7 +36,7 @@ export default function NotificationsPage() {
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       toast({ title: "Done", description: "All notifications marked as read", variant: "success" });
     } catch {
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      toast({ title: "Error", description: "Failed to mark notifications as read", variant: "destructive" });
     }
   }
 
@@ -45,7 +45,7 @@ export default function NotificationsPage() {
       await notificationService.markRead(businessId);
       setNotifications((prev) => prev.map((n) => (n.business_id === businessId ? { ...n, is_read: true } : n)));
     } catch {
-      setNotifications((prev) => prev.map((n) => (n.business_id === businessId ? { ...n, is_read: true } : n)));
+      // Don't update UI on failure - keep original state
     }
   }
 

@@ -94,6 +94,9 @@ async def get_payroll_items(
     enriched = []
     for i in items:
         resp = PayrollItemResponse.model_validate(i)
+        # Set computed fields for frontend compatibility
+        resp.basic_salary = float(getattr(i, "basic_salary", 0) or 0)
+        resp.total_deductions = float(getattr(i, "total_deductions", 0) or 0) or float((i.deductions or 0) + (i.tax_amount or 0))
         emp_result = await db.execute(
             sa_select(Employee.first_name, Employee.last_name, Employee.employee_code, Employee.business_id)
             .where(Employee.id == i.employee_id)
@@ -156,10 +159,12 @@ async def get_payroll_item_detail(
     return {
         "payslip": {
             "business_id": item.business_id,
+            "basic_salary": float(getattr(item, "basic_salary", 0) or 0),
             "gross_salary": float(item.gross_salary or 0),
             "allowances": float(item.allowances or 0),
             "deductions": float(item.deductions or 0),
             "tax_amount": float(item.tax_amount or 0),
+            "total_deductions": float(getattr(item, "total_deductions", 0) or 0) or float((item.deductions or 0) + (item.tax_amount or 0)),
             "net_salary": float(item.net_salary or 0),
             "currency": item.currency or "INR",
             "payment_status": item.payment_status or "pending",

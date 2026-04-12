@@ -49,9 +49,11 @@ class PayrollItem(BaseModel):
         String(36), ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True
     )
     gross_salary: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    basic_salary: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     allowances: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     deductions: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     tax_amount: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    total_deductions: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     net_salary: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     currency: Mapped[str] = mapped_column(String(10), default="INR", nullable=False)
     payment_status: Mapped[str] = mapped_column(

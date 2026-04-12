@@ -32,7 +32,12 @@ export default function AIAssistantPage() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("ai_session_id");
+    }
+    return null;
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,7 +61,10 @@ export default function AIAssistantPage() {
       });
 
       const result = data.data || data;
-      if (result.session_id) setSessionId(result.session_id);
+      if (result.session_id) {
+        setSessionId(result.session_id);
+        localStorage.setItem("ai_session_id", result.session_id);
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -67,12 +75,16 @@ export default function AIAssistantPage() {
           timestamp: new Date(),
         },
       ]);
-    } catch {
+    } catch (err) {
+      console.error("AI chat error:", err);
+      const errorMessage = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "I'm currently running in offline mode. In production, I'll be connected to the AI engine for intelligent responses. How else can I help?",
+          content: errorMessage
+            ? `Error: ${errorMessage}. Please try again.`
+            : "The AI assistant is temporarily unavailable. Please try again later or contact support.",
           suggestions: ["Try another question", "View HR policies", "Check attendance"],
           timestamp: new Date(),
         },

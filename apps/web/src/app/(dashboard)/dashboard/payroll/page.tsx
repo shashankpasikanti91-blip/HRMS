@@ -29,6 +29,8 @@ export default function PayrollPage() {
   const [payslipDetailOpen, setPayslipDetailOpen] = useState(false);
   const [payslipDetail, setPayslipDetail] = useState<PayslipDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [payslipDetailError, setPayslipDetailError] = useState<string | null>(null);
+  const [lastPayslipItem, setLastPayslipItem] = useState<PayrollItem | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -120,11 +122,20 @@ export default function PayrollPage() {
   async function viewPayslipDetail(ps: PayrollItem) {
     setLoadingDetail(true);
     setPayslipDetailOpen(true);
+    setPayslipDetailError(null);
+    setLastPayslipItem(ps);
     try {
+      if (!ps.business_id) {
+        throw new Error("Payslip ID is missing");
+      }
       const detail = await payrollService.getItemDetail(ps.business_id);
       setPayslipDetail(detail);
-    } catch {
-      toast({ title: "Error", description: "Failed to load payslip details", variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        || (err as Error)?.message
+        || "Failed to load payslip details";
+      setPayslipDetailError(msg);
+      toast({ title: "Error", description: msg, variant: "destructive" });
       setPayslipDetail(null);
     } finally {
       setLoadingDetail(false);
@@ -444,8 +455,14 @@ export default function PayrollPage() {
               </div>
             </div>
           ) : (
-            <div className="py-8 text-center text-muted-foreground">
-              <p>Failed to load payslip details</p>
+            <div className="py-8 text-center text-muted-foreground space-y-3">
+              <FileText className="mx-auto h-8 w-8 opacity-50" />
+              <p className="font-medium">{payslipDetailError || "Failed to load payslip details"}</p>
+              {lastPayslipItem && (
+                <Button variant="outline" size="sm" onClick={() => viewPayslipDetail(lastPayslipItem)}>
+                  <Loader2 className="mr-2 h-3 w-3" />Retry
+                </Button>
+              )}
             </div>
           )}
         </DialogContent>

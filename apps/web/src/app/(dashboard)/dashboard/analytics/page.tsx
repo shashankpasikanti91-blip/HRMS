@@ -64,8 +64,27 @@ export default function AnalyticsPage() {
   const DEPT_COLORS = ["bg-blue-500", "bg-green-500", "bg-orange-500", "bg-purple-500", "bg-pink-500", "bg-cyan-500", "bg-red-500", "bg-yellow-500"];
 
   function handleExport() {
-    toast({ title: "Exporting", description: "Report export will be downloaded shortly" });
-    // In production, call analyticsService export endpoint
+    toast({ title: "Exporting", description: "Generating report..." });
+    try {
+      const reportData = {
+        period,
+        dashboard: dash,
+        attendance: attendSummary,
+        headcount: headcountData,
+        recruitment: recruitData,
+        generated_at: new Date().toISOString(),
+      };
+      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `hrms-analytics-${period}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Downloaded", description: "Report exported successfully", variant: "success" });
+    } catch {
+      toast({ title: "Error", description: "Failed to export report", variant: "destructive" });
+    }
   }
 
   return (

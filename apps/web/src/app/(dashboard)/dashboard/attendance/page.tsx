@@ -29,6 +29,7 @@ export default function AttendancePage() {
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [correctionForm, setCorrectionForm] = useState({ date: "", clockIn: "", clockOut: "", reason: "" });
   const [leaveApplying, setLeaveApplying] = useState(false);
+  const [correctionSubmitting, setCorrectionSubmitting] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -143,6 +144,7 @@ export default function AttendancePage() {
       toast({ title: "Error", description: "Date and reason are required", variant: "destructive" });
       return;
     }
+    setCorrectionSubmitting(true);
     try {
       const checkInTime = correctionForm.clockIn ? `${correctionForm.date}T${correctionForm.clockIn}:00` : undefined;
       const checkOutTime = correctionForm.clockOut ? `${correctionForm.date}T${correctionForm.clockOut}:00` : undefined;
@@ -159,6 +161,8 @@ export default function AttendancePage() {
       setCorrectionForm({ date: "", clockIn: "", clockOut: "", reason: "" });
     } catch {
       toast({ title: "Error", description: "Failed to submit correction", variant: "destructive" });
+    } finally {
+      setCorrectionSubmitting(false);
     }
   }
 
@@ -364,7 +368,9 @@ export default function AttendancePage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCorrectionOpen(false)}>Cancel</Button>
-            <Button onClick={handleCorrectionSubmit}>Submit Request</Button>
+            <Button onClick={handleCorrectionSubmit} disabled={correctionSubmitting}>
+              {correctionSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Submit Request
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

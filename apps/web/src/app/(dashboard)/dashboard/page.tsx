@@ -66,8 +66,8 @@ export default function DashboardPage() {
           emps.filter((e) => e.visa_expiry_date && new Date(e.visa_expiry_date) <= threshold).slice(0, 5)
         );
       }
-    } catch {
-      // silent
+    } catch (err) {
+      console.error("Dashboard load error:", err);
     } finally {
       setLoading(false);
     }

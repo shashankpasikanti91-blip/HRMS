@@ -23,6 +23,13 @@ export default function SettingsPage() {
   const [profileForm, setProfileForm] = useState({ full_name: "" });
   const [orgForm, setOrgForm] = useState({ name: "", industry: "", size: "", timezone: "" });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
+    "Leave approvals": true,
+    "Payroll updates": true,
+    "New candidates": true,
+    "Performance reviews": true,
+    "System announcements": true,
+  });
 
   const canManageOrg = ["super_admin", "company_admin", "hr_manager"].includes((user?.role || "").toLowerCase());
 
@@ -41,7 +48,7 @@ export default function SettingsPage() {
           timezone: company?.timezone || "",
         });
       } catch {
-        // keep editable defaults
+        toast({ title: "Warning", description: "Could not load organization settings", variant: "destructive" });
       } finally {
         setInitialLoading(false);
       }
@@ -85,6 +92,10 @@ export default function SettingsPage() {
     }
     if (passwordForm.newPassword.length < 8) {
       toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
+      return;
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/.test(passwordForm.newPassword)) {
+      toast({ title: "Error", description: "Password must include uppercase, lowercase, number, and special character", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -260,7 +271,10 @@ export default function SettingsPage() {
                     <p className="text-sm font-medium">{pref.label}</p>
                     <p className="text-xs text-muted-foreground">{pref.desc}</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={notifPrefs[pref.label] ?? true}
+                    onCheckedChange={(checked) => setNotifPrefs((prev) => ({ ...prev, [pref.label]: checked }))}
+                  />
                 </div>
               ))}
               <Button onClick={() => toast({ title: "Saved", description: "Notification preferences updated", variant: "success" })}>

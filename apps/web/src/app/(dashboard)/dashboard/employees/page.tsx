@@ -108,6 +108,10 @@ export default function EmployeesPage() {
       toast({ title: "Validation Error", description: "Full name and email are required", variant: "destructive" });
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.work_email)) {
+      toast({ title: "Validation Error", description: "Please enter a valid email address", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       if (editingEmployee) {
