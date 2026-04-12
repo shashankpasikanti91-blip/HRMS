@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional, Tuple
 
 from jose import JWTError
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
@@ -47,15 +47,18 @@ class AuthService:
     async def register_company(self, data: RegisterCompanyRequest) -> Tuple[Company, User, TokenResponse]:
         """Register a new company with an admin user."""
         # Check company email uniqueness
+        company_email = data.company_email.lower()
+        admin_email = data.admin_email.lower()
+
         existing_company = await self.db.execute(
-            select(Company).where(Company.email == data.company_email, Company.is_deleted == False)
+            select(Company).where(func.lower(Company.email) == company_email, Company.is_deleted == False)
         )
         if existing_company.scalar_one_or_none():
             raise ConflictException(f"Company with email '{data.company_email}' already exists")
 
         # Check admin email uniqueness globally
         existing_user = await self.db.execute(
-            select(User).where(User.email == data.admin_email, User.is_deleted == False)
+            select(User).where(func.lower(User.email) == admin_email, User.is_deleted == False)
         )
         if existing_user.scalar_one_or_none():
             raise ConflictException(f"User with email '{data.admin_email}' already exists")
@@ -73,7 +76,7 @@ class AuthService:
             business_id=company_bid,
             name=data.company_name,
             slug=slug,
-            email=data.company_email,
+            email=company_email,
             phone=data.phone,
             country=data.country,
             timezone=data.timezone,
@@ -91,7 +94,7 @@ class AuthService:
             business_id=user_bid,
             company_id=company.id,
             full_name=data.admin_full_name,
-            email=data.admin_email,
+            email=admin_email,
             password_hash=hash_password(data.admin_password),
             role=UserRole.COMPANY_ADMIN.value,
             status=UserStatus.ACTIVE.value,
@@ -131,13 +134,14 @@ class AuthService:
     async def register(self, data: RegisterRequest) -> Tuple[User, TokenResponse]:
         """Create a standalone user with a personal workspace."""
         # Check if email already registered globally
+        normalized_email = data.email.lower()
         existing = await self.db.execute(
-            select(User).where(User.email == data.email, User.is_deleted == False)
+            select(User).where(func.lower(User.email) == normalized_email, User.is_deleted == False)
         )
         if existing.scalar_one_or_none():
             raise ConflictException(f"Email '{data.email}' is already registered")
 
-        company = await self._create_personal_workspace(data.email, data.full_name)
+        company = await self._create_personal_workspace(normalized_email, data.full_name)
 
         user_bid = await BusinessIdService.generate(self.db, "user")
         user = User(
@@ -145,7 +149,7 @@ class AuthService:
             business_id=user_bid,
             company_id=company.id,
             full_name=data.full_name,
-            email=data.email,
+            email=normalized_email,
             password_hash=hash_password(data.password),
             role=UserRole.COMPANY_ADMIN.value,
             status=UserStatus.ACTIVE.value,
@@ -294,8 +298,9 @@ class AuthService:
 
     async def login(self, data: LoginRequest) -> Tuple[User, TokenResponse]:
         """Authenticate user and return tokens."""
+        normalized_email = data.email.lower()
         result = await self.db.execute(
-            select(User).where(User.email == data.email, User.is_deleted == False)
+            select(User).where(func.lower(User.email) == normalized_email, User.is_deleted == False)
         )
         user = result.scalar_one_or_none()
 
@@ -366,6 +371,17 @@ class AuthService:
 
         user.password_hash = hash_password(new_password)
         user.status = UserStatus.ACTIVE.value
+        await self.db.flush()
+
+    async def change_password(self, current_user: User, current_password: str, new_password: str) -> None:
+        """Change the current user's password after verifying the old one."""
+        if not current_user.password_hash:
+            raise BadRequestException("Password change is unavailable for this account")
+        if not verify_password(current_password, current_user.password_hash):
+            raise BadRequestException("Current password is incorrect")
+
+        current_user.password_hash = hash_password(new_password)
+        current_user.updated_by = current_user.id
         await self.db.flush()
 
     async def invite_user(

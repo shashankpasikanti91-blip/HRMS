@@ -59,9 +59,9 @@ export const authOptions: NextAuthOptions = {
 
           const data = await resp.json();
           // Attach tokens to user object for jwt() callback
-          (user as Record<string, unknown>).access_token = data.access_token;
-          (user as Record<string, unknown>).refresh_token = data.refresh_token;
-          (user as Record<string, unknown>).backend_user = data.user;
+          user.access_token = data.access_token;
+          user.refresh_token = data.refresh_token;
+          user.backend_user = data.user;
           return true;
         } catch (err) {
           console.error("[NextAuth] google-sync error:", err);
@@ -74,20 +74,18 @@ export const authOptions: NextAuthOptions = {
     /** Persist FastAPI tokens in the encrypted NextAuth JWT cookie. */
     async jwt({ token, user }) {
       if (user) {
-        const u = user as Record<string, unknown>;
-        if (u.access_token) token.access_token = u.access_token as string;
-        if (u.refresh_token) token.refresh_token = u.refresh_token as string;
-        if (u.backend_user) token.backend_user = u.backend_user;
+        if (user.access_token) token.access_token = user.access_token;
+        if (user.refresh_token) token.refresh_token = user.refresh_token;
+        if (user.backend_user) token.backend_user = user.backend_user;
       }
       return token;
     },
 
     /** Expose FastAPI tokens on the client-accessible session object. */
     async session({ session, token }) {
-      const s = session as Record<string, unknown>;
-      s.access_token = token.access_token;
-      s.refresh_token = token.refresh_token;
-      s.backend_user = token.backend_user;
+      session.access_token = token.access_token;
+      session.refresh_token = token.refresh_token;
+      session.backend_user = token.backend_user;
       return session;
     },
   },

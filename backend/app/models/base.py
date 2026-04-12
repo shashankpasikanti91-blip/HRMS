@@ -4,8 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import DateTime, String, func
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import DateTime, String, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -66,5 +65,5 @@ class BaseModel(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     )
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     metadata_: Mapped[Optional[dict[str, Any]]] = mapped_column(
-        "metadata", JSONB, nullable=True
+        "metadata", JSON, nullable=True
     )

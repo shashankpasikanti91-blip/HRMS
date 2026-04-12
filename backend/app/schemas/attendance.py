@@ -24,7 +24,7 @@ class CheckOutRequest(BaseSchema):
 
 
 class ManualAttendanceEntry(BaseSchema):
-    employee_id: str
+    employee_id: Optional[str] = None
     attendance_date: date
     check_in_time: Optional[datetime] = None
     check_out_time: Optional[datetime] = None

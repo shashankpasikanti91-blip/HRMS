@@ -2,42 +2,67 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useAuthStore } from "@/store/auth-store";
 
 function GoogleCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const accessToken = searchParams.get("access_token");
-    const refreshToken = searchParams.get("refresh_token");
-    const errorParam = searchParams.get("error");
+    // First check for direct token params (legacy flow)
+    if (searchParams) {
+      const accessToken = searchParams.get("access_token");
+      const refreshToken = searchParams.get("refresh_token");
+      const errorParam = searchParams.get("error");
 
-    if (errorParam) {
-      setError(errorParam);
-      setTimeout(() => router.replace("/login"), 3000);
-      return;
-    }
-
-    if (accessToken && refreshToken) {
-      localStorage.setItem("access_token", accessToken);
-      localStorage.setItem("refresh_token", refreshToken);
-
-      const tenantId = searchParams.get("tenant_id");
-      if (tenantId) {
-        localStorage.setItem("tenant_id", tenantId);
+      if (errorParam) {
+        setError(errorParam);
+        setTimeout(() => router.replace("/login"), 3000);
+        return;
       }
 
-      // Trigger auth store to load user
-      useAuthStore.getState().loadUser().then(() => {
-        router.replace("/dashboard");
-      });
-    } else {
-      setError("Authentication failed. Missing tokens.");
+      if (accessToken && refreshToken) {
+        localStorage.setItem("access_token", accessToken);
+        localStorage.setItem("refresh_token", refreshToken);
+        useAuthStore.getState().loadUser().then(() => {
+          router.replace("/dashboard");
+        });
+        return;
+      }
+    }
+
+    // NextAuth session flow - extract backend tokens from session
+    if (status === "authenticated" && session) {
+      const sess = session as Record<string, unknown>;
+      const accessToken = sess.access_token as string | undefined;
+      const refreshToken = sess.refresh_token as string | undefined;
+
+      if (accessToken && refreshToken) {
+        localStorage.setItem("access_token", accessToken);
+        localStorage.setItem("refresh_token", refreshToken);
+        useAuthStore.getState().loadUser().then(() => {
+          router.replace("/dashboard");
+        });
+      } else {
+        // Session exists but no backend tokens - try loading user directly
+        useAuthStore.getState().loadUser().then(() => {
+          const isAuth = useAuthStore.getState().isAuthenticated;
+          if (isAuth) {
+            router.replace("/dashboard");
+          } else {
+            setError("Google sign-in succeeded but backend authentication failed. Please try again.");
+            setTimeout(() => router.replace("/login"), 3000);
+          }
+        });
+      }
+    } else if (status === "unauthenticated") {
+      setError("Authentication failed. Please try again.");
       setTimeout(() => router.replace("/login"), 3000);
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, session, status]);
 
   if (error) {
     return (
@@ -60,7 +85,6 @@ function GoogleCallbackContent() {
 
 export default function GoogleCallbackPage() {
   return (
-    // @ts-expect-error React 19 Suspense JSX type mismatch
     <Suspense
       fallback={
         <div className="flex flex-col items-center justify-center min-h-screen gap-4">

@@ -362,6 +362,10 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_TLS=true
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_MODEL=${OPENAI_MODEL:-openai/gpt-4o-mini}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     ports:
       - "127.0.0.1:8003:8000"
     volumes:

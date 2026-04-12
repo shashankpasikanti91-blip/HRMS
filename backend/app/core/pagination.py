@@ -4,7 +4,7 @@ import math
 from typing import Any, Generic, List, Optional, TypeVar
 
 from fastapi import Query
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 T = TypeVar("T")
 
@@ -17,7 +17,7 @@ class PaginationParams:
         page: int = Query(default=1, ge=1, description="Page number (1-based)"),
         page_size: int = Query(default=20, ge=1, le=200, description="Items per page"),
         sort_by: Optional[str] = Query(default=None, description="Field to sort by"),
-        sort_order: str = Query(default="desc", regex="^(asc|desc)$", description="Sort direction"),
+        sort_order: str = Query(default="desc", pattern="^(asc|desc)$", description="Sort direction"),
         q: Optional[str] = Query(default=None, description="Search query"),
     ):
         self.page = page
@@ -47,6 +47,16 @@ class PageMeta(BaseModel):
 class Page(BaseModel, Generic[T]):
     data: List[T]
     meta: PageMeta
+
+    @computed_field
+    @property
+    def items(self) -> List[T]:
+        return self.data
+
+    @computed_field
+    @property
+    def total(self) -> int:
+        return self.meta.total
 
     @classmethod
     def create(

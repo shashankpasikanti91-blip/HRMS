@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: "AI-Powered Human Resource Management System by SRP AI Labs",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>

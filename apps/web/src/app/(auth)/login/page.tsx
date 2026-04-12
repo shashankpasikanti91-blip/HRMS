@@ -8,8 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, EyeOff } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Eye, EyeOff, ShieldCheck, Sparkles } from "lucide-react";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
+
+const DEMO_ACCOUNTS = {
+  superadmin: { email: "superadmin@srpailabs.com", password: "SuperAdmin@2026!", label: "Super Admin" },
+  owner: { email: "hr@acme.com", password: "Admin@1234", label: "HR Manager" },
+  employee: { email: "alice@acme.com", password: "Employee@1234", label: "Employee" },
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +26,12 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function applyDemoAccount(type: keyof typeof DEMO_ACCOUNTS) {
+    setEmail(DEMO_ACCOUNTS[type].email);
+    setPassword(DEMO_ACCOUNTS[type].password);
+    setError("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,28 +57,41 @@ export default function LoginPage() {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-2xl font-bold text-primary-foreground">
+    <Card className="border-slate-200/80 shadow-xl dark:border-slate-800">
+      <CardHeader className="space-y-3 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-2xl font-bold text-primary-foreground">
           S
         </div>
+        <div className="flex items-center justify-center gap-2">
+          <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" />AI-ready</Badge>
+          <Badge variant="outline" className="gap-1"><ShieldCheck className="h-3 w-3" />Secure</Badge>
+        </div>
         <CardTitle className="text-2xl">Welcome back</CardTitle>
-        <CardDescription>Sign in to SRP AI HRMS</CardDescription>
+        <CardDescription>Sign in to your SRP HRMS workspace</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          {/* Demo credentials */}
-          <div className="rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 text-xs text-blue-700 dark:text-blue-300">
-            <p className="font-medium mb-1">Demo Credentials</p>
-            <p>Email: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">admin@demo.srpailabs.com</code></p>
-            <p>Password: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">Demo@2026!</code></p>
+          <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+            <p className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-100">Quick demo access</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {Object.entries(DEMO_ACCOUNTS).map(([key, account]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyDemoAccount(key as keyof typeof DEMO_ACCOUNTS)}
+                  className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-left text-xs transition hover:border-blue-400 hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-950/40"
+                >
+                  <p className="font-medium text-foreground">{account.label}</p>
+                  <p className="text-muted-foreground">{account.email}</p>
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
 
-          {/* Google Sign-In via NextAuth */}
           <GoogleLoginButton callbackUrl="/dashboard" />
 
           <div className="relative">
@@ -106,7 +132,7 @@ export default function LoginPage() {
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
               >

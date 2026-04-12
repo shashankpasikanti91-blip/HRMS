@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_hr_or_above
 from app.core.pagination import PaginationParams, Page
+from app.models.employee import Employee, Department
 from app.models.user import User
 from app.schemas.employee import (
     DepartmentCreate,
@@ -25,6 +27,25 @@ from app.schemas.base import MessageResponse
 
 dept_router = APIRouter(prefix="/departments", tags=["Departments"])
 emp_router = APIRouter(prefix="/employees", tags=["Employees"])
+
+
+async def _enrich_employee_summaries(employees, db: AsyncSession):
+    """Add department_name to a list of Employee ORM objects."""
+    dept_ids = {e.department_id for e in employees if e.department_id}
+    dept_map = {}
+    if dept_ids:
+        result = await db.execute(
+            select(Department.id, Department.name).where(Department.id.in_(dept_ids))
+        )
+        dept_map = {row[0]: row[1] for row in result.all()}
+
+    summaries = []
+    for e in employees:
+        s = EmployeeSummary.model_validate(e)
+        if e.department_id and e.department_id in dept_map:
+            s.department_name = dept_map[e.department_id]
+        summaries.append(s)
+    return summaries
 
 
 # ── Departments ─────────────────────────────────────────────────────────────
@@ -51,7 +72,12 @@ async def list_departments(
 ):
     svc = DepartmentService(db)
     depts, total = await svc.list(current_user.company_id, params)
-    return Page.create([DepartmentSummary.model_validate(d) for d in depts], total, params)
+    summaries = []
+    for d in depts:
+        s = DepartmentSummary.model_validate(d)
+        s.employee_count = await svc.get_employee_count(d.id)
+        summaries.append(s)
+    return Page.create(summaries, total, params)
 
 
 @dept_router.get("/{business_id}", response_model=DepartmentResponse)
@@ -78,6 +104,17 @@ async def update_department(
     svc = DepartmentService(db)
     dept = await svc.update(business_id, data, current_user.company_id, current_user.id)
     return DepartmentResponse.model_validate(dept)
+
+
+@dept_router.delete("/{business_id}", response_model=MessageResponse)
+async def delete_department(
+    business_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_hr_or_above()),
+):
+    svc = DepartmentService(db)
+    await svc.delete(business_id, current_user.company_id, current_user.id)
+    return MessageResponse(message=f"Department {business_id} deleted successfully")
 
 
 # ── Employees ───────────────────────────────────────────────────────────────
@@ -108,7 +145,8 @@ async def list_employees(
         department_id=department_id,
         employment_status=employment_status,
     )
-    return Page.create([EmployeeSummary.model_validate(e) for e in employees], total, params)
+    summaries = await _enrich_employee_summaries(employees, db)
+    return Page.create(summaries, total, params)
 
 
 @emp_router.get("/search", response_model=Page[EmployeeSummary])
@@ -122,7 +160,8 @@ async def search_employees(
     params.q = q
     svc = EmployeeService(db)
     employees, total = await svc.list(current_user.company_id, params)
-    return Page.create([EmployeeSummary.model_validate(e) for e in employees], total, params)
+    summaries = await _enrich_employee_summaries(employees, db)
+    return Page.create(summaries, total, params)
 
 
 @emp_router.get("/{business_id}", response_model=EmployeeResponse)

@@ -70,6 +70,27 @@ class AttendanceService:
                 raise NotFoundException("Your employee profile was not found")
             return emp
 
+    async def get_my_today(self, current_user_id: str, company_id: str) -> Optional[Attendance]:
+        """Get today's attendance record for the current user. Returns None if no employee profile or no record."""
+        emp_result = await self.db.execute(
+            select(Employee).where(
+                Employee.user_id == current_user_id,
+                Employee.company_id == company_id,
+                Employee.is_deleted == False,
+            )
+        )
+        emp = emp_result.scalar_one_or_none()
+        if not emp:
+            return None
+        today = date.today()
+        att_result = await self.db.execute(
+            select(Attendance).where(
+                Attendance.employee_id == emp.id,
+                Attendance.attendance_date == today,
+            )
+        )
+        return att_result.scalar_one_or_none()
+
     async def check_in(
         self,
         data: CheckInRequest,
@@ -153,11 +174,14 @@ class AttendanceService:
         data: ManualAttendanceEntry,
         company_id: str,
         created_by: str,
+        role: str,
     ) -> Attendance:
+        emp = await self._resolve_employee(data.employee_id, created_by, company_id, role)
+
         # Check for existing record
         existing = await self.db.execute(
             select(Attendance).where(
-                Attendance.employee_id == data.employee_id,
+                Attendance.employee_id == emp.id,
                 Attendance.attendance_date == data.attendance_date,
             )
         )
@@ -186,7 +210,7 @@ class AttendanceService:
             id=str(uuid.uuid4()),
             business_id=bid,
             company_id=company_id,
-            employee_id=data.employee_id,
+            employee_id=emp.id,
             attendance_date=data.attendance_date,
             check_in_time=data.check_in_time,
             check_out_time=data.check_out_time,

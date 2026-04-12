@@ -3,8 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional, List
 
-from sqlalchemy import String, ForeignKey, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import String, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -35,7 +34,7 @@ class User(BaseModel):
     # ── OAuth / SSO fields ─────────────────────────────────────────────────
     google_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     provider: Mapped[str] = mapped_column(String(30), default="local", nullable=False)
-    product_access: Mapped[Optional[List[str]]] = mapped_column(JSONB, nullable=True)
+    product_access: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
 
     # ── Unique per company ─────────────────────────────────────────────────
     __table_args__ = (

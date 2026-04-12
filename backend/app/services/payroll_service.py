@@ -52,8 +52,11 @@ class PayrollService:
         await self.db.refresh(run)
         return run
 
-    async def list_runs(self, company_id: str, params: PaginationParams) -> Tuple[List[PayrollRun], int]:
-        return await self.run_repo.list(company_id=company_id, params=params)
+    async def list_runs(self, company_id: str, params: PaginationParams, year: Optional[int] = None) -> Tuple[List[PayrollRun], int]:
+        extra = []
+        if year:
+            extra.append(PayrollRun.period_year == year)
+        return await self.run_repo.list(company_id=company_id, params=params, extra_conditions=extra if extra else None)
 
     async def get_run(self, business_id: str, company_id: str) -> PayrollRun:
         return await self.run_repo.get_or_404(business_id, company_id)
@@ -80,6 +83,13 @@ class PayrollService:
         total_deductions = 0.0
         total_net = 0.0
 
+        # Pre-generate unique business IDs for the batch
+        # Count existing items once, then increment for each new item
+        from sqlalchemy import text
+        count_result = await self.db.execute(text("SELECT COUNT(*) FROM payroll_items"))
+        base_count = count_result.scalar() or 0
+
+        item_index = 0
         for emp in employees:
             # Basic payroll calculation (extend with real salary structures)
             gross = 50000.0  # placeholder – use salary component tables in v2
@@ -102,7 +112,9 @@ class PayrollService:
             if existing_item.scalar_one_or_none():
                 continue
 
-            item_bid = await BusinessIdService.generate(self.db, "payroll_item")
+            item_index += 1
+            sequence = base_count + item_index
+            item_bid = f"PAYITM-{str(sequence).zfill(6)}"
             item = PayrollItem(
                 id=str(uuid.uuid4()),
                 business_id=item_bid,
@@ -128,6 +140,16 @@ class PayrollService:
         run.total_deductions = total_deductions
         run.total_net = total_net
         run.updated_by = processed_by
+        await self.db.flush()
+        await self.db.refresh(run)
+        return run
+
+    async def approve_run(self, business_id: str, company_id: str, approved_by: str) -> PayrollRun:
+        run = await self.run_repo.get_or_404(business_id, company_id)
+        if run.status not in (PayrollStatus.PROCESSED.value, PayrollStatus.PROCESSING.value):
+            raise BadRequestException(f"Cannot approve a payroll run in '{run.status}' status")
+        run.status = PayrollStatus.APPROVED.value
+        run.updated_by = approved_by
         await self.db.flush()
         await self.db.refresh(run)
         return run

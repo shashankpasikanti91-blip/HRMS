@@ -21,6 +21,7 @@ export default function AttendancePage() {
   const [clockInTime, setClockInTime] = useState<string | null>(null);
   const [clockLoading, setClockLoading] = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
+  const [hasEmployeeProfile, setHasEmployeeProfile] = useState(true);
   const [teamData, setTeamData] = useState<{ present: number; onLeave: number; late: number; absent: number }>({ present: 0, onLeave: 0, late: 0, absent: 0 });
   const [attendanceLog, setAttendanceLog] = useState<AttendanceRecord[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
@@ -33,17 +34,29 @@ export default function AttendancePage() {
     setLoading(true);
     try {
       const [todayResult, teamResult, leaveResult] = await Promise.allSettled([
-        attendanceService.getToday(),
+        attendanceService.getMyToday(),
         attendanceService.getTeamDashboard(),
         leaveService.getRequests(),
       ]);
 
-      if (todayResult.status === "fulfilled" && todayResult.value) {
+      if (todayResult.status === "fulfilled") {
         const today = todayResult.value;
-        setTodayRecord(today);
-        if (today.check_in_time && !today.check_out_time) {
-          setClockedIn(true);
-          setClockInTime(new Date(today.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
+        if (today === null) {
+          // null means no employee profile or no record today
+          setClockedIn(false);
+          setClockInTime(null);
+          setTodayRecord(null);
+        } else if (today === "no_profile") {
+          setHasEmployeeProfile(false);
+        } else {
+          setTodayRecord(today);
+          setHasEmployeeProfile(true);
+          if (today.check_in_time && !today.check_out_time) {
+            setClockedIn(true);
+            setClockInTime(new Date(today.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
+          } else {
+            setClockedIn(false);
+          }
         }
       }
 
@@ -83,7 +96,8 @@ export default function AttendancePage() {
       toast({ title: "Clocked In", description: "You have been clocked in successfully", variant: "success" });
       loadData();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to clock in";
+      const axErr = err as { response?: { data?: { detail?: string; message?: string } } };
+      const msg = axErr?.response?.data?.detail || axErr?.response?.data?.message || "Failed to clock in";
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setClockLoading(false);
@@ -98,7 +112,8 @@ export default function AttendancePage() {
       toast({ title: "Clocked Out", description: "You have been clocked out successfully", variant: "success" });
       loadData();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to clock out";
+      const axErr = err as { response?: { data?: { detail?: string; message?: string } } };
+      const msg = axErr?.response?.data?.detail || axErr?.response?.data?.message || "Failed to clock out";
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setClockLoading(false);
@@ -129,11 +144,13 @@ export default function AttendancePage() {
       return;
     }
     try {
+      const checkInTime = correctionForm.clockIn ? `${correctionForm.date}T${correctionForm.clockIn}:00` : undefined;
+      const checkOutTime = correctionForm.clockOut ? `${correctionForm.date}T${correctionForm.clockOut}:00` : undefined;
+
       await attendanceService.manualEntry({
-        employee_id: correctionForm.date,
         attendance_date: correctionForm.date,
-        check_in_time: correctionForm.clockIn || undefined,
-        check_out_time: correctionForm.clockOut || undefined,
+        check_in_time: checkInTime,
+        check_out_time: checkOutTime,
         status: "present",
         remarks: correctionForm.reason,
       });
@@ -172,25 +189,29 @@ export default function AttendancePage() {
             <div>
               <p className="text-lg font-semibold">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
               <p className="text-sm text-muted-foreground">
-                {clockedIn ? `Clocked in at ${clockInTime || "—"}` : "You haven't clocked in yet"}
+                {!hasEmployeeProfile
+                  ? "Admin account — viewing team attendance"
+                  : clockedIn ? `Clocked in at ${clockInTime || "—"}` : "You haven't clocked in yet"}
               </p>
             </div>
           </div>
-          <Button
-            size="lg"
-            variant={clockedIn ? "destructive" : "default"}
-            onClick={clockedIn ? handleClockOut : handleClockIn}
-            disabled={clockLoading}
-          >
-            {clockLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : clockedIn ? (
-              <LogOut className="mr-2 h-4 w-4" />
-            ) : (
-              <LogIn className="mr-2 h-4 w-4" />
-            )}
-            {clockedIn ? "Clock Out" : "Clock In"}
-          </Button>
+          {hasEmployeeProfile && (
+            <Button
+              size="lg"
+              variant={clockedIn ? "destructive" : "default"}
+              onClick={clockedIn ? handleClockOut : handleClockIn}
+              disabled={clockLoading}
+            >
+              {clockLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : clockedIn ? (
+                <LogOut className="mr-2 h-4 w-4" />
+              ) : (
+                <LogIn className="mr-2 h-4 w-4" />
+              )}
+              {clockedIn ? "Clock Out" : "Clock In"}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -243,7 +264,7 @@ export default function AttendancePage() {
                   <tbody>
                     {attendanceLog.map((r, i) => (
                       <tr key={r.id || i} className="border-b last:border-0">
-                        <td className="p-3 text-sm font-medium">{r.employee_id}</td>
+                        <td className="p-3 text-sm font-medium">{r.employee_name || r.employee_code || r.employee_id}</td>
                         <td className="p-3 text-sm">{r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
                         <td className="p-3 text-sm">{r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
                         <td className="p-3 text-sm">{r.total_hours ? `${r.total_hours.toFixed(1)}h` : "—"}</td>
@@ -285,7 +306,7 @@ export default function AttendancePage() {
                   <tbody>
                     {leaveRequests.map((l) => (
                       <tr key={l.id} className="border-b last:border-0">
-                        <td className="p-3 text-sm font-medium">{l.employee_id}</td>
+                        <td className="p-3 text-sm font-medium">{l.employee_name || l.employee_code || l.employee_id}</td>
                         <td className="p-3 text-sm">{l.leave_type || "Leave"}</td>
                         <td className="p-3 text-sm">{formatDate(l.start_date)} - {formatDate(l.end_date)}</td>
                         <td className="p-3 text-sm">{l.total_days}</td>

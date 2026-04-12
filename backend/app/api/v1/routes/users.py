@@ -13,6 +13,24 @@ from app.services.company_service import UserService
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
+@router.get("/me", response_model=UserResponse)
+async def get_my_user(current_user: User = Depends(get_current_user)):
+    """Return the currently authenticated user profile."""
+    return UserResponse.model_validate(current_user)
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_my_user(
+    data: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Allow a signed-in user to update their own profile."""
+    service = UserService(db)
+    user = await service.update_user(current_user.business_id, data, current_user.company_id, current_user.id)
+    return UserResponse.model_validate(user)
+
+
 @router.post("", response_model=UserResponse, status_code=201)
 async def create_user(
     data: UserCreate,

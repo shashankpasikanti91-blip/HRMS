@@ -12,12 +12,24 @@ from app.utils.enums import UserRole
 class RegisterCompanyRequest(BaseSchema):
     company_name: str
     company_email: EmailStr
-    admin_full_name: str
+    admin_full_name: Optional[str] = None
+    admin_first_name: Optional[str] = None
+    admin_last_name: Optional[str] = None
     admin_email: EmailStr
     admin_password: str
     phone: Optional[str] = None
     country: Optional[str] = "India"
     timezone: Optional[str] = "Asia/Kolkata"
+
+    @model_validator(mode="after")
+    def populate_admin_full_name(self):
+        if not self.admin_full_name:
+            self.admin_full_name = " ".join(
+                part for part in [self.admin_first_name, self.admin_last_name] if part
+            ).strip() or None
+        if not self.admin_full_name:
+            raise ValueError("admin_full_name or admin_first_name/admin_last_name is required")
+        return self
 
     @field_validator("admin_password")
     @classmethod
@@ -46,6 +58,18 @@ class ForgotPasswordRequest(BaseSchema):
 
 class ResetPasswordRequest(BaseSchema):
     token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
+class ChangePasswordRequest(BaseSchema):
+    current_password: str
     new_password: str
 
     @field_validator("new_password")

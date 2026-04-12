@@ -22,7 +22,7 @@ async def _make_company_and_token(client: AsyncClient, db_session: AsyncSession,
         email=f"admin@tenant{suffix}.com",
         status=CompanyStatus.ACTIVE,
         subscription_plan=SubscriptionPlan.STARTER,
-        max_employees=10,
+        employee_limit=10,
     )
     db_session.add(company)
 
@@ -31,12 +31,12 @@ async def _make_company_and_token(client: AsyncClient, db_session: AsyncSession,
         id=uid,
         business_id=f"USR-T{uid[:5]}",
         email=f"admin@tenant{suffix}.com",
-        hashed_password=hash_password("TenantPass@1"),
+        password_hash=hash_password("TenantPass@1"),
+        full_name=f"Admin {suffix}",
         first_name="Admin",
         last_name=suffix,
         role=UserRole.HR_ADMIN,
         status=UserStatus.ACTIVE,
-        is_email_verified=True,
         company_id=cid,
     )
     db_session.add(user)

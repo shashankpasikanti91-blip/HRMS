@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Optional
-from pydantic import EmailStr
+from pydantic import EmailStr, model_validator
 
 from app.schemas.base import BaseSchema, BaseResponse
 from app.utils.enums import EmploymentType, WorkMode, EmploymentStatus, Gender
@@ -39,15 +39,18 @@ class DepartmentSummary(BaseSchema):
     business_id: str
     name: str
     code: Optional[str] = None
+    description: Optional[str] = None
+    employee_count: int = 0
 
 
 # ── Employee ───────────────────────────────────────────────────────────────
 
 class EmployeeCreate(BaseSchema):
-    full_name: str
+    full_name: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    work_email: EmailStr
+    work_email: Optional[EmailStr] = None
+    email: Optional[EmailStr] = None
     personal_email: Optional[EmailStr] = None
     phone: Optional[str] = None
     emergency_contact_name: Optional[str] = None
@@ -55,14 +58,31 @@ class EmployeeCreate(BaseSchema):
     gender: Optional[Gender] = None
     date_of_birth: Optional[date] = None
     joining_date: Optional[date] = None
+    date_of_joining: Optional[date] = None
     employment_type: Optional[EmploymentType] = EmploymentType.FULL_TIME
     work_mode: Optional[WorkMode] = WorkMode.ONSITE
     department_id: Optional[str] = None
+    user_id: Optional[str] = None
     designation: Optional[str] = None
     manager_id: Optional[str] = None
     location: Optional[str] = None
     notes: Optional[str] = None
     employee_code: Optional[str] = None  # auto-generated if omitted
+
+    @model_validator(mode="after")
+    def normalize_legacy_fields(self):
+        if not self.work_email and self.email:
+            self.work_email = self.email
+        if not self.joining_date and self.date_of_joining:
+            self.joining_date = self.date_of_joining
+        if not self.full_name:
+            combined_name = " ".join(part for part in [self.first_name, self.last_name] if part).strip()
+            self.full_name = combined_name or None
+        if not self.full_name:
+            raise ValueError("full_name is required")
+        if not self.work_email:
+            raise ValueError("work_email or email is required")
+        return self
 
 
 class EmployeeUpdate(BaseSchema):

@@ -13,6 +13,7 @@ from app.api.v1.routes.recruitment import (
     application_router,
     interview_router,
     offer_router,
+    ai_recruitment_router,
 )
 from app.api.v1.routes.payroll import router as payroll_router
 from app.api.v1.routes.performance import router as performance_router
@@ -34,6 +35,7 @@ api_router.include_router(candidate_router)
 api_router.include_router(application_router)
 api_router.include_router(interview_router)
 api_router.include_router(offer_router)
+api_router.include_router(ai_recruitment_router)
 api_router.include_router(payroll_router)
 api_router.include_router(performance_router)
 api_router.include_router(doc_router)

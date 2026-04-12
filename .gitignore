@@ -35,3 +35,5 @@ infrastructure/ssl/
 *.crt
 .env.production
 .env.staging
+*.db
+*.sqlite3

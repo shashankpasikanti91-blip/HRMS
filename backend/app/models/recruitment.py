@@ -3,8 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Optional
 
-from sqlalchemy import String, ForeignKey, Date, DateTime, Float, Integer, Text, Boolean
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import String, ForeignKey, Date, DateTime, Float, Integer, Text, Boolean, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -79,7 +78,7 @@ class Candidate(BaseModel):
     source_details: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     ai_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     ai_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    tags: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
+    tags: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
 
     # ── Relationships ──────────────────────────────────────────────────────
     applications: Mapped[list["Application"]] = relationship(
@@ -116,8 +115,8 @@ class Application(BaseModel):
         String(30), default=AIScreeningStatus.PENDING.value, nullable=False
     )
     ai_screening_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    ai_matched_skills: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
-    ai_missing_skills: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
+    ai_matched_skills: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    ai_missing_skills: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
     ai_recommendation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     shortlisted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     rejected_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

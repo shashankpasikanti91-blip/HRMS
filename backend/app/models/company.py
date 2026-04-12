@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from sqlalchemy import String, Integer, Text, Boolean
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import String, Integer, Text, Boolean, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -29,7 +28,7 @@ class Company(BaseModel):
     status: Mapped[str] = mapped_column(
         String(30), default=CompanyStatus.TRIAL.value, nullable=False, index=True
     )
-    branding_settings: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    branding_settings: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     subscription_plan: Mapped[str] = mapped_column(
         String(30), default=SubscriptionPlan.FREE.value, nullable=False
     )

@@ -15,7 +15,7 @@ import { Plus, Search, Filter, Download, Upload, Loader2, MoreHorizontal, Pencil
 import { employeeService, departmentService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { getInitials, formatDate } from "@/lib/utils";
-import type { Employee, EmployeeSummary, Department } from "@/types";
+import type { EmployeeSummary, DepartmentSummary } from "@/types";
 
 const statusColors: Record<string, "success" | "warning" | "destructive" | "secondary" | "default"> = {
   active: "success",
@@ -29,7 +29,7 @@ export default function EmployeesPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departments, setDepartments] = useState<DepartmentSummary[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -50,14 +50,14 @@ export default function EmployeesPage() {
     try {
       const [empResult, deptResult] = await Promise.allSettled([
         employeeService.list({ q: search || undefined, employment_status: statusFilter !== "all" ? statusFilter : undefined }),
-        departmentService.list(),
+        departmentService.listAll(),
       ]);
       if (empResult.status === "fulfilled") {
         const empData = empResult.value;
         setEmployees(Array.isArray(empData) ? empData : empData?.data || []);
       }
       if (deptResult.status === "fulfilled") {
-        setDepartments(Array.isArray(deptResult.value) ? deptResult.value : []);
+        setDepartments(deptResult.value);
       }
     } catch {
       toast({ title: "Error", description: "Failed to load employees", variant: "destructive" });
@@ -82,14 +82,25 @@ export default function EmployeesPage() {
     setDialogOpen(true);
   }
 
-  function openEditDialog(emp: EmployeeSummary) {
-    setEditingEmployee(emp);
-    setForm({
-      full_name: emp.full_name, work_email: emp.work_email, phone: "",
-      department_id: "", employment_type: "full_time",
-      joining_date: emp.joining_date?.split("T")[0] || "", gender: "", date_of_birth: "",
-    });
-    setDialogOpen(true);
+  async function openEditDialog(emp: EmployeeSummary) {
+    // Fetch full employee data for accurate pre-fill
+    try {
+      const full = await employeeService.getByBusinessId(emp.business_id);
+      setEditingEmployee(emp);
+      setForm({
+        full_name: full.full_name,
+        work_email: full.work_email,
+        phone: full.phone || "",
+        department_id: full.department_id || "",
+        employment_type: full.employment_type || "full_time",
+        joining_date: full.joining_date?.split("T")[0] || "",
+        gender: full.gender || "",
+        date_of_birth: full.date_of_birth?.split("T")[0] || "",
+      });
+      setDialogOpen(true);
+    } catch {
+      toast({ title: "Error", description: "Failed to load employee details", variant: "destructive" });
+    }
   }
 
   async function handleSave() {
@@ -109,7 +120,8 @@ export default function EmployeesPage() {
       setDialogOpen(false);
       loadData();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to save employee";
+      const axErr = err as { response?: { data?: { detail?: string; message?: string } } };
+      const msg = axErr?.response?.data?.detail || axErr?.response?.data?.message || "Failed to save employee";
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setSaving(false);

@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     N8N_TIMEOUT_SECONDS: int = 30
     N8N_ENABLED: bool = False
 
+    # ── OpenAI / AI ────────────────────────────────────────
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_BASE_URL: Optional[str] = None
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENROUTER_API_KEY: Optional[str] = None
+
     # ── Email ────────────────────────────────────────────-─
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587

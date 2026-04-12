@@ -8,11 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, FileText, Calculator, TrendingUp, Loader2, Play, CheckCircle2, Eye } from "lucide-react";
+import { DollarSign, FileText, Calculator, TrendingUp, Loader2, Play, CheckCircle2, Eye, Download, Building2, User, X } from "lucide-react";
 import { payrollService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
-import type { PayrollRun, PayrollItem } from "@/types";
+import type { PayrollRun, PayrollItem, PayslipDetail } from "@/types";
 
 export default function PayrollPage() {
   const { toast } = useToast();
@@ -26,6 +26,9 @@ export default function PayrollPage() {
   const [runMonth, setRunMonth] = useState(String(new Date().getMonth() + 1));
   const [runYear, setRunYear] = useState(String(new Date().getFullYear()));
   const [stats, setStats] = useState({ totalGross: 0, totalDeductions: 0, totalNet: 0, employeeCount: 0 });
+  const [payslipDetailOpen, setPayslipDetailOpen] = useState(false);
+  const [payslipDetail, setPayslipDetail] = useState<PayslipDetail | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -35,7 +38,18 @@ export default function PayrollPage() {
       ]);
       if (runsResult.status === "fulfilled") {
         const data = runsResult.value;
-        setPayrollRuns(Array.isArray(data) ? data : data?.data || []);
+        const runs: PayrollRun[] = Array.isArray(data) ? data : data?.data || [];
+        setPayrollRuns(runs);
+        // Compute summary stats from the latest processed/approved run
+        const activeRun = runs.find((r) => r.status === "approved" || r.status === "processed") || runs[0];
+        if (activeRun) {
+          setStats({
+            totalGross: runs.reduce((sum, r) => sum + (r.total_gross || 0), 0),
+            totalDeductions: runs.reduce((sum, r) => sum + (r.total_deductions || 0), 0),
+            totalNet: runs.reduce((sum, r) => sum + (r.total_net || 0), 0),
+            employeeCount: activeRun.total_employees || 0,
+          });
+        }
       }
     } catch {
       toast({ title: "Error", description: "Failed to load payroll data", variant: "destructive" });
@@ -56,7 +70,8 @@ export default function PayrollPage() {
       setRunDialogOpen(false);
       loadData();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to initiate payroll";
+      const axErr = err as { response?: { data?: { detail?: string; message?: string } } };
+      const msg = axErr?.response?.data?.detail || axErr?.response?.data?.message || "Failed to initiate payroll";
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setProcessing(false);
@@ -70,7 +85,8 @@ export default function PayrollPage() {
       toast({ title: "Payroll Processing", description: "Payroll is being processed...", variant: "success" });
       loadData();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to process payroll";
+      const axErr = err as { response?: { data?: { detail?: string; message?: string } } };
+      const msg = axErr?.response?.data?.detail || axErr?.response?.data?.message || "Failed to process payroll";
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setProcessing(false);
@@ -80,7 +96,7 @@ export default function PayrollPage() {
   async function handleApproveRun(run: PayrollRun) {
     setProcessing(true);
     try {
-      await payrollService.processRun(run.business_id);
+      await payrollService.approveRun(run.business_id);
       toast({ title: "Payroll Approved", variant: "success" });
       loadData();
     } catch {
@@ -101,8 +117,22 @@ export default function PayrollPage() {
     setPayslipDialogOpen(true);
   }
 
+  async function viewPayslipDetail(ps: PayrollItem) {
+    setLoadingDetail(true);
+    setPayslipDetailOpen(true);
+    try {
+      const detail = await payrollService.getItemDetail(ps.business_id);
+      setPayslipDetail(detail);
+    } catch {
+      toast({ title: "Error", description: "Failed to load payslip details", variant: "destructive" });
+      setPayslipDetail(null);
+    } finally {
+      setLoadingDetail(false);
+    }
+  }
+
   const statusColors: Record<string, "warning" | "success" | "default" | "secondary"> = {
-    draft: "warning", processing: "default", completed: "success", approved: "success",
+    draft: "warning", processing: "default", processed: "secondary", completed: "success", approved: "success",
   };
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -185,7 +215,7 @@ export default function PayrollPage() {
                                 <Play className="mr-1 h-3 w-3" />Process
                               </Button>
                             )}
-                            {(run.status === "processing" || run.status === "completed") && (
+                            {(run.status === "processing" || run.status === "processed" || run.status === "completed") && (
                               <Button size="sm" variant="default" disabled={processing} onClick={() => handleApproveRun(run)}>
                                 <CheckCircle2 className="mr-1 h-3 w-3" />Approve
                               </Button>
@@ -277,22 +307,146 @@ export default function PayrollPage() {
                   <th className="p-2 text-right font-medium">Gross</th>
                   <th className="p-2 text-right font-medium">Deductions</th>
                   <th className="p-2 text-right font-medium">Net</th>
+                  <th className="p-2 text-center font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {payslips.map((ps) => (
-                  <tr key={ps.id} className="border-b last:border-0">
+                  <tr key={ps.id} className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => viewPayslipDetail(ps)}>
                     <td className="p-2">{ps.employee_name || ps.employee_id}</td>
                     <td className="p-2 text-right">{formatCurrency(ps.basic_salary || 0)}</td>
                     <td className="p-2 text-right">{formatCurrency(ps.gross_salary || 0)}</td>
                     <td className="p-2 text-right">{formatCurrency(ps.total_deductions || 0)}</td>
                     <td className="p-2 text-right font-medium">{formatCurrency(ps.net_salary || 0)}</td>
+                    <td className="p-2 text-center">
+                      <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); viewPayslipDetail(ps); }}>
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : (
             <p className="py-4 text-center text-muted-foreground">No payslips found for this run</p>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payslip Detail Dialog - Company Template */}
+      <Dialog open={payslipDetailOpen} onOpenChange={setPayslipDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {loadingDetail ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : payslipDetail ? (
+            <div className="space-y-0" id="payslip-template">
+              {/* Company Header */}
+              <div className="border-b-2 border-primary pb-4 text-center">
+                {payslipDetail.company?.logo_url && (
+                  <img src={payslipDetail.company.logo_url} alt="Logo" className="mx-auto mb-2 h-12" />
+                )}
+                <h2 className="text-xl font-bold text-primary">
+                  {payslipDetail.company?.legal_name || payslipDetail.company?.name || "Company"}
+                </h2>
+                {payslipDetail.company?.address && (
+                  <p className="text-xs text-muted-foreground">
+                    {[payslipDetail.company.address, payslipDetail.company.city, payslipDetail.company.country].filter(Boolean).join(", ")}
+                  </p>
+                )}
+                {payslipDetail.company?.email && (
+                  <p className="text-xs text-muted-foreground">{payslipDetail.company.email} | {payslipDetail.company.phone || ""}</p>
+                )}
+                <div className="mt-3 rounded-lg bg-primary/5 py-2">
+                  <h3 className="text-lg font-semibold">Pay Slip</h3>
+                  {payslipDetail.payroll_run && (
+                    <p className="text-sm text-muted-foreground">
+                      {monthNames[(payslipDetail.payroll_run.period_month || 1) - 1]} {payslipDetail.payroll_run.period_year}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Employee Info */}
+              {payslipDetail.employee && (
+                <div className="grid grid-cols-2 gap-4 border-b py-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Employee Details</span>
+                    </div>
+                    <div className="ml-6 space-y-1">
+                      <p className="text-sm"><strong>Name:</strong> {payslipDetail.employee.full_name}</p>
+                      <p className="text-sm"><strong>Code:</strong> {payslipDetail.employee.employee_code || "—"}</p>
+                      <p className="text-sm"><strong>Email:</strong> {payslipDetail.employee.work_email || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Position Details</span>
+                    </div>
+                    <div className="ml-6 space-y-1">
+                      <p className="text-sm"><strong>Department:</strong> {payslipDetail.employee.department_name || "—"}</p>
+                      <p className="text-sm"><strong>Designation:</strong> {payslipDetail.employee.designation || "—"}</p>
+                      <p className="text-sm"><strong>Join Date:</strong> {payslipDetail.employee.joining_date ? new Date(payslipDetail.employee.joining_date).toLocaleDateString() : "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Salary Breakdown */}
+              <div className="py-4 space-y-3">
+                <h4 className="text-sm font-semibold">Salary Breakdown</h4>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+                  <div className="border-b pb-2">
+                    <p className="text-xs font-semibold text-green-700 mb-1">Earnings</p>
+                    <div className="flex justify-between text-sm">
+                      <span>Gross Salary</span>
+                      <span className="font-medium">{formatCurrency(payslipDetail.payslip.gross_salary || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Allowances</span>
+                      <span className="font-medium">{formatCurrency(payslipDetail.payslip.allowances || 0)}</span>
+                    </div>
+                  </div>
+                  <div className="border-b pb-2">
+                    <p className="text-xs font-semibold text-red-700 mb-1">Deductions</p>
+                    <div className="flex justify-between text-sm">
+                      <span>Deductions</span>
+                      <span className="font-medium">{formatCurrency(payslipDetail.payslip.deductions || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Tax</span>
+                      <span className="font-medium">{formatCurrency(payslipDetail.payslip.tax_amount || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Net Pay */}
+                <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 text-center">
+                  <p className="text-sm text-muted-foreground">Net Pay</p>
+                  <p className="text-3xl font-bold text-primary">{formatCurrency(payslipDetail.payslip.net_salary || 0)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {payslipDetail.payslip.currency || "INR"} | Status: {payslipDetail.payslip.payment_status || "pending"}
+                    {payslipDetail.payslip.payment_date && ` | Paid: ${new Date(payslipDetail.payslip.payment_date).toLocaleDateString()}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="border-t pt-3 text-center">
+                <p className="text-xs text-muted-foreground">This is a computer-generated payslip and does not require a signature.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Payslip ID: {payslipDetail.payslip.business_id}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              <p>Failed to load payslip details</p>
+            </div>
           )}
         </DialogContent>
       </Dialog>

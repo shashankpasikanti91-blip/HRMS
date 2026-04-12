@@ -113,6 +113,7 @@ class RecruitmentService:
 
     # ── Candidates ─────────────────────────────────────────────────────────
     async def create_candidate(self, data: CandidateCreate, company_id: str, created_by: str) -> Candidate:
+        # Check email uniqueness
         existing = await self.db.execute(
             select(Candidate).where(
                 Candidate.email == data.email,
@@ -122,6 +123,30 @@ class RecruitmentService:
         )
         if existing.scalar_one_or_none():
             raise ConflictException(f"Candidate with email '{data.email}' already exists")
+
+        # Check phone uniqueness if provided
+        if data.phone:
+            existing_phone = await self.db.execute(
+                select(Candidate).where(
+                    Candidate.phone == data.phone,
+                    Candidate.company_id == company_id,
+                    Candidate.is_deleted == False,
+                )
+            )
+            if existing_phone.scalar_one_or_none():
+                raise ConflictException(f"Candidate with phone '{data.phone}' already exists")
+
+        # Check LinkedIn uniqueness if provided
+        if data.linkedin_url:
+            existing_li = await self.db.execute(
+                select(Candidate).where(
+                    Candidate.linkedin_url == data.linkedin_url,
+                    Candidate.company_id == company_id,
+                    Candidate.is_deleted == False,
+                )
+            )
+            if existing_li.scalar_one_or_none():
+                raise ConflictException(f"Candidate with this LinkedIn profile already exists")
 
         bid = await BusinessIdService.generate(self.db, "candidate")
         candidate = Candidate(
@@ -331,6 +356,18 @@ class OfferService:
         self.repo = BaseRepository(Offer, db)
 
     async def create(self, data: OfferCreate, company_id: str, created_by: str) -> Offer:
+        # Check for existing active offer for same application
+        existing = await self.db.execute(
+            select(Offer).where(
+                Offer.application_id == data.application_id,
+                Offer.company_id == company_id,
+                Offer.offer_status.in_([OfferStatus.DRAFT.value, OfferStatus.SENT.value, OfferStatus.ACCEPTED.value]),
+                Offer.is_deleted == False,
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise ConflictException("An active offer already exists for this application")
+
         bid = await BusinessIdService.generate(self.db, "offer")
         offer = Offer(
             id=str(uuid.uuid4()),

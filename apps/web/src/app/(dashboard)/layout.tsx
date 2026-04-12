@@ -16,22 +16,23 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/employees", label: "Employees", icon: Users },
-  { href: "/dashboard/departments", label: "Departments", icon: Building2 },
-  { href: "/dashboard/attendance", label: "Attendance", icon: Clock },
-  { href: "/dashboard/payroll", label: "Payroll", icon: DollarSign },
-  { href: "/dashboard/recruitment", label: "Recruitment", icon: Briefcase },
-  { href: "/dashboard/performance", label: "Performance", icon: Target },
-  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: null },
+  { href: "/dashboard/employees", label: "Employees", icon: Users, roles: ["super_admin", "company_admin", "hr_manager"] },
+  { href: "/dashboard/departments", label: "Departments", icon: Building2, roles: null },
+  { href: "/dashboard/attendance", label: "Attendance", icon: Clock, roles: null },
+  { href: "/dashboard/payroll", label: "Payroll", icon: DollarSign, roles: ["super_admin", "company_admin", "hr_manager"] },
+  { href: "/dashboard/recruitment", label: "Recruitment", icon: Briefcase, roles: ["super_admin", "company_admin", "hr_manager", "recruiter", "employee"] },
+  { href: "/dashboard/performance", label: "Performance", icon: Target, roles: null },
+  { href: "/dashboard/notifications", label: "Notifications", icon: Bell, roles: null },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["super_admin", "company_admin", "hr_manager"] },
+  { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot, roles: null },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, roles: null },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const currentPath = pathname ?? "";
   const { user, isAuthenticated, isLoading, loadUser, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -84,8 +85,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-2">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          {navItems
+            .filter((item) => !item.roles || (user?.role && item.roles.includes(user.role)))
+            .map((item) => {
+            const isActive = currentPath === item.href || (item.href !== "/dashboard" && currentPath.startsWith(item.href));
             return (
               <Link
                 key={item.href}

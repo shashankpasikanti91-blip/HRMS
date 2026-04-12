@@ -27,7 +27,37 @@ att_router = APIRouter(prefix="/attendance", tags=["Attendance"])
 leave_router = APIRouter(prefix="/leaves", tags=["Leave Requests"])
 
 
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+async def _enrich_attendance(att, db: AsyncSession) -> AttendanceResponse:
+    """Convert Attendance model to response with employee name/code."""
+    from sqlalchemy import select as sa_select
+    from app.models.employee import Employee
+    resp = AttendanceResponse.model_validate(att)
+    emp_result = await db.execute(
+        sa_select(Employee.first_name, Employee.last_name, Employee.employee_code).where(Employee.id == att.employee_id)
+    )
+    emp = emp_result.first()
+    if emp:
+        resp.employee_name = f"{emp.first_name or ''} {emp.last_name or ''}".strip() or None
+        resp.employee_code = emp.employee_code
+    return resp
+
+
 # ── Attendance ─────────────────────────────────────────────────────────────
+
+@att_router.get("/me/today")
+async def get_my_today(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the current user's attendance record for today."""
+    svc = AttendanceService(db)
+    record = await svc.get_my_today(current_user.id, current_user.company_id)
+    if not record:
+        return None
+    return await _enrich_attendance(record, db)
+
 
 @att_router.post("/check-in", response_model=AttendanceResponse, status_code=201)
 async def check_in(
@@ -38,7 +68,7 @@ async def check_in(
     """Employee check-in. HR/Admin can check in on behalf of employee."""
     svc = AttendanceService(db)
     att = await svc.check_in(data, current_user.id, current_user.company_id, current_user.role)
-    return AttendanceResponse.model_validate(att)
+    return await _enrich_attendance(att, db)
 
 
 @att_router.post("/check-out", response_model=AttendanceResponse)
@@ -50,19 +80,19 @@ async def check_out(
     """Employee check-out."""
     svc = AttendanceService(db)
     att = await svc.check_out(data, current_user.id, current_user.company_id, current_user.role)
-    return AttendanceResponse.model_validate(att)
+    return await _enrich_attendance(att, db)
 
 
 @att_router.post("/manual-entry", response_model=AttendanceResponse, status_code=201)
 async def manual_attendance(
     data: ManualAttendanceEntry,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hr_or_above()),
+    current_user: User = Depends(get_current_user),
 ):
-    """Manually create/update an attendance record (HR/Admin only)."""
+    """Create or request an attendance correction for the current user or, for HR/Admin, another employee."""
     svc = AttendanceService(db)
-    att = await svc.manual_entry(data, current_user.company_id, current_user.id)
-    return AttendanceResponse.model_validate(att)
+    att = await svc.manual_entry(data, current_user.company_id, current_user.id, current_user.role)
+    return await _enrich_attendance(att, db)
 
 
 @att_router.get("", response_model=Page[AttendanceResponse])
@@ -82,7 +112,10 @@ async def list_attendance(
         attendance_date=attendance_date,
         status=status,
     )
-    return Page.create([AttendanceResponse.model_validate(r) for r in records], total, params)
+    enriched = []
+    for r in records:
+        enriched.append(await _enrich_attendance(r, db))
+    return Page.create(enriched, total, params)
 
 
 @att_router.get("/{business_id}", response_model=AttendanceResponse)
@@ -93,7 +126,7 @@ async def get_attendance(
 ):
     svc = AttendanceService(db)
     att = await svc.get(business_id, current_user.company_id)
-    return AttendanceResponse.model_validate(att)
+    return await _enrich_attendance(att, db)
 
 
 @att_router.get("/employee/{employee_business_id}", response_model=Page[AttendanceResponse])
@@ -109,7 +142,8 @@ async def get_employee_attendance(
     emp = await emp_svc.get(employee_business_id, current_user.company_id)
     svc = AttendanceService(db)
     records, total = await svc.list(current_user.company_id, params, employee_id=emp.id)
-    return Page.create([AttendanceResponse.model_validate(r) for r in records], total, params)
+    enriched = [await _enrich_attendance(r, db) for r in records]
+    return Page.create(enriched, total, params)
 
 
 @att_router.put("/{business_id}/approve", response_model=AttendanceResponse)
@@ -122,7 +156,7 @@ async def approve_attendance(
     """Approve an attendance record."""
     svc = AttendanceService(db)
     att = await svc.approve(business_id, current_user.company_id, current_user.id)
-    return AttendanceResponse.model_validate(att)
+    return await _enrich_attendance(att, db)
 
 
 # ── Leave Requests ──────────────────────────────────────────────────────────

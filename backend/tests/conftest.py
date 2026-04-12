@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
+from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
@@ -11,10 +12,11 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-# Use an isolated in-memory SQLite DB for tests (overridden by DATABASE_URL_TEST if set)
+# Use an isolated SQLite DB for tests by default (overridden by DATABASE_URL_TEST if set)
+TEST_DB_PATH = Path(__file__).with_name(".test_hrms.db").resolve().as_posix()
 TEST_DATABASE_URL = os.getenv(
     "DATABASE_URL_TEST",
-    "postgresql+asyncpg://hrms:hrmspassword@localhost:5432/hrms_test",
+    f"sqlite+aiosqlite:///{TEST_DB_PATH}",
 )
 
 os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
@@ -42,13 +44,27 @@ def event_loop():
 
 @pytest_asyncio.fixture(scope="session")
 async def test_engine():
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    if TEST_DATABASE_URL.startswith("sqlite"):
+        test_db_file = Path(TEST_DB_PATH)
+        if test_db_file.exists():
+            test_db_file.unlink()
+
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        echo=False,
+        connect_args={"check_same_thread": False} if TEST_DATABASE_URL.startswith("sqlite") else {},
+    )
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
+    if TEST_DATABASE_URL.startswith("sqlite"):
+        test_db_file = Path(TEST_DB_PATH)
+        if test_db_file.exists():
+            test_db_file.unlink()
 
 
 @pytest_asyncio.fixture
@@ -89,7 +105,7 @@ async def demo_company(db_session: AsyncSession):
         email="admin@testcorp.com",
         status=CompanyStatus.ACTIVE,
         subscription_plan=SubscriptionPlan.STARTER,
-        max_employees=100,
+        employee_limit=100,
     )
     db_session.add(company)
     await db_session.flush()
@@ -105,12 +121,12 @@ async def demo_hr_user(db_session: AsyncSession, demo_company):
         id=uid,
         business_id=f"USR-{uid[:6]}",
         email=f"hr-{uid[:6]}@testcorp.com",
-        hashed_password=hash_password("Test@1234"),
+        password_hash=hash_password("Test@1234"),
+        full_name="Test HR",
         first_name="Test",
         last_name="HR",
         role=UserRole.HR_ADMIN,
         status=UserStatus.ACTIVE,
-        is_email_verified=True,
         company_id=demo_company.id,
     )
     db_session.add(user)

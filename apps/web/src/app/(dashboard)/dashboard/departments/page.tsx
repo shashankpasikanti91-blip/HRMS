@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Building2, Users, Edit, Trash2, Loader2 } from "lucide-react";
-import { departmentService } from "@/services/api-services";
+import { Plus, Building2, Users, Edit, Trash2, Loader2, ArrowLeft } from "lucide-react";
+import { departmentService, employeeService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
-import type { Department, DepartmentSummary } from "@/types";
+import type { Department, DepartmentSummary, EmployeeSummary } from "@/types";
 
 export default function DepartmentsPage() {
   const { toast } = useToast();
@@ -23,6 +23,9 @@ export default function DepartmentsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", code: "", description: "" });
+  const [selectedDept, setSelectedDept] = useState<DepartmentSummary | null>(null);
+  const [deptEmployees, setDeptEmployees] = useState<EmployeeSummary[]>([]);
+  const [deptLoading, setDeptLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -55,6 +58,19 @@ export default function DepartmentsPage() {
     setDeleteDialogOpen(true);
   }
 
+  async function viewDepartment(dept: DepartmentSummary) {
+    setSelectedDept(dept);
+    setDeptLoading(true);
+    try {
+      const result = await employeeService.list({ department_id: dept.id, page_size: 200 });
+      setDeptEmployees(Array.isArray(result) ? result : result?.data || []);
+    } catch {
+      setDeptEmployees([]);
+    } finally {
+      setDeptLoading(false);
+    }
+  }
+
   async function handleSave() {
     if (!form.name) {
       toast({ title: "Validation Error", description: "Department name is required", variant: "destructive" });
@@ -71,8 +87,9 @@ export default function DepartmentsPage() {
       }
       setDialogOpen(false);
       loadData();
-    } catch {
-      toast({ title: "Error", description: "Failed to save department", variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Failed to save department";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -98,18 +115,68 @@ export default function DepartmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Departments</h1>
-          <p className="text-muted-foreground">Organizational structure and department management</p>
+          {selectedDept ? (
+            <>
+              <Button variant="ghost" size="sm" className="mb-2" onClick={() => setSelectedDept(null)}>
+                <ArrowLeft className="mr-2 h-4 w-4" />Back to Departments
+              </Button>
+              <h1 className="text-3xl font-bold tracking-tight">{selectedDept.name}</h1>
+              <p className="text-muted-foreground">{selectedDept.description || selectedDept.code} · {selectedDept.employee_count ?? 0} employees</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold tracking-tight">Departments</h1>
+              <p className="text-muted-foreground">Organizational structure and department management</p>
+            </>
+          )}
         </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Add Department</Button>
+        {!selectedDept && <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Add Department</Button>}
       </div>
 
-      {loading ? (
+      {selectedDept ? (
+        /* Department Detail View */
+        <Card>
+          <CardHeader>
+            <CardTitle>Team Members</CardTitle>
+            <CardDescription>Employees in {selectedDept.name}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {deptLoading ? (
+              <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+            ) : deptEmployees.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left text-sm font-medium">Employee</th>
+                    <th className="p-3 text-left text-sm font-medium">Code</th>
+                    <th className="p-3 text-left text-sm font-medium">Designation</th>
+                    <th className="p-3 text-left text-sm font-medium">Email</th>
+                    <th className="p-3 text-left text-sm font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deptEmployees.map((emp) => (
+                    <tr key={emp.id} className="border-b last:border-0">
+                      <td className="p-3 text-sm font-medium">{emp.full_name}</td>
+                      <td className="p-3 text-sm text-muted-foreground">{emp.employee_code || emp.business_id}</td>
+                      <td className="p-3 text-sm">{emp.designation || "—"}</td>
+                      <td className="p-3 text-sm text-muted-foreground">{emp.work_email}</td>
+                      <td className="p-3"><Badge variant={emp.employment_status === "active" ? "success" : "secondary"}>{emp.employment_status}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="py-8 text-center text-muted-foreground">No employees in this department yet.</p>
+            )}
+          </CardContent>
+        </Card>
+      ) : loading ? (
         <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
       ) : departments.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {departments.map((dept) => (
-            <Card key={dept.id} className="transition-shadow hover:shadow-md">
+            <Card key={dept.id} className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => viewDepartment(dept)}>
               <CardHeader className="flex flex-row items-start justify-between space-y-0">
                 <div>
                   <CardTitle className="text-lg">{dept.name}</CardTitle>
@@ -123,14 +190,14 @@ export default function DepartmentsPage() {
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    {0} employees
+                    {dept.employee_count ?? 0} employees
                   </span>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <Badge variant="outline">{dept.code}</Badge>
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(dept)}><Edit className="h-3 w-3" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => openDelete(dept.business_id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(dept); }}><Edit className="h-3 w-3" /></Button>
+                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openDelete(dept.business_id); }}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                   </div>
                 </div>
               </CardContent>

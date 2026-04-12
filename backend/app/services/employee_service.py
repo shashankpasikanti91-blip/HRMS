@@ -28,6 +28,29 @@ class DepartmentService:
         self.repo = BaseRepository(Department, db)
 
     async def create(self, data: DepartmentCreate, company_id: str, created_by: str) -> Department:
+        # Check name uniqueness within company
+        existing = await self.db.execute(
+            select(Department).where(
+                Department.name == data.name,
+                Department.company_id == company_id,
+                Department.is_deleted == False,
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise ConflictException(f"Department with name '{data.name}' already exists")
+
+        # Check code uniqueness within company (if provided)
+        if data.code:
+            existing_code = await self.db.execute(
+                select(Department).where(
+                    Department.code == data.code,
+                    Department.company_id == company_id,
+                    Department.is_deleted == False,
+                )
+            )
+            if existing_code.scalar_one_or_none():
+                raise ConflictException(f"Department with code '{data.code}' already exists")
+
         bid = await BusinessIdService.generate(self.db, "department")
         dept = Department(
             id=str(uuid.uuid4()),
@@ -76,6 +99,10 @@ class DepartmentService:
         )
         return result.scalar() or 0
 
+    async def delete(self, business_id: str, company_id: str, deleted_by: str) -> None:
+        dept = await self.repo.get_or_404(business_id, company_id)
+        await self.repo.soft_delete(dept, deleted_by)
+
 
 class EmployeeService:
     def __init__(self, db: AsyncSession):
@@ -94,7 +121,45 @@ class EmployeeService:
         if existing.scalar_one_or_none():
             raise ConflictException(f"Employee with work email '{data.work_email}' already exists")
 
+        # Check employee_code uniqueness if manually provided
+        if data.employee_code:
+            existing_code = await self.db.execute(
+                select(Employee).where(
+                    Employee.employee_code == data.employee_code,
+                    Employee.company_id == company_id,
+                    Employee.is_deleted == False,
+                )
+            )
+            if existing_code.scalar_one_or_none():
+                raise ConflictException(f"Employee with code '{data.employee_code}' already exists")
+
+        # Check phone uniqueness if provided
+        if data.phone:
+            existing_phone = await self.db.execute(
+                select(Employee).where(
+                    Employee.phone == data.phone,
+                    Employee.company_id == company_id,
+                    Employee.is_deleted == False,
+                )
+            )
+            if existing_phone.scalar_one_or_none():
+                raise ConflictException(f"Employee with phone '{data.phone}' already exists")
+
         bid = await BusinessIdService.generate(self.db, "employee")
+
+        department_id = data.department_id
+        if department_id and department_id.startswith("DEPT-"):
+            dept_result = await self.db.execute(
+                select(Department).where(
+                    Department.business_id == department_id,
+                    Department.company_id == company_id,
+                    Department.is_deleted == False,
+                )
+            )
+            dept = dept_result.scalar_one_or_none()
+            if not dept:
+                raise BadRequestException(f"Department '{department_id}' was not found")
+            department_id = dept.id
 
         # Auto-generate employee_code if not provided
         emp_code = data.employee_code
@@ -111,6 +176,7 @@ class EmployeeService:
             id=str(uuid.uuid4()),
             business_id=bid,
             company_id=company_id,
+            user_id=data.user_id,
             employee_code=emp_code,
             full_name=data.full_name,
             first_name=data.first_name,
@@ -125,7 +191,7 @@ class EmployeeService:
             joining_date=data.joining_date,
             employment_type=data.employment_type.value if data.employment_type else None,
             work_mode=data.work_mode.value if data.work_mode else None,
-            department_id=data.department_id,
+            department_id=department_id,
             designation=data.designation,
             manager_id=data.manager_id,
             location=data.location,

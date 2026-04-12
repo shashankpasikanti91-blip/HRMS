@@ -1,7 +1,7 @@
 "use client";
 
 import { SessionProvider, useSession } from "next-auth/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/store/auth-store";
 
 /**
@@ -12,7 +12,7 @@ import { useAuthStore } from "@/store/auth-store";
  */
 function SessionSync() {
   const { data: session, status } = useSession();
-  const { loadUser, isAuthenticated } = useAuthStore();
+  const { loadUser } = useAuthStore();
   const synced = useRef(false);
 
   useEffect(() => {
@@ -36,8 +36,18 @@ function SessionSync() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <>{children}</>;
+  }
+
   return (
-    <SessionProvider>
+    <SessionProvider refetchOnWindowFocus={false}>
       <SessionSync />
       {children}
     </SessionProvider>

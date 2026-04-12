@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from typing import Any, List, Optional
+
+from pydantic import EmailStr, field_validator, model_validator
 
 from app.schemas.base import BaseSchema, BaseResponse
 from app.utils.enums import (
@@ -85,7 +88,7 @@ class CandidateCreate(BaseSchema):
     full_name: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    email: str
+    email: EmailStr
     phone: Optional[str] = None
     current_location: Optional[str] = None
     years_of_experience: Optional[float] = None
@@ -99,6 +102,44 @@ class CandidateCreate(BaseSchema):
     source: Optional[CandidateSource] = None
     source_details: Optional[str] = None
     tags: Optional[list[str]] = None
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError("Full name must be at least 2 characters")
+        if len(v) > 200:
+            raise ValueError("Full name must be at most 200 characters")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        cleaned = re.sub(r"[\s\-\(\)]", "", v)
+        if not re.match(r"^\+?\d{7,15}$", cleaned):
+            raise ValueError("Invalid phone number format")
+        return v.strip()
+
+    @field_validator("linkedin_url")
+    @classmethod
+    def validate_linkedin(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if v and not re.match(r"^https?://(www\.)?linkedin\.com/", v, re.IGNORECASE):
+            raise ValueError("Invalid LinkedIn URL")
+        return v
+
+    @model_validator(mode="after")
+    def auto_split_name(self):
+        if not self.first_name and self.full_name:
+            parts = self.full_name.strip().split(" ", 1)
+            self.first_name = parts[0]
+            self.last_name = parts[1] if len(parts) > 1 else None
+        return self
 
 
 class CandidateUpdate(BaseSchema):

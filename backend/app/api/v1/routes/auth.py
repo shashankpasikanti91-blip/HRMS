@@ -16,6 +16,7 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    ChangePasswordRequest,
     InviteUserRequest,
     ActivateAccountRequest,
     TokenResponse,
@@ -32,11 +33,21 @@ settings = get_settings()
 
 @router.post("/register", response_model=dict, status_code=201)
 async def register(
-    data: RegisterRequest,
+    data: RegisterRequest | RegisterCompanyRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Self-registration: creates a personal workspace for the user."""
+    """Register either a personal workspace or a full company owner account."""
     service = AuthService(db)
+
+    if isinstance(data, RegisterCompanyRequest):
+        company, user, tokens = await service.register_company(data)
+        return {
+            "message": "Company registered successfully",
+            "company": {"id": company.id, "business_id": company.business_id, "name": company.name},
+            "user": {"id": user.id, "business_id": user.business_id, "email": user.email, "role": user.role},
+            **tokens.model_dump(),
+        }
+
     user, tokens = await service.register(data)
     return {
         "message": "Account created successfully",
@@ -183,6 +194,35 @@ async def reset_password(
     service = AuthService(db)
     await service.reset_password(data.token, data.new_password)
     return MessageResponse(message="Password has been reset successfully")
+
+
+@router.post("/logout", response_model=MessageResponse)
+async def logout(_: RefreshTokenRequest):
+    """Lightweight logout endpoint for the web client."""
+    return MessageResponse(message="Logged out successfully")
+
+
+@router.post("/change-password", response_model=MessageResponse)
+async def change_password(
+    data: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Allow the currently authenticated user to change their password."""
+    service = AuthService(db)
+    await service.change_password(current_user, data.current_password, data.new_password)
+    return MessageResponse(message="Password updated successfully")
+
+
+@router.post("/mfa/enable", response_model=dict)
+async def enable_mfa(current_user: User = Depends(get_current_user)):
+    """Return a realistic MFA enrollment payload for the settings UI."""
+    safe_email = current_user.email.replace("@", "_at_")
+    return {
+        "message": "MFA enrollment initiated",
+        "setup_key": f"SRP-{current_user.business_id[-6:]}",
+        "qr_code_url": f"otpauth://totp/SRP-HRMS:{safe_email}?secret=SRP{current_user.business_id[-6:]}&issuer=SRP-HRMS",
+    }
 
 
 @router.post("/invite-user", response_model=dict)

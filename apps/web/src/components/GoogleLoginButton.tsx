@@ -11,7 +11,7 @@ interface GoogleLoginButtonProps {
 }
 
 export default function GoogleLoginButton({
-  callbackUrl = "/dashboard",
+  callbackUrl = "/auth/google/callback",
   label = "Continue with Google",
   className = "",
 }: GoogleLoginButtonProps) {

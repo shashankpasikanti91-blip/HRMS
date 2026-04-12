@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,35 +8,52 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/auth-store";
 import { settingsService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, User, Shield, Bell, Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
-  const { user } = useAuthStore();
+  const { user, loadUser } = useAuthStore();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  // Profile form
-  const [profileForm, setProfileForm] = useState({
-    full_name: user?.full_name || "",
-  });
+  const [profileForm, setProfileForm] = useState({ full_name: "" });
+  const [orgForm, setOrgForm] = useState({ name: "", industry: "", size: "", timezone: "" });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
-  // Organization form
-  const [orgForm, setOrgForm] = useState({
-    name: "", industry: "", size: "", timezone: "",
-  });
+  const canManageOrg = ["super_admin", "company_admin", "hr_manager"].includes((user?.role || "").toLowerCase());
 
-  // Password form
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "", newPassword: "", confirmPassword: "",
-  });
+  useEffect(() => {
+    setProfileForm({ full_name: user?.full_name || "" });
+  }, [user?.full_name]);
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const company = await settingsService.getCompanyProfile();
+        setOrgForm({
+          name: company?.name || "",
+          industry: company?.industry || "",
+          size: company?.size || "",
+          timezone: company?.timezone || "",
+        });
+      } catch {
+        // keep editable defaults
+      } finally {
+        setInitialLoading(false);
+      }
+    }
+    loadSettings();
+  }, []);
 
   async function handleSaveProfile() {
     setSaving(true);
     try {
       await settingsService.updateProfile(profileForm);
+      await loadUser();
       toast({ title: "Saved", description: "Profile updated successfully", variant: "success" });
     } catch {
       toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
@@ -46,6 +63,10 @@ export default function SettingsPage() {
   }
 
   async function handleSaveOrg() {
+    if (!canManageOrg) {
+      toast({ title: "Access restricted", description: "Only workspace owners and HR admins can update organization settings.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       await settingsService.updateCompany(orgForm);
@@ -83,19 +104,41 @@ export default function SettingsPage() {
 
   async function handleEnableMFA() {
     try {
-      await settingsService.enableMFA();
-      toast({ title: "MFA Enabled", description: "Scan the QR code in your authenticator app", variant: "success" });
+      const result = await settingsService.enableMFA();
+      toast({
+        title: "MFA Ready",
+        description: result?.setup_key ? `Setup key: ${result.setup_key}` : "Scan the QR code in your authenticator app.",
+        variant: "success",
+      });
     } catch {
       toast({ title: "Error", description: "Failed to enable MFA", variant: "destructive" });
     }
+  }
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your account and organization settings</p>
+        <p className="text-muted-foreground">Manage your account, workspace, and security controls</p>
       </div>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium">Signed in as {user?.full_name || "User"}</p>
+            <p className="text-xs text-muted-foreground">{user?.email || "No email available"}</p>
+          </div>
+          <Badge variant="secondary">Role: {user?.role?.replace("_", " ") || "member"}</Badge>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList>
@@ -113,9 +156,9 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                  <Label>Full Name</Label>
-                  <Input value={profileForm.full_name} onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })} />
-                </div>
+                <Label>Full Name</Label>
+                <Input value={profileForm.full_name} onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })} />
+              </div>
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input type="email" value={user?.email || ""} disabled />
@@ -131,9 +174,14 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Organization Settings</CardTitle>
-              <CardDescription>Configure your company profile</CardDescription>
+              <CardDescription>Configure your company profile and workspace defaults</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {!canManageOrg && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                  You can view organization information, but only workspace owners and HR admins can save changes.
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Company Name</Label>
                 <Input value={orgForm.name} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder="Your company name" />
@@ -152,7 +200,7 @@ export default function SettingsPage() {
                 <Label>Timezone</Label>
                 <Input value={orgForm.timezone} onChange={(e) => setOrgForm({ ...orgForm, timezone: e.target.value })} placeholder="e.g. Asia/Kolkata" />
               </div>
-              <Button onClick={handleSaveOrg} disabled={saving}>
+              <Button onClick={handleSaveOrg} disabled={saving || !canManageOrg}>
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Changes
               </Button>
             </CardContent>
@@ -182,10 +230,10 @@ export default function SettingsPage() {
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Update Password
               </Button>
               <Separator />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium">Two-Factor Authentication</p>
-                  <p className="text-xs text-muted-foreground">Add an extra layer of security</p>
+                  <p className="text-xs text-muted-foreground">Add an extra layer of protection for owner and admin accounts</p>
                 </div>
                 <Button variant="outline" onClick={handleEnableMFA}>Enable MFA</Button>
               </div>

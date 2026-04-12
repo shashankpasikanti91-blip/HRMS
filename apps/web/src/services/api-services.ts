@@ -8,7 +8,7 @@ import type {
   Employee, EmployeeSummary, Department, DepartmentSummary,
   AttendanceRecord, LeaveRequest,
   JobPosting, Candidate, Application, Interview, Offer,
-  PayrollRun, PayrollItem,
+  PayrollRun, PayrollItem, PayslipDetail,
   PerformanceReview,
   Document, Notification,
   GlobalSearchResponse,
@@ -16,6 +16,7 @@ import type {
   HeadcountByDept, LeaveSummaryItem, PayrollSummaryItem,
   Page,
   LoginResponse, Company,
+  AIScreeningResult, AIJobPosts,
 } from "@/types";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -160,7 +161,7 @@ export const attendanceService = {
     return data as AttendanceRecord;
   },
   async manualEntry(payload: {
-    employee_id: string; attendance_date: string;
+    employee_id?: string; attendance_date: string;
     check_in_time?: string; check_out_time?: string;
     status: string; remarks?: string;
   }): Promise<AttendanceRecord> {
@@ -196,6 +197,16 @@ export const attendanceService = {
   },
   async clockOut(payload?: Record<string, unknown>) {
     return this.checkOut(payload as Parameters<typeof this.checkOut>[0]);
+  },
+  async getMyToday(): Promise<AttendanceRecord | null | "no_profile"> {
+    try {
+      const { data } = await api.get("/attendance/me/today");
+      return data ?? null;
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return "no_profile";
+      return null;
+    }
   },
   async getToday() {
     // Fetch today's attendance for the current user by getting recent records
@@ -414,13 +425,21 @@ export const payrollService = {
     const { data } = await api.post(`/payroll/runs/${businessId}/process`);
     return data as PayrollRun;
   },
+  async approveRun(businessId: string): Promise<PayrollRun> {
+    const { data } = await api.post(`/payroll/runs/${businessId}/approve`);
+    return data as PayrollRun;
+  },
   async getItems(runBusinessId: string, params?: { page?: number; page_size?: number }): Promise<Page<PayrollItem>> {
-    const { data } = await api.get("/payroll/items", { params: { payroll_run_id: runBusinessId, ...params } });
+    const { data } = await api.get(`/payroll/runs/${runBusinessId}/items`, { params });
     return data as Page<PayrollItem>;
   },
   async getItemByBusinessId(businessId: string): Promise<PayrollItem> {
     const { data } = await api.get(`/payroll/items/${businessId}`);
     return data as PayrollItem;
+  },
+  async getItemDetail(itemBusinessId: string): Promise<PayslipDetail> {
+    const { data } = await api.get(`/payroll/items/${itemBusinessId}`);
+    return data as PayslipDetail;
   },
 };
 
@@ -500,19 +519,29 @@ export const notificationService = {
   async list(params?: {
     page?: number; page_size?: number; is_read?: boolean;
   }): Promise<Notification[]> {
-    const { data } = await api.get("/notifications", { params });
+    const queryParams = {
+      page: params?.page,
+      page_size: params?.page_size,
+      unread_only: params?.is_read === false ? true : undefined,
+    };
+    const { data } = await api.get("/notifications", { params: queryParams });
     const page = data as { data?: Notification[] };
     return page.data ?? (data as Notification[]) ?? [];
   },
   async listPaged(params?: { page?: number; page_size?: number; is_read?: boolean }) {
-    const { data } = await api.get("/notifications", { params });
+    const queryParams = {
+      page: params?.page,
+      page_size: params?.page_size,
+      unread_only: params?.is_read === false ? true : undefined,
+    };
+    const { data } = await api.get("/notifications", { params: queryParams });
     return data as { data: Notification[]; meta: { total: number } };
   },
   async markRead(businessId: string): Promise<void> {
-    await api.patch(`/notifications/${businessId}/read`);
+    await api.put(`/notifications/${businessId}/read`);
   },
   async markAllRead(): Promise<void> {
-    await api.patch("/notifications/read-all");
+    await api.put("/notifications/read-all");
   },
 };
 
@@ -620,3 +649,40 @@ export const settingsService = {
   },
 };
 
+// ─── AI Recruitment ──────────────────────────────────────────────────────────
+export const aiRecruitmentService = {
+  async screenCandidate(jobDescription: string, resumeText: string): Promise<AIScreeningResult> {
+    const { data } = await api.post("/recruitment-ai/screen", {
+      job_description: jobDescription,
+      resume_text: resumeText,
+    });
+    return data as AIScreeningResult;
+  },
+  async screenCandidateFile(jobDescription: string, resumeFile: File): Promise<AIScreeningResult> {
+    const formData = new FormData();
+    formData.append("job_description", jobDescription);
+    formData.append("resume", resumeFile);
+    const { data } = await api.post("/recruitment-ai/screen-file", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data as AIScreeningResult;
+  },
+  async screenApplication(applicationBusinessId: string): Promise<AIScreeningResult> {
+    const { data } = await api.post(`/recruitment-ai/screen-application/${applicationBusinessId}`);
+    return data as AIScreeningResult;
+  },
+  async generateJobPosts(jobDescription: string): Promise<AIJobPosts> {
+    const { data } = await api.post("/recruitment-ai/generate-job-posts", {
+      job_description: jobDescription,
+    });
+    return data as AIJobPosts;
+  },
+  async generateJobPostsFile(jdFile: File): Promise<AIJobPosts> {
+    const formData = new FormData();
+    formData.append("jd_file", jdFile);
+    const { data } = await api.post("/recruitment-ai/generate-job-posts-file", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data as AIJobPosts;
+  },
+};

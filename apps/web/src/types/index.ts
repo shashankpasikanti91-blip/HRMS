@@ -82,6 +82,7 @@ export interface DepartmentSummary {
   name: string;
   code?: string;
   description?: string;
+  employee_count?: number;
 }
 
 // ─── Employee ────────────────────────────────────────────────
@@ -285,10 +286,95 @@ export interface PayrollItem extends BaseRecord {
   employee_code?: string;
   basic_salary: number;
   gross_salary: number;
+  allowances?: number;
+  deductions?: number;
+  tax_amount?: number;
   total_deductions: number;
   net_salary: number;
   currency: string;
   status: string;
+  payment_status?: string;
+}
+
+// ─── Payslip Detail ──────────────────────────────────────────
+export interface PayslipDetail {
+  payslip: {
+    business_id: string;
+    gross_salary: number;
+    allowances: number;
+    deductions: number;
+    tax_amount: number;
+    net_salary: number;
+    currency: string;
+    payment_status: string;
+    payment_date: string | null;
+  };
+  employee: {
+    business_id: string;
+    full_name: string;
+    employee_code: string;
+    work_email: string;
+    department_name: string | null;
+    designation: string | null;
+    joining_date: string | null;
+  } | null;
+  payroll_run: {
+    business_id: string;
+    period_month: number;
+    period_year: number;
+    status: string;
+  } | null;
+  company: {
+    name: string;
+    legal_name: string | null;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+    city: string | null;
+    country: string | null;
+    logo_url: string | null;
+  } | null;
+}
+
+// ─── AI Screening ────────────────────────────────────────────
+export interface AIScreeningResult {
+  name: string;
+  email: string;
+  contact_number: string;
+  current_company: string;
+  score: number;
+  decision: string;
+  error?: string;
+  evaluation: {
+    candidate_strengths: string[];
+    high_match_skills: string[];
+    medium_match_skills: string[];
+    low_or_missing_match_skills: string[];
+    candidate_weaknesses: string[];
+    risk_level: string;
+    risk_explanation: string;
+    reward_level: string;
+    reward_explanation: string;
+    overall_fit_rating: number;
+    justification: string;
+  };
+}
+
+// ─── AI Job Posts ────────────────────────────────────────────
+export interface AIJobPosts {
+  client_project: string;
+  recruitment_type: string;
+  role: string;
+  experience: string;
+  location: string;
+  contract_duration: string;
+  key_skills: string[];
+  no_of_submissions: number;
+  linkedin_post: string;
+  indeed_post: string;
+  email_post: string;
+  whatsapp_post: string;
+  error?: string;
 }
 
 // ─── Performance ─────────────────────────────────────────────
