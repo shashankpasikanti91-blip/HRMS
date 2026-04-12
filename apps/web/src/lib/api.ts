@@ -24,6 +24,19 @@ api.interceptors.request.use((config) => {
 });
 
 // ── Response interceptor: automatic token refresh on 401 ────────────────
+// Mutex to deduplicate concurrent refresh attempts
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -34,10 +47,21 @@ api.interceptors.response.use(
       !originalRequest.url?.includes("/auth/refresh")
     ) {
       originalRequest._retry = true;
-      try {
-        const refreshToken = localStorage.getItem("refresh_token");
-        if (refreshToken) {
-          // FastAPI token format: { access_token, refresh_token, token_type, expires_in }
+
+      // If a refresh is already in-flight, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          addRefreshSubscriber((newToken: string) => {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      const refreshToken = localStorage.getItem("refresh_token");
+      if (refreshToken) {
+        isRefreshing = true;
+        try {
           const { data } = await axios.post(
             `${API_BASE_URL}/api/v1/auth/refresh`,
             { refresh_token: refreshToken },
@@ -47,13 +71,16 @@ api.interceptors.response.use(
           localStorage.setItem("access_token", newAccess);
           localStorage.setItem("refresh_token", newRefresh);
           originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+          onRefreshed(newAccess);
           return api(originalRequest);
-        }
-      } catch {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
+        } catch {
+          // Refresh failed — clear tokens but do NOT hard-redirect.
+          // The auth store / layout auth guard will handle navigation.
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          refreshSubscribers = [];
+        } finally {
+          isRefreshing = false;
         }
       }
     }

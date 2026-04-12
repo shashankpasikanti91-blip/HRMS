@@ -76,10 +76,18 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Handle both direct response and wrapped { data: ... }
       const user: AuthUser = (data as { data?: AuthUser }).data ?? (data as AuthUser);
       set({ user, isAuthenticated: true, isLoading: false });
-    } catch {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      set({ user: null, isAuthenticated: false, isLoading: false });
+    } catch (err: unknown) {
+      // Only clear tokens on explicit 401 (unauthorized).
+      // Network errors / timeouts should NOT log the user out.
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      } else {
+        // Transient error — keep current auth state, just stop loading
+        set({ isLoading: false });
+      }
     }
   },
 }));
