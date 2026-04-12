@@ -184,8 +184,8 @@ async def refresh_token(
 @limiter.limit("3/minute")
 async def forgot_password(
     request: Request,
-    data: ForgotPasswordRequest = Body(...),
     background_tasks: BackgroundTasks,
+    data: ForgotPasswordRequest = Body(...),
     db: AsyncSession = Depends(get_db),
 ):
     """Request a password reset token (returned in response for integration; mail it in production)."""
