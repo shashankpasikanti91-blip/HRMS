@@ -26,7 +26,6 @@ from app.schemas.auth import (
 from app.schemas.base import MessageResponse
 from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
-from app.core.rate_limit import limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -34,7 +33,6 @@ settings = get_settings()
 
 
 @router.post("/register", response_model=dict, status_code=201)
-@limiter.limit("3/minute")
 async def register(
     data: RegisterRequest | RegisterCompanyRequest,
     request: Request,
@@ -141,7 +139,6 @@ async def register_company(
 
 
 @router.post("/login", response_model=dict)
-@limiter.limit("5/minute")
 async def login(
     data: LoginRequest,
     request: Request,
@@ -178,7 +175,6 @@ async def refresh_token(
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
-@limiter.limit("3/minute")
 async def forgot_password(
     data: ForgotPasswordRequest,
     request: Request,
