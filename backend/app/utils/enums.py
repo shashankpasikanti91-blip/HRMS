@@ -362,6 +362,7 @@ BUSINESS_ID_PREFIXES: dict[str, str] = {
     "user": "USER",
     "employee": "EMP",
     "department": "DEPT",
+    "holiday": "HOL",
     "attendance": "ATT",
     "leave_request": "LEAVE",
     "payroll_run": "PAY",

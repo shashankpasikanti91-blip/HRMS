@@ -20,6 +20,7 @@ class BusinessIdService:
         "user": "users",
         "employee": "employees",
         "department": "departments",
+        "holiday": "holidays",
         "attendance": "attendance",
         "leave_request": "leave_requests",
         "payroll_run": "payroll_runs",

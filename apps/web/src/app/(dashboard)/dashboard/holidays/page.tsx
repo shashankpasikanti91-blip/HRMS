@@ -32,6 +32,9 @@ const HOLIDAY_TYPE_COLORS: Record<string, "default" | "secondary" | "success" | 
   optional: "secondary",
 };
 
+const ALL_COUNTRIES = "__all_countries__";
+const ALL_STATES = "__all_states__";
+
 export default function HolidaysPage() {
   const { user } = useAuthStore();
   const { toast } = useToast();
@@ -168,12 +171,15 @@ export default function HolidaysPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Country</Label>
-              <Select value={filterCountry} onValueChange={setFilterCountry}>
+              <Select
+                value={filterCountry || ALL_COUNTRIES}
+                onValueChange={(v) => setFilterCountry(v === ALL_COUNTRIES ? "" : v)}
+              >
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="All countries" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All countries</SelectItem>
+                  <SelectItem value={ALL_COUNTRIES}>All countries</SelectItem>
                   {countries.map((c) => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
                   ))}
@@ -182,12 +188,15 @@ export default function HolidaysPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">State</Label>
-              <Select value={filterState} onValueChange={setFilterState}>
+              <Select
+                value={filterState || ALL_STATES}
+                onValueChange={(v) => setFilterState(v === ALL_STATES ? "" : v)}
+              >
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="All states" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All states</SelectItem>
+                  <SelectItem value={ALL_STATES}>All states</SelectItem>
                   {states.map((s) => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
