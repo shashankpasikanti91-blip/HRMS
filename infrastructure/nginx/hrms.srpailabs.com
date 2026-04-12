@@ -21,8 +21,8 @@ server {
     listen [::]:443 ssl;
     server_name hrms.srpailabs.com;
 
-    ssl_certificate     /etc/ssl/cloudflare/hrms.srpailabs.com.pem;
-    ssl_certificate_key /etc/ssl/cloudflare/hrms.srpailabs.com.key;
+    ssl_certificate     /etc/letsencrypt/live/hrms.srpailabs.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hrms.srpailabs.com/privkey.pem;
 
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
@@ -53,8 +53,8 @@ server {
     listen [::]:443 ssl;
     server_name api.hrms.srpailabs.com;
 
-    ssl_certificate     /etc/ssl/cloudflare/hrms.srpailabs.com.pem;
-    ssl_certificate_key /etc/ssl/cloudflare/hrms.srpailabs.com.key;
+    ssl_certificate     /etc/letsencrypt/live/hrms.srpailabs.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hrms.srpailabs.com/privkey.pem;
 
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
@@ -110,8 +110,8 @@ server {
     listen [::]:443 ssl;
     server_name app.hrms.srpailabs.com;
 
-    ssl_certificate     /etc/ssl/cloudflare/hrms.srpailabs.com.pem;
-    ssl_certificate_key /etc/ssl/cloudflare/hrms.srpailabs.com.key;
+    ssl_certificate     /etc/letsencrypt/live/hrms.srpailabs.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hrms.srpailabs.com/privkey.pem;
 
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
@@ -144,8 +144,8 @@ server {
     listen [::]:443 ssl;
     server_name ~^(?<tenant>[a-z0-9-]+)\.hrms\.srpailabs\.com$;
 
-    ssl_certificate     /etc/ssl/cloudflare/hrms.srpailabs.com.pem;
-    ssl_certificate_key /etc/ssl/cloudflare/hrms.srpailabs.com.key;
+    ssl_certificate     /etc/letsencrypt/live/hrms.srpailabs.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hrms.srpailabs.com/privkey.pem;
 
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
