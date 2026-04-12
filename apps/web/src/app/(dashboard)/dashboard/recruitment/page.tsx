@@ -1015,7 +1015,7 @@ export default function RecruitmentPage() {
                       <button type="button" className="text-primary underline" onClick={() => fileInputRef.current?.click()}>browse files</button>
                     </p>
                     <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, XLS, XLSX, CSV, TXT (max 10MB)</p>
-                  <>
+                  </>
                 )}
               </div>
             </div>
