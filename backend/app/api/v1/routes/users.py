@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_hr_or_above
+from app.core.deps import get_current_user, require_hr_or_above, require_company_admin_or_above
 from app.core.pagination import PaginationParams, Page
+from app.core.security import hash_password
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate, UserStatusUpdate, UserResponse, UserSummary
+from app.schemas.user import UserCreate, UserUpdate, UserStatusUpdate, UserResponse, UserSummary, AdminResetPasswordRequest
 from app.services.company_service import UserService
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -86,3 +87,19 @@ async def update_user_status(
     service = UserService(db)
     user = await service.update_status(business_id, data, current_user.company_id, current_user.id)
     return UserResponse.model_validate(user)
+
+
+@router.post("/{business_id}/reset-password", response_model=dict)
+async def admin_reset_password(
+    business_id: str,
+    data: AdminResetPasswordRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_company_admin_or_above()),
+):
+    """Admin endpoint to reset a user's password without needing the old password."""
+    service = UserService(db)
+    target_user = await service.get_user(business_id, current_user.company_id)
+    target_user.password_hash = hash_password(data.new_password)
+    await db.flush()
+    await db.commit()
+    return {"message": f"Password reset for {target_user.email}"}

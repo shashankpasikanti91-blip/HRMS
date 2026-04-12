@@ -12,10 +12,47 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuthStore } from "@/store/auth-store";
-import { settingsService, organizationService } from "@/services/api-services";
+import { settingsService, organizationService, userService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, User, Shield, Bell, Loader2, Plus, Edit, Trash2, MapPin, Briefcase, Clock } from "lucide-react";
+import { Building2, User, Shield, Bell, Loader2, Plus, Edit, Trash2, MapPin, Briefcase, Clock, Users, UserPlus, Key, Ban, CheckCircle, Mail, Search } from "lucide-react";
 import type { Branch, Designation, Shift } from "@/types";
+
+interface ManagedUser {
+  id: string;
+  business_id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  status: string;
+  last_login_at?: string;
+  phone?: string;
+}
+
+const ROLE_OPTIONS = [
+  { value: "company_admin", label: "Company Admin" },
+  { value: "hr_manager", label: "HR Manager" },
+  { value: "recruiter", label: "Recruiter" },
+  { value: "team_manager", label: "Team Manager" },
+  { value: "finance", label: "Finance" },
+  { value: "employee", label: "Employee" },
+];
+
+const ROLE_COLORS: Record<string, string> = {
+  super_admin: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+  company_admin: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
+  hr_manager: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+  recruiter: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300",
+  team_manager: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+  finance: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+  employee: "bg-gray-100 text-gray-800 dark:bg-gray-800/40 dark:text-gray-300",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  active: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+  inactive: "bg-gray-100 text-gray-800 dark:bg-gray-800/40 dark:text-gray-300",
+  invited: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300",
+  suspended: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+};
 
 export default function SettingsPage() {
   const { user, loadUser } = useAuthStore();
@@ -35,6 +72,23 @@ export default function SettingsPage() {
   });
 
   const canManageOrg = ["super_admin", "company_admin", "hr_manager"].includes((user?.role || "").toLowerCase());
+  const canManageUsers = ["super_admin", "company_admin"].includes((user?.role || "").toLowerCase());
+
+  // Users
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+  const [userForm, setUserForm] = useState({ email: "", full_name: "", role: "employee", password: "", phone: "" });
+  const [savingUser, setSavingUser] = useState(false);
+  const [resetPwdDialogOpen, setResetPwdDialogOpen] = useState(false);
+  const [resetPwdUser, setResetPwdUser] = useState<ManagedUser | null>(null);
+  const [resetPwdForm, setResetPwdForm] = useState({ newPassword: "", confirmPassword: "" });
+  const [savingResetPwd, setSavingResetPwd] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", role: "employee" });
+  const [savingInvite, setSavingInvite] = useState(false);
 
   // Branches
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -294,6 +348,113 @@ export default function SettingsPage() {
     }
   }
 
+  // ── User Management CRUD ───────────────────────────────────
+  const loadUsers = useCallback(async (search?: string) => {
+    setLoadingUsers(true);
+    try {
+      const res = await userService.list({ page: 1, page_size: 100, q: search || undefined });
+      const items = res?.data || res || [];
+      setManagedUsers(Array.isArray(items) ? items : []);
+    } catch { /* ignore */ } finally { setLoadingUsers(false); }
+  }, []);
+
+  function openUserDialog(u?: ManagedUser) {
+    if (u) {
+      setEditingUser(u);
+      setUserForm({ email: u.email, full_name: u.full_name, role: u.role, password: "", phone: u.phone || "" });
+    } else {
+      setEditingUser(null);
+      setUserForm({ email: "", full_name: "", role: "employee", password: "", phone: "" });
+    }
+    setUserDialogOpen(true);
+  }
+
+  async function handleSaveUser() {
+    setSavingUser(true);
+    try {
+      if (editingUser) {
+        await userService.update(editingUser.business_id, {
+          full_name: userForm.full_name,
+          role: userForm.role,
+          phone: userForm.phone || undefined,
+        });
+      } else {
+        if (!userForm.email || !userForm.full_name) {
+          toast({ title: "Error", description: "Email and name are required", variant: "destructive" });
+          setSavingUser(false);
+          return;
+        }
+        await userService.create({
+          email: userForm.email,
+          full_name: userForm.full_name,
+          role: userForm.role,
+          password: userForm.password || undefined,
+          phone: userForm.phone || undefined,
+        });
+      }
+      toast({ title: "Saved", description: editingUser ? "User updated" : "User created", variant: "success" });
+      setUserDialogOpen(false);
+      loadUsers(userSearch);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Failed to save user";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally { setSavingUser(false); }
+  }
+
+  async function handleToggleUserStatus(u: ManagedUser) {
+    const newStatus = u.status === "active" ? "inactive" : "active";
+    try {
+      await userService.updateStatus(u.business_id, newStatus);
+      toast({ title: "Updated", description: `User ${newStatus === "active" ? "activated" : "deactivated"}`, variant: "success" });
+      loadUsers(userSearch);
+    } catch {
+      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+    }
+  }
+
+  function openResetPwdDialog(u: ManagedUser) {
+    setResetPwdUser(u);
+    setResetPwdForm({ newPassword: "", confirmPassword: "" });
+    setResetPwdDialogOpen(true);
+  }
+
+  async function handleResetPassword() {
+    if (resetPwdForm.newPassword !== resetPwdForm.confirmPassword) {
+      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" });
+      return;
+    }
+    if (resetPwdForm.newPassword.length < 8) {
+      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
+      return;
+    }
+    setSavingResetPwd(true);
+    try {
+      await userService.adminResetPassword(resetPwdUser!.business_id, resetPwdForm.newPassword);
+      toast({ title: "Success", description: `Password reset for ${resetPwdUser!.email}`, variant: "success" });
+      setResetPwdDialogOpen(false);
+    } catch {
+      toast({ title: "Error", description: "Failed to reset password", variant: "destructive" });
+    } finally { setSavingResetPwd(false); }
+  }
+
+  async function handleInviteUser() {
+    if (!inviteForm.email || !inviteForm.full_name) {
+      toast({ title: "Error", description: "Email and name are required", variant: "destructive" });
+      return;
+    }
+    setSavingInvite(true);
+    try {
+      await userService.invite({ email: inviteForm.email, full_name: inviteForm.full_name, role: inviteForm.role });
+      toast({ title: "Invited", description: `Invite sent to ${inviteForm.email}`, variant: "success" });
+      setInviteDialogOpen(false);
+      setInviteForm({ email: "", full_name: "", role: "employee" });
+      loadUsers(userSearch);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Failed to invite user";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally { setSavingInvite(false); }
+  }
+
   if (initialLoading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -319,12 +480,14 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="profile" className="space-y-6" onValueChange={(v) => {
+      <Tabs defaultValue={canManageUsers ? "users" : "profile"} className="space-y-6" onValueChange={(v) => {
+        if (v === "users" && !managedUsers.length) loadUsers();
         if (v === "branches" && !branches.length) loadBranches();
         if (v === "designations" && !designations.length) loadDesignations();
         if (v === "shifts" && !shifts.length) loadShifts();
       }}>
         <TabsList className="flex-wrap">
+          {canManageUsers && <TabsTrigger value="users"><Users className="mr-2 h-4 w-4" />Users</TabsTrigger>}
           <TabsTrigger value="profile"><User className="mr-2 h-4 w-4" />Profile</TabsTrigger>
           <TabsTrigger value="organization"><Building2 className="mr-2 h-4 w-4" />Organization</TabsTrigger>
           {canManageOrg && <TabsTrigger value="branches"><MapPin className="mr-2 h-4 w-4" />Branches</TabsTrigger>}
@@ -333,6 +496,99 @@ export default function SettingsPage() {
           <TabsTrigger value="security"><Shield className="mr-2 h-4 w-4" />Security</TabsTrigger>
           <TabsTrigger value="notifications"><Bell className="mr-2 h-4 w-4" />Notifications</TabsTrigger>
         </TabsList>
+
+        {/* ── Users Tab ──────────────────────────────────────── */}
+        {canManageUsers && (
+        <TabsContent value="users">
+          <Card>
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> User Management</CardTitle>
+                <CardDescription>Create, edit, and manage user accounts for your organization</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => { setInviteForm({ email: "", full_name: "", role: "employee" }); setInviteDialogOpen(true); }}>
+                  <Mail className="mr-2 h-4 w-4" />Invite User
+                </Button>
+                <Button onClick={() => openUserDialog()}>
+                  <UserPlus className="mr-2 h-4 w-4" />Create User
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Search */}
+              <div className="mb-4 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, email, or ID..."
+                    className="pl-10"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") loadUsers(userSearch); }}
+                  />
+                </div>
+                <Button variant="outline" size="sm" onClick={() => loadUsers(userSearch)}>Search</Button>
+              </div>
+
+              {loadingUsers ? (
+                <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : managedUsers.length > 0 ? (
+                <div className="space-y-2">
+                  {/* Header */}
+                  <div className="hidden items-center gap-4 rounded-lg bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
+                    <span>User</span>
+                    <span>Role</span>
+                    <span>Status</span>
+                    <span>Last Login</span>
+                    <span>Actions</span>
+                  </div>
+                  {managedUsers.map((u) => (
+                    <div key={u.business_id} className="flex flex-col gap-2 rounded-lg border p-3 sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:items-center sm:gap-4">
+                      <div>
+                        <p className="font-medium text-sm">{u.full_name}</p>
+                        <p className="text-xs text-muted-foreground">{u.email}</p>
+                      </div>
+                      <div>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[u.role] || ROLE_COLORS.employee}`}>
+                          {u.role.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <div>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[u.status] || STATUS_COLORS.inactive}`}>
+                          {u.status}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {u.last_login_at ? new Date(u.last_login_at).toLocaleDateString() : "Never"}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" title="Edit" onClick={() => openUserDialog(u)}><Edit className="h-3.5 w-3.5" /></Button>
+                        <Button size="sm" variant="ghost" title="Reset Password" onClick={() => openResetPwdDialog(u)}><Key className="h-3.5 w-3.5" /></Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title={u.status === "active" ? "Deactivate" : "Activate"}
+                          className={u.status === "active" ? "text-amber-600 hover:text-amber-700" : "text-emerald-600 hover:text-emerald-700"}
+                          onClick={() => handleToggleUserStatus(u)}
+                        >
+                          {u.status === "active" ? <Ban className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-muted-foreground">
+                  <Users className="mx-auto mb-3 h-10 w-10" />
+                  <p className="font-medium">No users found</p>
+                  <p className="text-xs mt-1">Create or invite users to get started.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        )}
 
         <TabsContent value="profile">
           <Card>
@@ -736,6 +992,125 @@ export default function SettingsPage() {
             <Button variant="outline" onClick={() => setShiftDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveShift} disabled={savingShift || !shiftForm.name}>
               {savingShift && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingShift ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Create/Edit Dialog */}
+      <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingUser ? "Edit User" : "Create User"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {!editingUser && (
+              <div className="space-y-2">
+                <Label>Email *</Label>
+                <Input type="email" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} placeholder="user@company.com" />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input value={userForm.full_name} onChange={(e) => setUserForm({ ...userForm, full_name: e.target.value })} placeholder="John Doe" />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input value={userForm.phone} onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })} placeholder="+91 9876543210" />
+            </div>
+            <div className="space-y-2">
+              <Label>Role *</Label>
+              <Select value={userForm.role} onValueChange={(v) => setUserForm({ ...userForm, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {!editingUser && (
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <Input type="password" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} placeholder="Leave blank to require activation" />
+                <p className="text-xs text-muted-foreground">If omitted, user will need to set password via invite link.</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUserDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveUser} disabled={savingUser || !userForm.full_name || (!editingUser && !userForm.email)}>
+              {savingUser && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingUser ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPwdDialogOpen} onOpenChange={setResetPwdDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Resetting password for <span className="font-medium text-foreground">{resetPwdUser?.full_name}</span> ({resetPwdUser?.email})
+          </p>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>New Password *</Label>
+              <Input type="password" value={resetPwdForm.newPassword} onChange={(e) => setResetPwdForm({ ...resetPwdForm, newPassword: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirm Password *</Label>
+              <Input type="password" value={resetPwdForm.confirmPassword} onChange={(e) => setResetPwdForm({ ...resetPwdForm, confirmPassword: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetPwdDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleResetPassword} disabled={savingResetPwd || !resetPwdForm.newPassword || !resetPwdForm.confirmPassword}>
+              {savingResetPwd && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Reset Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite User Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invite User</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Send an invitation to join your organization. The user will receive a link to set up their account.
+          </p>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} placeholder="user@company.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input value={inviteForm.full_name} onChange={(e) => setInviteForm({ ...inviteForm, full_name: e.target.value })} placeholder="John Doe" />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={inviteForm.role} onValueChange={(v) => setInviteForm({ ...inviteForm, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleInviteUser} disabled={savingInvite || !inviteForm.email || !inviteForm.full_name}>
+              {savingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Send Invitation
             </Button>
           </DialogFooter>
         </DialogContent>

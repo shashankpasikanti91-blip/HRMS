@@ -19,6 +19,60 @@ from app.services.payroll_service import PayrollService
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
 
 
+@router.get("/me/payslips")
+async def get_my_payslips(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the current user's own payslips across all payroll runs."""
+    from sqlalchemy import select as sa_select
+    from app.models.employee import Employee
+    from app.models.payroll import PayrollItem, PayrollRun
+
+    # Find employee record for current user
+    emp_result = await db.execute(
+        sa_select(Employee).where(
+            Employee.user_id == current_user.id,
+            Employee.company_id == current_user.company_id,
+            Employee.is_deleted == False,
+        )
+    )
+    emp = emp_result.scalar_one_or_none()
+    if not emp:
+        return []
+
+    # Get all payroll items for this employee
+    items_result = await db.execute(
+        sa_select(PayrollItem, PayrollRun.period_month, PayrollRun.period_year, PayrollRun.status.label("run_status"))
+        .join(PayrollRun, PayrollItem.payroll_run_id == PayrollRun.id)
+        .where(
+            PayrollItem.employee_id == emp.id,
+            PayrollItem.company_id == current_user.company_id,
+            PayrollItem.is_deleted == False,
+        )
+        .order_by(PayrollRun.period_year.desc(), PayrollRun.period_month.desc())
+    )
+    rows = items_result.all()
+    payslips = []
+    for row in rows:
+        item = row[0]
+        payslips.append({
+            "business_id": item.business_id,
+            "period_month": row[1],
+            "period_year": row[2],
+            "run_status": row[3],
+            "gross_salary": float(item.gross_salary or 0),
+            "allowances": float(item.allowances or 0),
+            "deductions": float(item.deductions or 0),
+            "tax_amount": float(item.tax_amount or 0),
+            "net_salary": float(item.net_salary or 0),
+            "currency": item.currency or "INR",
+            "payment_status": item.payment_status or "pending",
+            "payment_date": str(item.payment_date) if item.payment_date else None,
+        })
+    return payslips
+
+
 @router.post("/runs", response_model=PayrollRunResponse, status_code=201)
 async def create_payroll_run(
     data: PayrollRunCreate,

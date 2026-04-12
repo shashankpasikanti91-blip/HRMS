@@ -149,6 +149,26 @@ async def list_employees(
     return Page.create(summaries, total, params)
 
 
+@emp_router.get("/me", response_model=EmployeeResponse)
+async def get_my_employee_profile(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the current user's own employee profile."""
+    result = await db.execute(
+        select(Employee).where(
+            Employee.user_id == current_user.id,
+            Employee.company_id == current_user.company_id,
+            Employee.is_deleted == False,
+        )
+    )
+    emp = result.scalar_one_or_none()
+    if not emp:
+        from app.core.exceptions import NotFoundException
+        raise NotFoundException("Employee profile not found for current user")
+    return EmployeeResponse.model_validate(emp)
+
+
 @emp_router.get("/search", response_model=Page[EmployeeSummary])
 async def search_employees(
     q: str = Query(..., min_length=1),

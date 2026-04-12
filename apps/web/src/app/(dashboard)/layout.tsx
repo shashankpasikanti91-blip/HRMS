@@ -24,15 +24,15 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: null },
   { href: "/dashboard/employees", label: "Employees", icon: Users, roles: ADMIN_ROLES },
   { href: "/dashboard/departments", label: "Departments", icon: Building2, roles: [...ADMIN_ROLES, "finance", "team_manager"] },
-  { href: "/dashboard/attendance", label: "Attendance", icon: Clock, roles: [...ADMIN_ROLES, "team_manager"] },
+  { href: "/dashboard/attendance", label: "Attendance", icon: Clock, roles: null },
   { href: "/dashboard/holidays", label: "Holidays", icon: CalendarDays, roles: null },
-  { href: "/dashboard/payroll", label: "Payroll", icon: DollarSign, roles: [...ADMIN_ROLES, "finance"] },
+  { href: "/dashboard/payroll", label: "Payroll", icon: DollarSign, roles: null },
   { href: "/dashboard/recruitment", label: "Recruitment", icon: Briefcase, roles: [...ADMIN_ROLES, "recruiter"] },
   { href: "/dashboard/performance", label: "Performance", icon: Target, roles: [...MANAGEMENT_ROLES] },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell, roles: null },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ADMIN_ROLES },
   { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot, roles: null },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings, roles: ["super_admin", "company_admin"] },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, roles: null },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

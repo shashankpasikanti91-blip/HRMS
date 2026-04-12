@@ -10,14 +10,26 @@ import { Button } from "@/components/ui/button";
 import {
   Users, UserCheck, UserMinus, Briefcase, Target, TrendingUp, Loader2,
   CalendarDays, AlertTriangle, ArrowRight, Clock, Sparkles, Building2, BarChart3, Bell,
+  LogIn, LogOut, FileText, DollarSign,
 } from "lucide-react";
-import { analyticsService, departmentService, notificationService, holidayService, employeeService } from "@/services/api-services";
+import { analyticsService, departmentService, notificationService, holidayService, employeeService, attendanceService, payrollService, leaveService } from "@/services/api-services";
 import { useAuthStore } from "@/store/auth-store";
+import { useToast } from "@/hooks/use-toast";
 import { getInitials } from "@/lib/utils";
-import type { DepartmentSummary, DashboardStats, Notification, Holiday, Employee } from "@/types";
+import type { DepartmentSummary, DashboardStats, Notification, Holiday, Employee, AttendanceRecord, LeaveRequest } from "@/types";
+
+interface PayslipSummary {
+  business_id: string;
+  period_month: number;
+  period_year: number;
+  net_salary: number;
+  currency: string;
+  payment_status: string;
+}
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [departments, setDepartments] = useState<DepartmentSummary[]>([]);
   const [activity, setActivity] = useState<Notification[]>([]);
@@ -25,11 +37,20 @@ export default function DashboardPage() {
   const [visaAlerts, setVisaAlerts] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Self-service state for employee/manager
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
+  const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
+  const [myPayslips, setMyPayslips] = useState<PayslipSummary[]>([]);
+  const [myLeaves, setMyLeaves] = useState<LeaveRequest[]>([]);
+  const [clockingIn, setClockingIn] = useState(false);
+  const [clockingOut, setClockingOut] = useState(false);
+
   // Role helpers
   const role = user?.role || "employee";
   const isAdmin = ["super_admin", "company_admin", "hr_manager"].includes(role);
   const isManager = isAdmin || role === "team_manager";
   const isFinance = role === "finance";
+  const isEmployee = !isAdmin;
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -45,6 +66,15 @@ export default function DashboardPage() {
           analyticsService.getDashboard(),
           departmentService.list(),
           employeeService.list(),
+        );
+      }
+      // All users (especially employees) get self-service data
+      if (isEmployee || isManager) {
+        baseRequests.push(
+          attendanceService.getMyToday().catch(() => null),
+          attendanceService.getMyHistory({ page: 1, page_size: 7 }).catch(() => null),
+          payrollService.getMyPayslips().catch(() => null),
+          leaveService.getByEmployee(user?.id || "").catch(() => null),
         );
       }
 
@@ -86,12 +116,70 @@ export default function DashboardPage() {
           );
         }
       }
+      // Self-service results  
+      if (isEmployee || isManager) {
+        const s = (isAdmin || isManager) ? 5 : 2;
+        // Today's attendance
+        if (results[s]?.status === "fulfilled") {
+          const v = (results[s] as PromiseFulfilledResult<unknown>).value;
+          if (v) setTodayAttendance(v as AttendanceRecord);
+        }
+        // Attendance history
+        if (results[s + 1]?.status === "fulfilled") {
+          const v = (results[s + 1] as PromiseFulfilledResult<unknown>).value;
+          if (v) {
+            const histItems = Array.isArray(v) ? v : (v as { data?: AttendanceRecord[] })?.data || [];
+            setAttendanceHistory(histItems.slice(0, 7));
+          }
+        }
+        // Payslips
+        if (results[s + 2]?.status === "fulfilled") {
+          const v = (results[s + 2] as PromiseFulfilledResult<unknown>).value;
+          if (v) {
+            const psItems = Array.isArray(v) ? v : (v as { data?: PayslipSummary[] })?.data || [];
+            setMyPayslips(psItems.slice(0, 3));
+          }
+        }
+        // Leaves
+        if (results[s + 3]?.status === "fulfilled") {
+          const v = (results[s + 3] as PromiseFulfilledResult<unknown>).value;
+          if (v) {
+            const lvItems: LeaveRequest[] = Array.isArray(v) ? v : (v as { data?: LeaveRequest[] })?.data || [];
+            setMyLeaves(lvItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5));
+          }
+        }
+      }
     } catch (err) {
       console.error("Dashboard load error:", err);
     } finally {
       setLoading(false);
     }
-  }, [user?.company_id, isAdmin, isManager]);
+  }, [user?.company_id, user?.id, isAdmin, isManager, isEmployee]);
+
+  // Clock in/out handlers
+  async function handleClockIn() {
+    setClockingIn(true);
+    try {
+      const result = await attendanceService.checkIn();
+      setTodayAttendance(result as AttendanceRecord);
+      toast({ title: "Clocked In", description: `You clocked in at ${new Date().toLocaleTimeString()}`, variant: "success" });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Failed to clock in";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally { setClockingIn(false); }
+  }
+
+  async function handleClockOut() {
+    setClockingOut(true);
+    try {
+      const result = await attendanceService.checkOut();
+      setTodayAttendance(result as AttendanceRecord);
+      toast({ title: "Clocked Out", description: `You clocked out at ${new Date().toLocaleTimeString()}`, variant: "success" });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Failed to clock out";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally { setClockingOut(false); }
+  }
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -170,8 +258,11 @@ export default function DashboardPage() {
     { label: "AI Assistant", href: "/dashboard/ai-assistant", icon: Sparkles, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30" },
   ];
   const employeeQuickActions = [
+    { label: "My Attendance", href: "/dashboard/attendance", icon: Clock, color: "text-green-600 bg-green-50 dark:bg-green-950/30" },
+    { label: "My Payslips", href: "/dashboard/payroll", icon: DollarSign, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
     { label: "View Holidays", href: "/dashboard/holidays", icon: CalendarDays, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
     { label: "Notifications", href: "/dashboard/notifications", icon: Bell, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
+    { label: "Settings", href: "/dashboard/settings", icon: Target, color: "text-gray-600 bg-gray-50 dark:bg-gray-950/30" },
     { label: "AI Assistant", href: "/dashboard/ai-assistant", icon: Sparkles, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30" },
   ];
   const managerQuickActions = [
@@ -256,7 +347,7 @@ export default function DashboardPage() {
           )}
 
           {/* Middle Row: Quick Actions + Department Overview */}
-          <div className={`grid gap-6 ${isAdmin ? "lg:grid-cols-7" : "lg:grid-cols-1"}`}>
+          <div className={`grid gap-6 ${isAdmin ? "lg:grid-cols-7" : "lg:grid-cols-2"}`}>
             {/* Quick Actions */}
             <Card className={`${isAdmin ? "lg:col-span-3" : ""} shadow-sm`}>
               <CardHeader className="pb-3">
@@ -324,6 +415,205 @@ export default function DashboardPage() {
             </Card>
             )}
           </div>
+
+          {/* ── Employee Self-Service Section ──────────────────── */}
+          {isEmployee && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Clock In/Out Card */}
+            <Card className="shadow-sm border-2 border-primary/10">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" /> Time & Attendance
+                </CardTitle>
+                <CardDescription>Clock in/out and view today&apos;s status</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center gap-4">
+                  {/* Live Clock */}
+                  <div className="text-center">
+                    <p className="text-4xl font-bold tabular-nums tracking-tight">{new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
+                  </div>
+
+                  {/* Status */}
+                  <div className="w-full rounded-xl bg-muted/50 p-3 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge variant={todayAttendance?.check_in_time ? (todayAttendance?.check_out_time ? "secondary" : "success") : "outline"}>
+                        {todayAttendance?.check_in_time ? (todayAttendance?.check_out_time ? "Completed" : "Working") : "Not Clocked In"}
+                      </Badge>
+                    </div>
+                    {todayAttendance?.check_in_time && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Clock In</span>
+                        <span className="font-medium">{todayAttendance.check_in_time}</span>
+                      </div>
+                    )}
+                    {todayAttendance?.check_out_time && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Clock Out</span>
+                        <span className="font-medium">{todayAttendance.check_out_time}</span>
+                      </div>
+                    )}
+                    {todayAttendance?.total_hours !== undefined && todayAttendance?.total_hours !== null && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Total Hours</span>
+                        <span className="font-medium">{todayAttendance.total_hours.toFixed(1)}h</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Clock Buttons */}
+                  <div className="flex gap-3 w-full">
+                    <Button
+                      className="flex-1"
+                      size="lg"
+                      onClick={handleClockIn}
+                      disabled={clockingIn || !!todayAttendance?.check_in_time}
+                    >
+                      {clockingIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                      Clock In
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      size="lg"
+                      variant="outline"
+                      onClick={handleClockOut}
+                      disabled={clockingOut || !todayAttendance?.check_in_time || !!todayAttendance?.check_out_time}
+                    >
+                      {clockingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                      Clock Out
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Attendance History */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Recent Attendance</CardTitle>
+                  <Link href="/dashboard/attendance">
+                    <Button variant="ghost" size="sm" className="text-xs">View All <ArrowRight className="h-3 w-3 ml-1" /></Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {attendanceHistory.length > 0 ? (
+                  <div className="space-y-2">
+                    {attendanceHistory.map((a) => (
+                      <div key={a.business_id || a.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="text-center w-10">
+                            <p className="text-xs font-medium text-muted-foreground">{new Date(a.attendance_date).toLocaleDateString("en-US", { weekday: "short" })}</p>
+                            <p className="text-sm font-bold">{new Date(a.attendance_date).getDate()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm">{a.check_in_time || "—"} {a.check_out_time ? `→ ${a.check_out_time}` : ""}</p>
+                            <p className="text-xs text-muted-foreground">{a.total_hours ? `${a.total_hours.toFixed(1)}h` : "—"}</p>
+                          </div>
+                        </div>
+                        <Badge variant={a.status === "present" ? "success" : a.status === "absent" ? "destructive" : a.status === "late" ? "warning" : "secondary"} className="text-[10px]">
+                          {a.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <Clock className="mx-auto mb-2 h-8 w-8 opacity-30" />
+                    <p className="text-sm">No attendance records yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          )}
+
+          {/* Employee Payslips + Leave Requests */}
+          {isEmployee && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Recent Payslips */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-emerald-500" /> My Payslips
+                  </CardTitle>
+                  <Link href="/dashboard/payroll">
+                    <Button variant="ghost" size="sm" className="text-xs">View All <ArrowRight className="h-3 w-3 ml-1" /></Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {myPayslips.length > 0 ? (
+                  <div className="space-y-2">
+                    {myPayslips.map((ps) => {
+                      const monthName = new Date(ps.period_year, ps.period_month - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+                      return (
+                        <div key={ps.business_id} className="flex items-center justify-between rounded-lg border px-3 py-3">
+                          <div>
+                            <p className="text-sm font-medium">{monthName}</p>
+                            <p className="text-xs text-muted-foreground">Net: {ps.currency} {ps.net_salary?.toLocaleString()}</p>
+                          </div>
+                          <Badge variant={ps.payment_status === "paid" ? "success" : "warning"} className="text-[10px]">
+                            {ps.payment_status || "pending"}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <FileText className="mx-auto mb-2 h-8 w-8 opacity-30" />
+                    <p className="text-sm">No payslips available yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* My Leave Requests */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-blue-500" /> My Leave Requests
+                  </CardTitle>
+                  <Link href="/dashboard/attendance">
+                    <Button variant="ghost" size="sm" className="text-xs">View All <ArrowRight className="h-3 w-3 ml-1" /></Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {myLeaves.length > 0 ? (
+                  <div className="space-y-2">
+                    {myLeaves.map((lv) => (
+                      <div key={lv.business_id || lv.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                        <div>
+                          <p className="text-sm font-medium">{lv.leave_type?.replace(/_/g, " ")}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(lv.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            {lv.end_date !== lv.start_date && ` – ${new Date(lv.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                            {lv.total_days ? ` (${lv.total_days}d)` : ""}
+                          </p>
+                        </div>
+                        <Badge variant={lv.status === "approved" ? "success" : lv.status === "rejected" ? "destructive" : "warning"} className="text-[10px]">
+                          {lv.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <CalendarDays className="mx-auto mb-2 h-8 w-8 opacity-30" />
+                    <p className="text-sm">No leave requests</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          )}
 
           {/* Bottom Row: Upcoming Holidays + Visa Alerts + Recent Activity */}
           <div className={`grid gap-6 ${isAdmin ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>

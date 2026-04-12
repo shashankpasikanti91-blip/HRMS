@@ -51,3 +51,14 @@ class UserSummary(BaseSchema):
     full_name: str
     role: str
     status: str
+
+
+class AdminResetPasswordRequest(BaseSchema):
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v

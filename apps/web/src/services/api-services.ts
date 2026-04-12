@@ -143,6 +143,10 @@ export const employeeService = {
     const { data } = await api.get(`/employees/${businessId}/summary`);
     return data;
   },
+  async getMe(): Promise<Employee> {
+    const { data } = await api.get("/employees/me");
+    return data as Employee;
+  },
   async uploadPhoto(businessId: string, file: File): Promise<Employee> {
     const formData = new FormData();
     formData.append("file", file);
@@ -216,6 +220,10 @@ export const attendanceService = {
       if (status === 404) return "no_profile";
       return null;
     }
+  },
+  async getMyHistory(params?: { page?: number; page_size?: number }): Promise<Page<AttendanceRecord>> {
+    const { data } = await api.get("/attendance/me/history", { params });
+    return data as Page<AttendanceRecord>;
   },
   async getToday() {
     // Fetch today's attendance for the current user by getting recent records
@@ -458,6 +466,20 @@ export const payrollService = {
     const { data } = await api.get(`/payroll/items/${itemBusinessId}`);
     return data as PayslipDetail;
   },
+  async getMyPayslips(): Promise<Array<{
+    business_id: string; period_month: number; period_year: number;
+    run_status: string; gross_salary: number; allowances: number;
+    deductions: number; tax_amount: number; net_salary: number;
+    currency: string; payment_status: string; payment_date: string | null;
+  }>> {
+    const { data } = await api.get("/payroll/me/payslips");
+    return data as Array<{
+      business_id: string; period_month: number; period_year: number;
+      run_status: string; gross_salary: number; allowances: number;
+      deductions: number; tax_amount: number; net_salary: number;
+      currency: string; payment_status: string; payment_date: string | null;
+    }>;
+  },
 };
 
 // ─── Performance ─────────────────────────────────────────────────────────────
@@ -662,6 +684,38 @@ export const settingsService = {
   },
   async enableMFA() {
     const { data } = await api.post("/auth/mfa/enable");
+    return data;
+  },
+};
+
+// ─── User Management ─────────────────────────────────────────────────────────
+export const userService = {
+  async list(params?: { page?: number; page_size?: number; q?: string }) {
+    const { data } = await api.get("/users", { params });
+    return data;
+  },
+  async getByBusinessId(businessId: string) {
+    const { data } = await api.get(`/users/${businessId}`);
+    return data;
+  },
+  async create(payload: { email: string; full_name: string; role?: string; password?: string; phone?: string }) {
+    const { data } = await api.post("/users", payload);
+    return data;
+  },
+  async update(businessId: string, payload: { full_name?: string; role?: string; phone?: string }) {
+    const { data } = await api.put(`/users/${businessId}`, payload);
+    return data;
+  },
+  async updateStatus(businessId: string, status: string) {
+    const { data } = await api.patch(`/users/${businessId}/status`, { status });
+    return data;
+  },
+  async adminResetPassword(businessId: string, newPassword: string) {
+    const { data } = await api.post(`/users/${businessId}/reset-password`, { new_password: newPassword });
+    return data;
+  },
+  async invite(payload: { email: string; full_name: string; role?: string }) {
+    const { data } = await api.post("/auth/invite-user", payload);
     return data;
   },
 };

@@ -59,6 +59,33 @@ async def get_my_today(
     return await _enrich_attendance(record, db)
 
 
+@att_router.get("/me/history", response_model=Page[AttendanceResponse])
+async def get_my_attendance_history(
+    params: PaginationParams = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the current user's own attendance history."""
+    from sqlalchemy import select as sa_select
+    from app.models.employee import Employee
+
+    emp_result = await db.execute(
+        sa_select(Employee).where(
+            Employee.user_id == current_user.id,
+            Employee.company_id == current_user.company_id,
+            Employee.is_deleted == False,
+        )
+    )
+    emp = emp_result.scalar_one_or_none()
+    if not emp:
+        return Page.create([], 0, params)
+
+    svc = AttendanceService(db)
+    records, total = await svc.list(current_user.company_id, params, employee_id=emp.id)
+    enriched = [await _enrich_attendance(r, db) for r in records]
+    return Page.create(enriched, total, params)
+
+
 @att_router.post("/check-in", response_model=AttendanceResponse, status_code=201)
 async def check_in(
     data: CheckInRequest,
