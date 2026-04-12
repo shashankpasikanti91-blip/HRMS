@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, BackgroundTasks, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,7 +36,7 @@ settings = get_settings()
 @router.post("/register", response_model=dict, status_code=201)
 @limiter.limit("5/minute")
 async def register(
-    data: RegisterRequest | RegisterCompanyRequest,
+    data: RegisterRequest | RegisterCompanyRequest = Body(...),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
@@ -63,7 +63,7 @@ async def register(
 @router.post("/google-sync", response_model=dict)
 @limiter.limit("10/minute")
 async def google_sync(
-    data: GoogleSyncRequest,
+    data: GoogleSyncRequest = Body(...),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
@@ -128,7 +128,7 @@ async def google_callback(
 @router.post("/register-company", response_model=dict, status_code=201)
 @limiter.limit("3/minute")
 async def register_company(
-    data: RegisterCompanyRequest,
+    data: RegisterCompanyRequest = Body(...),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
@@ -146,7 +146,7 @@ async def register_company(
 @router.post("/login", response_model=dict)
 @limiter.limit("10/minute")
 async def login(
-    data: LoginRequest,
+    data: LoginRequest = Body(...),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
@@ -183,7 +183,7 @@ async def refresh_token(
 @router.post("/forgot-password", response_model=MessageResponse)
 @limiter.limit("3/minute")
 async def forgot_password(
-    data: ForgotPasswordRequest,
+    data: ForgotPasswordRequest = Body(...),
     request: Request,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
@@ -198,7 +198,7 @@ async def forgot_password(
 @router.post("/reset-password", response_model=MessageResponse)
 @limiter.limit("5/minute")
 async def reset_password(
-    data: ResetPasswordRequest,
+    data: ResetPasswordRequest = Body(...),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
