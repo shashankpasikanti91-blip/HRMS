@@ -10,10 +10,10 @@ Production-ready, multi-tenant HRMS SaaS backend built with **FastAPI + PostgreS
 
 | Module | Endpoints | Description |
 |---|---|---|
-| Auth | 8 | Register, login, refresh, forgot/reset, invite, activate |
+| Auth | 8 | Register, login, refresh, forgot/reset, invite, activate — rate-limited (5/min login, 3/min register) |
 | Companies | 4 | Tenant management, admin company CRUD |
 | Users | 5 | User CRUD with role-based access |
-| Employees | 9 | Employee + Department CRUD, profile photo upload, visa tracking |
+| Employees | 9 | Employee + Department CRUD, profile photo upload, visa tracking, address & bank details |
 | Attendance | 8 | Check-in/out, manual entry, leave requests & approvals |
 | Holidays | 5 | Holiday calendar CRUD with country/state filtering |
 | Recruitment | 18 | Jobs, candidates, applications, interviews, offers + stage pipeline |
@@ -23,6 +23,16 @@ Production-ready, multi-tenant HRMS SaaS backend built with **FastAPI + PostgreS
 | Notifications | 3 | In-app notification read/mark-all |
 | Analytics | 6 | Dashboard, attendance, recruitment funnel, headcount, leave, payroll |
 | Search | 1 | `GET /api/v1/search/global?q=` — searches all entities |
+| **Organization** | **8** | **Branches CRUD, designations CRUD, org settings GET/PUT, shifts CRUD** |
+| **Policies** | **10** | **Leave policies CRUD, leave types CRUD, leave balances, attendance policy, country configs** |
+| **Salary** | **9** | **Salary structures CRUD (with components), salary components CRUD, employee salary upsert/get/breakdown** |
+
+### Security
+
+- **JWT with JTI** — Every token has a unique identifier for revocation
+- **Token Blacklist** — Logout actually invalidates tokens (checked on every request)
+- **Rate Limiting** — slowapi: 200/min global, 5/min login, 3/min register, 3/min forgot-password
+- **RBAC** — 7 roles: super_admin, company_admin, hr_manager, recruiter, team_manager, employee, finance
 
 ### Business IDs
 Every entity has a unique, human-readable, searchable Business ID:
@@ -45,22 +55,30 @@ Every entity has a unique, human-readable, searchable Business ID:
 | Document | DOC-NNNNNN | DOC-000088 |
 | Interview | INT-NNNNNN | INT-000005 |
 | Offer | OFR-NNNNNN | OFR-000003 |
+| Branch | BRN-NNNNNN | BRN-000001 |
+| Designation | DESG-NNNNNN | DESG-000005 |
+| Shift | SHF-NNNNNN | SHF-000002 |
+| Leave Policy | LPOL-NNNNNN | LPOL-000001 |
+| Leave Type | LTYP-NNNNNN | LTYP-000006 |
+| Salary Structure | SSTR-NNNNNN | SSTR-000001 |
+| Salary Component | SCMP-NNNNNN | SCMP-000008 |
+| Client | CLT-NNNNNN | CLT-000003 |
 
 ---
 
 ## Tech Stack
 
 - **FastAPI 0.115** — ASGI web framework
-- **SQLAlchemy 2.0 (async)** — ORM
+- **SQLAlchemy 2.0 (async)** — ORM with 37 models
 - **PostgreSQL 16** — Primary database
 - **Redis 7** — Token blacklist + cache
-- **Alembic** — Database migrations
+- **Alembic** — Database migrations (5 versions, 19+ tables)
 - **Pydantic v2** — Schema validation
-- **python-jose + passlib** — JWT auth + bcrypt
+- **python-jose + passlib** — JWT auth (with jti) + bcrypt
+- **slowapi** — Rate limiting (200/min global)
 - **httpx** — Async n8n AI webhook client
 - **boto3** — S3/MinIO file storage
 - **structlog** — Structured JSON logging
-- **Celery + Flower** — Background jobs
 - **Docker + Nginx** — Containerized deployment
 
 ---

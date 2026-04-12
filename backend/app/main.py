@@ -8,6 +8,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
@@ -19,6 +21,9 @@ from app.api.v1 import api_router
 settings = get_settings()
 configure_logging("INFO")
 logger = structlog.get_logger(__name__)
+
+# ── Rate Limiter (global instance) ─────────────────────────────────────────
+from app.core.rate_limit import limiter
 
 
 # ── Lifespan ────────────────────────────────────────────────────────────────
@@ -66,6 +71,10 @@ def create_app() -> FastAPI:
     # ── Custom middleware (outermost first) ───────────────────────────────
     app.add_middleware(TenantMiddleware)
     app.add_middleware(AuditMiddleware)
+
+    # ── Rate limiter ─────────────────────────────────────────────────────
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # ── Exception handlers ─────────────────────────────────────────────────
     @app.exception_handler(AppException)

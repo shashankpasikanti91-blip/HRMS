@@ -1647,92 +1647,64 @@ The most advanced HR chatbot — not a simple FAQ bot, but a true AI assistant.
 | Technology | Purpose |
 |-----------|---------|
 | **Next.js 15** | Core web application (App Router, Server Components) |
-| **React 19** | UI component library |
+| **React 18.3.1** | UI component library |
 | **TypeScript** | Type-safe development |
-| **Tailwind CSS 4** | Utility-first styling |
-| **shadcn/ui** | Component library (accessible, customizable) |
-| **React Query (TanStack)** | Server state management & caching |
+| **Tailwind CSS** | Utility-first styling |
+| **shadcn/ui + Radix UI** | Component library (accessible, customizable) |
 | **Zustand** | Client state management |
+| **Axios** | HTTP client for API communication |
 | **React Hook Form + Zod** | Form management & validation |
-| **Recharts / Nivo** | Data visualization & charts |
-| **D3.js** | Advanced visualizations (org charts, network graphs) |
-| **React Flow** | Workflow builder UI |
-| **Framer Motion** | Animations & transitions |
-| **React Native (Expo)** | Mobile applications (iOS + Android) |
+| **Lucide React** | Icon library |
 
 ### Backend
 | Technology | Purpose |
 |-----------|---------|
-| **NestJS** | Primary microservices framework (TypeScript) |
-| **FastAPI** | AI/ML service layer (Python) |
-| **Node.js 22** | Runtime environment |
-| **Python 3.12** | AI/ML services |
-| **GraphQL (Apollo)** | Flexible API querying |
-| **REST (Express/Fastify)** | Standard API endpoints |
-| **gRPC** | High-performance inter-service communication |
-| **Bull/BullMQ** | Job queue for background tasks |
-| **Socket.io** | Real-time WebSocket connections |
+| **FastAPI** | Primary API backend (Python, async) |
+| **NestJS** | Microservices layer (TypeScript) |
+| **Node.js 22** | Runtime for NestJS microservices |
+| **Python 3.12** | FastAPI backend & AI services |
+| **SQLAlchemy 2.0** | Async ORM (37 models) |
+| **Alembic** | Database migration management |
+| **Uvicorn** | ASGI server |
+| **SlowAPI** | Rate limiting |
+| **Pydantic v2** | Data validation & serialization |
 
 ### Database & Storage
 | Technology | Purpose |
 |-----------|---------|
 | **PostgreSQL 16** | Primary relational database |
 | **pgvector** | Vector embeddings for AI/RAG |
-| **Redis 7** | Caching, sessions, pub/sub, rate limiting |
-| **Elasticsearch 8** | Full-text search, log analytics |
-| **MinIO / S3** | File & document storage |
-| **ClickHouse** | Analytics data warehouse (optional) |
+| **Redis 7** | Caching, sessions, token blacklist |
+| **NATS** | Event bus / messaging |
 
 ### AI & Machine Learning
 | Technology | Purpose |
 |-----------|---------|
 | **OpenAI GPT-4** | Primary LLM for chatbot & generation |
-| **Anthropic Claude** | Alternative LLM (quality + safety) |
-| **Llama 3 / Mistral** | Self-hosted LLM option (data privacy) |
 | **LangChain** | LLM orchestration & chaining |
-| **Hugging Face Transformers** | NLP models (sentiment, NER, classification) |
 | **scikit-learn** | Predictive ML models |
-| **PyTorch** | Custom deep learning models |
-| **Tesseract / PaddleOCR** | Document OCR |
 | **OpenAI Embeddings** | Text embeddings for RAG |
-| **Sentence Transformers** | Self-hosted embedding models |
 
 ### Infrastructure & DevOps
 | Technology | Purpose |
 |-----------|---------|
 | **Docker** | Containerization |
-| **Kubernetes (K8s)** | Container orchestration & scaling |
-| **Helm** | Kubernetes package management |
-| **NGINX / Traefik** | Reverse proxy & load balancing |
-| **GitHub Actions** | CI/CD pipelines |
-| **Terraform** | Infrastructure as Code |
-| **Prometheus + Grafana** | Monitoring & alerting |
-| **Loki** | Log aggregation |
-| **Jaeger** | Distributed tracing |
-| **Sentry** | Error tracking |
-| **Vault (HashiCorp)** | Secrets management |
+| **Docker Compose** | Multi-container orchestration |
+| **NGINX** | Reverse proxy & SSL termination |
+| **GitHub** | Source control & collaboration |
+| **Cloudflare** | CDN, SSL certificates, DDoS protection |
+| **Hetzner Cloud** | Production hosting |
 
 ### Message Queue & Events
 | Technology | Purpose |
 |-----------|---------|
 | **NATS** | Primary event bus (lightweight, fast) |
-| **RabbitMQ** | Complex routing & dead-letter queues |
-| **Apache Kafka** | High-throughput event streaming (enterprise) |
-
-### Automation & Integration
-| Technology | Purpose |
-|-----------|---------|
-| **n8n** | Workflow automation engine |
-| **Kong / Custom** | API Gateway |
-| **Keycloak** | Identity & Access Management |
 
 ### Cloud Infrastructure
 | Provider | Purpose |
 |----------|---------|
 | **Hetzner Cloud** | Primary hosting (cost-effective, EU-based) |
-| **AWS** | Enterprise tenants (compliance requirements) |
-| **GCP** | AI/ML workloads |
-| **Cloudflare** | CDN, DDoS protection, WAF |
+| **Cloudflare** | CDN, DDoS protection, SSL |
 
 ---
 
@@ -1743,42 +1715,22 @@ The most advanced HR chatbot — not a simple FAQ bot, but a true AI assistant.
 ```yaml
 services:
   # Core Application
-  web:           # Next.js frontend
-  api-gateway:   # Kong / Custom API Gateway
-  auth-service:  # Keycloak / Custom auth
+  web:               # Next.js 15 frontend (port 3000)
+  fastapi-backend:   # FastAPI primary API (port 8003→8000)
+  api-gateway:       # NestJS API Gateway (port 4000)
+  marketing:         # Marketing site (port 3001)
   
-  # Microservices
-  hr-service:    # Core HR operations
-  payroll-service: # Payroll processing
-  recruitment-service: # ATS & recruitment
-  attendance-service: # Time & attendance
-  performance-service: # Performance management
-  lms-service:   # Learning & development
-  analytics-service: # Workforce analytics
-  compliance-service: # Compliance engine
-  notification-service: # Multi-channel notifications
-  
-  # AI Services
-  ai-engine:     # FastAPI AI orchestration
-  rag-service:   # RAG pipeline
-  ml-service:    # ML predictions
+  # Microservices (NestJS)
+  auth-service:          # Authentication & JWT (port 4001)
+  core-hr-service:       # Core HR operations (port 4002)
+  attendance-service:    # Time & attendance (port 4003)
+  payroll-service:       # Payroll processing (port 4004)
+  notification-service:  # Multi-channel notifications (port 4007)
   
   # Data Layer
-  postgres:      # PostgreSQL 16 + pgvector
-  redis:         # Redis 7
-  elasticsearch: # Elasticsearch 8
-  minio:         # Object storage
-  
-  # Event Bus
-  nats:          # NATS messaging
-  
-  # Automation
-  n8n:           # Workflow automation
-  
-  # Monitoring
-  prometheus:    # Metrics collection
-  grafana:       # Dashboards
-  loki:          # Log aggregation
+  postgres:      # PostgreSQL 16 + pgvector (port 5434→5432)
+  redis:         # Redis 7 (port 6380→6379)
+  nats:          # NATS messaging (port 4223→4222)
 ```
 
 ### Kubernetes (Production)
@@ -1860,19 +1812,22 @@ services:
 ### Phase 1: Foundation (Months 1-3)
 **Goal**: Launch core platform with essential HR + AI
 
-- [ ] Multi-tenant architecture with schema-per-tenant
-- [ ] Authentication (SSO + email/password + MFA)
-- [ ] RBAC + ABAC authorization engine
-- [ ] Core HR module (employee profiles, org chart, documents)
-- [ ] Attendance & leave management
-- [ ] Basic payroll engine (single country)
+- [x] Multi-tenant architecture with tenant isolation
+- [x] Authentication (email/password + JWT + token blacklist)
+- [x] RBAC authorization engine (7 roles)
+- [x] Core HR module (employee profiles, departments, documents)
+- [x] Attendance & leave management
+- [x] Basic payroll engine (salary structures, components)
 - [ ] RAG chatbot (per-tenant knowledge base)
-- [ ] Notification service (email + in-app)
-- [ ] Admin panel (tenant management)
-- [ ] Employee self-service portal
-- [ ] API gateway & rate limiting
-- [ ] Docker deployment
+- [x] Notification service (email + in-app)
+- [x] Admin panel (tenant management)
+- [x] Employee self-service portal
+- [x] API gateway & rate limiting
+- [x] Docker deployment
 - [ ] Basic monitoring (Prometheus + Grafana)
+- [x] Organization settings (branches, designations, shifts)
+- [x] Leave & attendance policy management
+- [x] Security hardening (JWT jti, rate limiting, CORS)
 
 ### Phase 2: Growth (Months 4-6)
 **Goal**: Add recruitment, performance, and advanced AI

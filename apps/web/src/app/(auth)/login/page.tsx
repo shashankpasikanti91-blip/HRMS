@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, ShieldCheck, Sparkles } from "lucide-react";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
 
+const IS_DEV = process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_SHOW_DEMO === "true";
+
 const DEMO_ACCOUNTS = {
   superadmin: { email: "superadmin@srpailabs.com", password: "SrpAdmin@2026!", label: "Super Admin" },
   owner: { email: "hr@acme.com", password: "Admin@1234", label: "HR Manager" },
@@ -71,6 +73,7 @@ export default function LoginPage() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          {IS_DEV && (
           <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3 dark:border-blue-900 dark:bg-blue-950/20">
             <p className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-100">Quick demo access</p>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -87,6 +90,7 @@ export default function LoginPage() {
               ))}
             </div>
           </div>
+          )
 
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>

@@ -21,6 +21,9 @@ from app.api.v1.routes.documents import doc_router, notif_router
 from app.api.v1.routes.analytics import router as analytics_router
 from app.api.v1.routes.search import router as search_router
 from app.api.v1.routes.holidays import router as holiday_router
+from app.api.v1.routes.organization import router as org_router
+from app.api.v1.routes.policies import router as policies_router
+from app.api.v1.routes.salary import router as salary_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -44,3 +47,6 @@ api_router.include_router(notif_router)
 api_router.include_router(analytics_router)
 api_router.include_router(search_router)
 api_router.include_router(holiday_router)
+api_router.include_router(org_router)
+api_router.include_router(policies_router)
+api_router.include_router(salary_router)

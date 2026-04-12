@@ -83,12 +83,34 @@ class Employee(BaseModel):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Visa / Immigration fields
-    visa_status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # valid, expired, pending, not_applicable
+    visa_status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     visa_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     visa_expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
     passport_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     passport_expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     nationality: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    # Address
+    address_line_1: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    address_line_2: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    state: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    postal_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+    # Bank details
+    bank_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    bank_account_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    bank_ifsc_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    bank_branch: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Branch / Designation references
+    branch_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("branches.id", ondelete="SET NULL"), nullable=True
+    )
+    designation_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("designations.id", ondelete="SET NULL"), nullable=True
+    )
 
     __table_args__ = (
         __import__("sqlalchemy").UniqueConstraint("employee_code", "company_id", name="uq_employee_code_company"),

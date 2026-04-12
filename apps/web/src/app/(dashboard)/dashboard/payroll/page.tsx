@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, FileText, Calculator, TrendingUp, Loader2, Play, CheckCircle2, Eye, Download, Building2, User, X } from "lucide-react";
-import { payrollService } from "@/services/api-services";
+import { DollarSign, FileText, Calculator, TrendingUp, Loader2, Play, CheckCircle2, Eye, Download, Building2, User, X, Plus, Edit, Trash2 } from "lucide-react";
+import { payrollService, salaryService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
-import type { PayrollRun, PayrollItem, PayslipDetail } from "@/types";
+import { Input } from "@/components/ui/input";
+import type { PayrollRun, PayrollItem, PayslipDetail, SalaryStructure, SalaryComponent } from "@/types";
 
 export default function PayrollPage() {
   const { toast } = useToast();
@@ -31,6 +32,20 @@ export default function PayrollPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [payslipDetailError, setPayslipDetailError] = useState<string | null>(null);
   const [lastPayslipItem, setLastPayslipItem] = useState<PayrollItem | null>(null);
+
+  // Salary structures state
+  const [salaryStructures, setSalaryStructures] = useState<SalaryStructure[]>([]);
+  const [loadingStructures, setLoadingStructures] = useState(false);
+  const [structureDialogOpen, setStructureDialogOpen] = useState(false);
+  const [editingStructure, setEditingStructure] = useState<SalaryStructure | null>(null);
+  const [structureForm, setStructureForm] = useState({ name: "", code: "", description: "", currency: "INR", payroll_cycle: "monthly", is_default: false });
+  const [savingStructure, setSavingStructure] = useState(false);
+  const [expandedStructure, setExpandedStructure] = useState<string | null>(null);
+  const [components, setComponents] = useState<SalaryComponent[]>([]);
+  const [loadingComponents, setLoadingComponents] = useState(false);
+  const [componentDialogOpen, setComponentDialogOpen] = useState(false);
+  const [componentForm, setComponentForm] = useState({ name: "", code: "", component_type: "earning", calculation_type: "fixed", amount: 0, percentage: 0, is_taxable: true, is_mandatory: false, priority: 100, description: "" });
+  const [savingComponent, setSavingComponent] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -142,6 +157,120 @@ export default function PayrollPage() {
     }
   }
 
+  // ── Salary Structures ────────────────────────────────────────
+  const loadStructures = useCallback(async () => {
+    setLoadingStructures(true);
+    try {
+      const res = await salaryService.listStructures();
+      const data = Array.isArray(res) ? res : res?.data || [];
+      setSalaryStructures(data);
+    } catch {
+      toast({ title: "Error", description: "Failed to load salary structures", variant: "destructive" });
+    } finally {
+      setLoadingStructures(false);
+    }
+  }, [toast]);
+
+  async function loadComponents(structureId: string) {
+    setLoadingComponents(true);
+    try {
+      // Components are already embedded in the structure from the API
+      const s = salaryStructures.find((st) => st.business_id === structureId);
+      setComponents(s?.components || []);
+    } catch {
+      setComponents([]);
+    } finally {
+      setLoadingComponents(false);
+    }
+  }
+
+  function openStructureDialog(s?: SalaryStructure) {
+    if (s) {
+      setEditingStructure(s);
+      setStructureForm({ name: s.name, code: s.code || "", description: s.description || "", currency: s.currency, payroll_cycle: s.payroll_cycle, is_default: s.is_default });
+    } else {
+      setEditingStructure(null);
+      setStructureForm({ name: "", code: "", description: "", currency: "INR", payroll_cycle: "monthly", is_default: false });
+    }
+    setStructureDialogOpen(true);
+  }
+
+  async function handleSaveStructure() {
+    setSavingStructure(true);
+    try {
+      if (editingStructure) {
+        await salaryService.updateStructure(editingStructure.business_id, structureForm);
+      } else {
+        await salaryService.createStructure(structureForm);
+      }
+      toast({ title: editingStructure ? "Updated" : "Created", description: `Salary structure ${structureForm.name} saved`, variant: "success" });
+      setStructureDialogOpen(false);
+      loadStructures();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Failed to save structure";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setSavingStructure(false);
+    }
+  }
+
+  async function handleDeleteStructure(id: string) {
+    if (!confirm("Delete this salary structure?")) return;
+    try {
+      await salaryService.deleteStructure(id);
+      toast({ title: "Deleted", variant: "success" });
+      loadStructures();
+    } catch {
+      toast({ title: "Error", description: "Failed to delete structure", variant: "destructive" });
+    }
+  }
+
+  function toggleExpandStructure(id: string) {
+    if (expandedStructure === id) {
+      setExpandedStructure(null);
+    } else {
+      setExpandedStructure(id);
+      loadComponents(id);
+    }
+  }
+
+  function openComponentDialog(structureId: string) {
+    setComponentForm({ name: "", code: "", component_type: "earning", calculation_type: "fixed", amount: 0, percentage: 0, is_taxable: true, is_mandatory: false, priority: 100, description: "" });
+    setExpandedStructure(structureId);
+    setComponentDialogOpen(true);
+  }
+
+  async function handleSaveComponent() {
+    if (!expandedStructure) return;
+    setSavingComponent(true);
+    try {
+      await salaryService.createComponent({ ...componentForm, salary_structure_id: expandedStructure });
+      toast({ title: "Component Added", variant: "success" });
+      setComponentDialogOpen(false);
+      // Reload structures to get updated components
+      await loadStructures();
+      loadComponents(expandedStructure);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Failed to save component";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setSavingComponent(false);
+    }
+  }
+
+  async function handleDeleteComponent(id: string) {
+    if (!confirm("Delete this component?")) return;
+    try {
+      await salaryService.deleteComponent(id);
+      toast({ title: "Deleted", variant: "success" });
+      // Reload structures to get updated components
+      await loadStructures();
+      if (expandedStructure) loadComponents(expandedStructure);
+    } catch {
+      toast({ title: "Error", description: "Failed to delete component", variant: "destructive" });
+    }
+  }
+
   const statusColors: Record<string, "warning" | "success" | "default" | "secondary"> = {
     draft: "warning", processing: "default", processed: "secondary", completed: "success", approved: "success",
   };
@@ -179,7 +308,7 @@ export default function PayrollPage() {
         ))}
       </div>
 
-      <Tabs defaultValue="runs">
+      <Tabs defaultValue="runs" onValueChange={(v) => { if (v === "salary" && !salaryStructures.length) loadStructures(); }}>
         <TabsList>
           <TabsTrigger value="runs">Payroll Runs</TabsTrigger>
           <TabsTrigger value="salary">Salary Structures</TabsTrigger>
@@ -248,16 +377,96 @@ export default function PayrollPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="salary" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Salary Structures</CardTitle>
-              <CardDescription>Define salary components and structures</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Salary structures will be loaded from the payroll service.</p>
-            </CardContent>
-          </Card>
+        <TabsContent value="salary" className="mt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Salary Structures</h3>
+              <p className="text-sm text-muted-foreground">Define salary components and calculation rules</p>
+            </div>
+            <Button onClick={() => { openStructureDialog(); if (!salaryStructures.length) loadStructures(); }}>
+              <Plus className="mr-2 h-4 w-4" />New Structure
+            </Button>
+          </div>
+
+          {loadingStructures ? (
+            <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          ) : salaryStructures.length > 0 ? (
+            <div className="space-y-3">
+              {salaryStructures.map((s) => (
+                <Card key={s.business_id}>
+                  <CardContent className="p-0">
+                    <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleExpandStructure(s.business_id)}>
+                      <div className="flex items-center gap-3">
+                        <DollarSign className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">{s.code || "—"} · {s.currency} · {s.payroll_cycle}</p>
+                        </div>
+                        {s.is_default && <Badge variant="secondary">Default</Badge>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openStructureDialog(s); }}><Edit className="h-3 w-3" /></Button>
+                        <Button size="sm" variant="ghost" className="text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteStructure(s.business_id); }}><Trash2 className="h-3 w-3" /></Button>
+                      </div>
+                    </div>
+
+                    {expandedStructure === s.business_id && (
+                      <div className="border-t px-4 py-3 bg-muted/30">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-medium">Components</p>
+                          <Button size="sm" variant="outline" onClick={() => openComponentDialog(s.business_id)}>
+                            <Plus className="mr-1 h-3 w-3" />Add Component
+                          </Button>
+                        </div>
+                        {loadingComponents ? (
+                          <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                        ) : components.length > 0 ? (
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="p-2 text-left font-medium">Name</th>
+                                <th className="p-2 text-left font-medium">Code</th>
+                                <th className="p-2 text-left font-medium">Type</th>
+                                <th className="p-2 text-left font-medium">Calc</th>
+                                <th className="p-2 text-right font-medium">Amount / %</th>
+                                <th className="p-2 text-center font-medium">Taxable</th>
+                                <th className="p-2 text-center font-medium">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {components.sort((a, b) => a.priority - b.priority).map((c) => (
+                                <tr key={c.business_id} className="border-b last:border-0">
+                                  <td className="p-2">{c.name}</td>
+                                  <td className="p-2 font-mono text-xs">{c.code}</td>
+                                  <td className="p-2"><Badge variant={c.component_type === "earning" ? "success" : c.component_type === "deduction" ? "destructive" : "secondary"}>{c.component_type}</Badge></td>
+                                  <td className="p-2 text-xs">{c.calculation_type}</td>
+                                  <td className="p-2 text-right">{c.calculation_type === "fixed" ? formatCurrency(c.amount || 0) : `${c.percentage || 0}%`}</td>
+                                  <td className="p-2 text-center">{c.is_taxable ? "Yes" : "No"}</td>
+                                  <td className="p-2 text-center">
+                                    <Button size="sm" variant="ghost" className="text-destructive h-7 w-7 p-0" onClick={() => handleDeleteComponent(c.business_id)}><Trash2 className="h-3 w-3" /></Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p className="py-3 text-center text-xs text-muted-foreground">No components defined. Click &quot;Add Component&quot; to begin.</p>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                <DollarSign className="mx-auto mb-2 h-8 w-8" />
+                <p>No salary structures yet.</p>
+                <p className="text-xs">Create a structure to define salary components like Basic, HRA, PF, etc.</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -465,6 +674,143 @@ export default function PayrollPage() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Salary Structure Dialog */}
+      <Dialog open={structureDialogOpen} onOpenChange={setStructureDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingStructure ? "Edit" : "New"} Salary Structure</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input value={structureForm.name} onChange={(e) => setStructureForm({ ...structureForm, name: e.target.value })} placeholder="e.g. India CTC Structure" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Code</Label>
+                <Input value={structureForm.code} onChange={(e) => setStructureForm({ ...structureForm, code: e.target.value })} placeholder="e.g. IN-CTC" />
+              </div>
+              <div className="space-y-2">
+                <Label>Currency</Label>
+                <Select value={structureForm.currency} onValueChange={(v) => setStructureForm({ ...structureForm, currency: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["INR", "USD", "GBP", "AED", "SGD", "EUR"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Payroll Cycle</Label>
+                <Select value={structureForm.payroll_cycle} onValueChange={(v) => setStructureForm({ ...structureForm, payroll_cycle: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end gap-2 pb-1">
+                <input type="checkbox" id="is-default" checked={structureForm.is_default} onChange={(e) => setStructureForm({ ...structureForm, is_default: e.target.checked })} className="h-4 w-4 rounded border-gray-300" />
+                <Label htmlFor="is-default">Default Structure</Label>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input value={structureForm.description} onChange={(e) => setStructureForm({ ...structureForm, description: e.target.value })} placeholder="Optional description" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStructureDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveStructure} disabled={savingStructure || !structureForm.name}>
+              {savingStructure && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingStructure ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Component Dialog */}
+      <Dialog open={componentDialogOpen} onOpenChange={setComponentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Salary Component</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Name *</Label>
+                <Input value={componentForm.name} onChange={(e) => setComponentForm({ ...componentForm, name: e.target.value })} placeholder="e.g. Basic Salary" />
+              </div>
+              <div className="space-y-2">
+                <Label>Code *</Label>
+                <Input value={componentForm.code} onChange={(e) => setComponentForm({ ...componentForm, code: e.target.value })} placeholder="e.g. BASIC" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Component Type</Label>
+                <Select value={componentForm.component_type} onValueChange={(v) => setComponentForm({ ...componentForm, component_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="earning">Earning</SelectItem>
+                    <SelectItem value="deduction">Deduction</SelectItem>
+                    <SelectItem value="employer_contribution">Employer Contribution</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Calculation Type</Label>
+                <Select value={componentForm.calculation_type} onValueChange={(v) => setComponentForm({ ...componentForm, calculation_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">Fixed Amount</SelectItem>
+                    <SelectItem value="percentage_of_basic">% of Basic</SelectItem>
+                    <SelectItem value="percentage_of_ctc">% of CTC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {componentForm.calculation_type === "fixed" ? (
+                <div className="space-y-2">
+                  <Label>Amount</Label>
+                  <Input type="number" min={0} value={componentForm.amount} onChange={(e) => setComponentForm({ ...componentForm, amount: parseFloat(e.target.value) || 0 })} />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Percentage</Label>
+                  <Input type="number" min={0} max={100} value={componentForm.percentage} onChange={(e) => setComponentForm({ ...componentForm, percentage: parseFloat(e.target.value) || 0 })} />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Priority (sort order)</Label>
+                <Input type="number" min={1} value={componentForm.priority} onChange={(e) => setComponentForm({ ...componentForm, priority: parseInt(e.target.value) || 100 })} />
+              </div>
+            </div>
+            <div className="flex gap-6">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="comp-taxable" checked={componentForm.is_taxable} onChange={(e) => setComponentForm({ ...componentForm, is_taxable: e.target.checked })} className="h-4 w-4 rounded border-gray-300" />
+                <Label htmlFor="comp-taxable">Taxable</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="comp-mandatory" checked={componentForm.is_mandatory} onChange={(e) => setComponentForm({ ...componentForm, is_mandatory: e.target.checked })} className="h-4 w-4 rounded border-gray-300" />
+                <Label htmlFor="comp-mandatory">Mandatory</Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setComponentDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveComponent} disabled={savingComponent || !componentForm.name || !componentForm.code}>
+              {savingComponent && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Add Component
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -31,6 +32,7 @@ def create_access_token(
     )
     payload: dict[str, Any] = {
         "sub": str(subject),
+        "jti": str(uuid.uuid4()),
         "iat": now,
         "exp": expire,
         "type": "access",
@@ -45,6 +47,7 @@ def create_refresh_token(subject: str) -> str:
     expire = now + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {
         "sub": str(subject),
+        "jti": str(uuid.uuid4()),
         "iat": now,
         "exp": expire,
         "type": "refresh",

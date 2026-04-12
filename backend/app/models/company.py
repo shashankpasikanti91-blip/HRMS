@@ -23,6 +23,9 @@ class Company(BaseModel):
     state: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="India")
     timezone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="Asia/Kolkata")
+    currency: Mapped[str] = mapped_column(String(10), default="INR", nullable=False)
+    industry: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    company_size: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)  # 1-10, 11-50, etc.
     logo_url: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     employee_limit: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
     status: Mapped[str] = mapped_column(

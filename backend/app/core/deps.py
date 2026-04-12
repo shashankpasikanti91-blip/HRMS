@@ -16,7 +16,7 @@ from app.core.exceptions import (
     TenantIsolationException,
 )
 from app.core.security import decode_token
-from app.models.user import User
+from app.models.user import User, TokenBlacklist
 from app.utils.enums import UserRole
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -36,6 +36,15 @@ async def get_current_user(
 
     if payload.get("type") != "access":
         raise UnauthorizedException("Invalid token type")
+
+    # Check token blacklist (revoked tokens)
+    jti = payload.get("jti")
+    if jti:
+        blacklisted = await db.execute(
+            select(TokenBlacklist.id).where(TokenBlacklist.jti == jti)
+        )
+        if blacklisted.scalar_one_or_none():
+            raise UnauthorizedException("Token has been revoked")
 
     user_id: str = payload.get("sub", "")
     result = await db.execute(

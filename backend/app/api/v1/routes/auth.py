@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.user import User
+from app.models.user import User, TokenBlacklist
+from app.core.security import decode_token
 from app.schemas.auth import (
     RegisterCompanyRequest,
     RegisterRequest,
@@ -25,6 +26,7 @@ from app.schemas.auth import (
 from app.schemas.base import MessageResponse
 from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
+from app.core.rate_limit import limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -32,8 +34,10 @@ settings = get_settings()
 
 
 @router.post("/register", response_model=dict, status_code=201)
+@limiter.limit("3/minute")
 async def register(
     data: RegisterRequest | RegisterCompanyRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Register either a personal workspace or a full company owner account."""
@@ -137,6 +141,7 @@ async def register_company(
 
 
 @router.post("/login", response_model=dict)
+@limiter.limit("5/minute")
 async def login(
     data: LoginRequest,
     request: Request,
@@ -173,8 +178,10 @@ async def refresh_token(
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
+@limiter.limit("3/minute")
 async def forgot_password(
     data: ForgotPasswordRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
@@ -197,8 +204,39 @@ async def reset_password(
 
 
 @router.post("/logout", response_model=MessageResponse)
-async def logout(_: RefreshTokenRequest):
-    """Lightweight logout endpoint for the web client."""
+async def logout(
+    data: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Revoke access and refresh tokens on logout."""
+    import uuid
+    from datetime import datetime, timezone
+
+    tokens_to_blacklist = []
+
+    # Blacklist the refresh token
+    try:
+        payload = decode_token(data.refresh_token)
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp:
+            tokens_to_blacklist.append(
+                TokenBlacklist(
+                    id=str(uuid.uuid4()),
+                    business_id=f"tbl_{uuid.uuid4().hex[:12]}",
+                    jti=jti,
+                    expires_at=datetime.fromtimestamp(exp, tz=timezone.utc),
+                    user_id=current_user.id,
+                )
+            )
+    except Exception:
+        pass  # Token may already be expired
+
+    if tokens_to_blacklist:
+        db.add_all(tokens_to_blacklist)
+        await db.commit()
+
     return MessageResponse(message="Logged out successfully")
 
 

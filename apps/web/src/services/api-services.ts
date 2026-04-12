@@ -732,3 +732,187 @@ export const holidayService = {
     await api.delete(`/holidays/${businessId}`);
   },
 };
+
+// ─── Organization Settings ───────────────────────────────────────────────────
+export const organizationService = {
+  async getSettings() {
+    const { data } = await api.get("/organization/settings");
+    return data;
+  },
+  async updateSettings(payload: Record<string, unknown>) {
+    const { data } = await api.put("/organization/settings", payload);
+    return data;
+  },
+  // Branches
+  async listBranches(params?: { page?: number; page_size?: number }) {
+    const { data } = await api.get("/branches", { params });
+    return data;
+  },
+  async createBranch(payload: {
+    name: string; code?: string; branch_type?: string;
+    address?: string; city?: string; state?: string; country?: string;
+    timezone?: string; phone?: string; email?: string;
+  }) {
+    const { data } = await api.post("/branches", payload);
+    return data;
+  },
+  async updateBranch(id: string, payload: Record<string, unknown>) {
+    const { data } = await api.put(`/branches/${id}`, payload);
+    return data;
+  },
+  async deleteBranch(id: string) {
+    await api.delete(`/branches/${id}`);
+  },
+  // Designations
+  async listDesignations(params?: { page?: number; page_size?: number }) {
+    const { data } = await api.get("/designations", { params });
+    return data;
+  },
+  async createDesignation(payload: { name: string; code?: string; level?: number; description?: string }) {
+    const { data } = await api.post("/designations", payload);
+    return data;
+  },
+  async updateDesignation(id: string, payload: Record<string, unknown>) {
+    const { data } = await api.put(`/designations/${id}`, payload);
+    return data;
+  },
+  async deleteDesignation(id: string) {
+    await api.delete(`/designations/${id}`);
+  },
+  // Shifts
+  async listShifts(params?: { page?: number; page_size?: number }) {
+    const { data } = await api.get("/shifts", { params });
+    return data;
+  },
+  async createShift(payload: {
+    name: string; code?: string; start_time: string; end_time: string;
+    break_duration_minutes?: number; is_night_shift?: boolean;
+  }) {
+    const { data } = await api.post("/shifts", payload);
+    return data;
+  },
+  async updateShift(id: string, payload: Record<string, unknown>) {
+    const { data } = await api.put(`/shifts/${id}`, payload);
+    return data;
+  },
+  async deleteShift(id: string) {
+    await api.delete(`/shifts/${id}`);
+  },
+};
+
+// ─── Policies ────────────────────────────────────────────────────────────────
+export const policyService = {
+  // Leave policies
+  async listLeavePolicies(params?: { page?: number; page_size?: number }) {
+    const { data } = await api.get("/leave-policies", { params });
+    return data;
+  },
+  async createLeavePolicy(payload: { name: string; description?: string; is_default?: boolean }) {
+    const { data } = await api.post("/leave-policies", payload);
+    return data;
+  },
+  async updateLeavePolicy(id: string, payload: Record<string, unknown>) {
+    const { data } = await api.put(`/leave-policies/${id}`, payload);
+    return data;
+  },
+  // Leave types
+  async listLeaveTypes(params?: { policy_id?: string; page?: number; page_size?: number }) {
+    const { data } = await api.get("/leave-types", { params });
+    return data;
+  },
+  async createLeaveType(payload: {
+    leave_policy_id: string; name: string; code: string;
+    annual_quota: number; is_paid?: boolean; is_carry_forward?: boolean;
+    max_carry_forward?: number; requires_attachment?: boolean;
+    applicable_gender?: string; color?: string;
+  }) {
+    const { data } = await api.post("/leave-types", payload);
+    return data;
+  },
+  async updateLeaveType(id: string, payload: Record<string, unknown>) {
+    const { data } = await api.put(`/leave-types/${id}`, payload);
+    return data;
+  },
+  // Leave balances
+  async getEmployeeLeaveBalances(employeeId: string) {
+    const { data } = await api.get(`/leave-balances/${employeeId}`);
+    return data;
+  },
+  async allocateLeaveBalance(employeeId: string, payload: { year?: number }) {
+    const { data } = await api.post(`/leave-balances/${employeeId}`, payload);
+    return data;
+  },
+  // Attendance policy
+  async getAttendancePolicy() {
+    const { data } = await api.get("/attendance-policy");
+    return data;
+  },
+  async updateAttendancePolicy(payload: Record<string, unknown>) {
+    const { data } = await api.put("/attendance-policy", payload);
+    return data;
+  },
+  // Country configs
+  async listCountryConfigs() {
+    const { data } = await api.get("/country-configs");
+    return data;
+  },
+};
+
+// ─── Salary & Payroll Engine ─────────────────────────────────────────────────
+export const salaryService = {
+  // Salary structures
+  async listStructures(params?: { page?: number; page_size?: number }) {
+    const { data } = await api.get("/salary-structures", { params });
+    return data;
+  },
+  async createStructure(payload: {
+    name: string; code?: string; description?: string;
+    currency?: string; is_default?: boolean; payroll_cycle?: string;
+  }) {
+    const { data } = await api.post("/salary-structures", payload);
+    return data;
+  },
+  async updateStructure(id: string, payload: Record<string, unknown>) {
+    const { data } = await api.put(`/salary-structures/${id}`, payload);
+    return data;
+  },
+  async deleteStructure(id: string) {
+    await api.delete(`/salary-structures/${id}`);
+  },
+  // Salary components
+  async createComponent(payload: {
+    salary_structure_id: string; name: string; code: string;
+    component_type: string; calculation_type: string;
+    amount?: number; percentage?: number; formula?: string;
+    is_taxable?: boolean; is_mandatory?: boolean; priority?: number;
+    max_amount?: number; min_amount?: number;
+  }) {
+    const { data } = await api.post("/salary-components", payload);
+    return data;
+  },
+  async updateComponent(id: string, payload: Record<string, unknown>) {
+    const { data } = await api.put(`/salary-components/${id}`, payload);
+    return data;
+  },
+  async deleteComponent(id: string) {
+    await api.delete(`/salary-components/${id}`);
+  },
+  // Employee salary
+  async upsertEmployeeSalary(payload: {
+    employee_id: string; salary_structure_id: string;
+    ctc: number; basic_salary?: number; gross_salary?: number;
+    net_salary?: number; component_overrides?: Record<string, number>;
+    effective_from?: string;
+  }) {
+    const { data } = await api.post("/employee-salary", payload);
+    return data;
+  },
+  async getEmployeeSalary(employeeId: string) {
+    const { data } = await api.get(`/employee-salary/${employeeId}`);
+    return data;
+  },
+  async getEmployeeSalaryBreakdown(employeeId: string) {
+    const { data } = await api.get(`/employee-salary/${employeeId}/breakdown`);
+    return data;
+  },
+};

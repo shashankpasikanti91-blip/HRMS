@@ -280,6 +280,82 @@ class AIScreeningStatus(str, enum.Enum):
     SKIPPED = "skipped"
 
 
+# ── Policy Engine Enums ───────────────────────────────────────────────────
+
+class PolicyLevel(str, enum.Enum):
+    GLOBAL = "global"
+    COUNTRY = "country"
+    STATE = "state"
+    COMPANY = "company"
+
+
+class SalaryComponentType(str, enum.Enum):
+    EARNING = "earning"
+    DEDUCTION = "deduction"
+    EMPLOYER_CONTRIBUTION = "employer_contribution"
+    REIMBURSEMENT = "reimbursement"
+    BENEFIT = "benefit"
+    TAX = "tax"
+
+
+class SalaryComponentCalcType(str, enum.Enum):
+    FIXED = "fixed"
+    PERCENTAGE_OF_BASIC = "percentage_of_basic"
+    PERCENTAGE_OF_GROSS = "percentage_of_gross"
+    PERCENTAGE_OF_CTC = "percentage_of_ctc"
+    FORMULA = "formula"
+
+
+class ShiftType(str, enum.Enum):
+    GENERAL = "general"
+    MORNING = "morning"
+    AFTERNOON = "afternoon"
+    NIGHT = "night"
+    ROTATIONAL = "rotational"
+    FLEXIBLE = "flexible"
+
+
+class ApprovalStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    ESCALATED = "escalated"
+
+
+class BranchType(str, enum.Enum):
+    HEADQUARTERS = "headquarters"
+    BRANCH = "branch"
+    REGIONAL_OFFICE = "regional_office"
+    REMOTE = "remote"
+
+
+class AccrualFrequency(str, enum.Enum):
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    SEMI_ANNUAL = "semi_annual"
+    ANNUAL = "annual"
+    UPFRONT = "upfront"
+
+
+class PayrollCycle(str, enum.Enum):
+    MONTHLY = "monthly"
+    BI_WEEKLY = "bi_weekly"
+    WEEKLY = "weekly"
+    SEMI_MONTHLY = "semi_monthly"
+
+
+class TelegramCommandType(str, enum.Enum):
+    CLOCK_IN = "clock_in"
+    CLOCK_OUT = "clock_out"
+    LEAVE_BALANCE = "leave_balance"
+    APPLY_LEAVE = "apply_leave"
+    APPROVE_LEAVE = "approve_leave"
+    PAYSLIP = "payslip"
+    ATTENDANCE = "attendance"
+    ANNOUNCEMENT = "announcement"
+    HELP = "help"
+
+
 # ── Business ID prefixes ───────────────────────────────────────────────────
 BUSINESS_ID_PREFIXES: dict[str, str] = {
     "company": "COMP",

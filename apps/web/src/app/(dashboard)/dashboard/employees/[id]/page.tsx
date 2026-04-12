@@ -228,7 +228,7 @@ export default function EmployeeDetailPage() {
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{employee.location || "Location not added"}</span>
+                <span>{employee.branch_name || employee.location || "Location not added"}</span>
               </div>
             </div>
           </CardContent>
@@ -352,6 +352,68 @@ export default function EmployeeDetailPage() {
                           </>
                         ) : "—"}
                       </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              {/* Address */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Address</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Address Line 1</p>
+                      <p className="font-medium">{employee.address_line_1 || "—"}</p>
+                    </div>
+                    {employee.address_line_2 && (
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Address Line 2</p>
+                        <p className="font-medium">{employee.address_line_2}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-muted-foreground">City</p>
+                      <p className="font-medium">{employee.city || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">State</p>
+                      <p className="font-medium">{employee.state || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Country</p>
+                      <p className="font-medium">{employee.country || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Postal Code</p>
+                      <p className="font-medium">{employee.postal_code || "—"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              {/* Bank Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bank Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Bank Name</p>
+                      <p className="font-medium">{employee.bank_name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Account Number</p>
+                      <p className="font-medium">{employee.bank_account_number ? `••••${employee.bank_account_number.slice(-4)}` : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">IFSC Code</p>
+                      <p className="font-medium">{employee.bank_ifsc_code || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Branch</p>
+                      <p className="font-medium">{employee.bank_branch || "—"}</p>
                     </div>
                   </div>
                 </CardContent>

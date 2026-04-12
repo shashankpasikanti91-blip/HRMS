@@ -63,6 +63,8 @@ export interface Company extends BaseRecord {
   industry?: string;
   size?: string;
   logo_url?: string;
+  currency?: string;
+  company_size?: string;
 }
 
 // ─── Department ──────────────────────────────────────────────
@@ -116,6 +118,23 @@ export interface Employee extends BaseRecord {
   passport_number?: string;
   passport_expiry_date?: string;
   nationality?: string;
+  // Address
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  // Bank details
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_ifsc_code?: string;
+  bank_branch?: string;
+  // Organization links
+  branch_id?: string;
+  branch_name?: string;
+  designation_id?: string;
+  designation_name?: string;
 }
 
 export interface EmployeeSummary {
@@ -512,6 +531,227 @@ export interface PayrollSummaryItem {
   total_deductions: number;
   total_net: number;
   currency: string;
+  status: string;
+}
+
+// ─── Branch ──────────────────────────────────────────────────
+export interface Branch extends BaseRecord {
+  company_id: string;
+  name: string;
+  code?: string;
+  branch_type: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  timezone?: string;
+  phone?: string;
+  email?: string;
+  manager_id?: string;
+  employee_count?: number;
+}
+
+// ─── Designation ─────────────────────────────────────────────
+export interface Designation extends BaseRecord {
+  company_id: string;
+  name: string;
+  code?: string;
+  level?: number;
+  description?: string;
+}
+
+// ─── Organization Settings ───────────────────────────────────
+export interface OrganizationSettings {
+  business_id: string;
+  company_id: string;
+  working_days?: number[];
+  weekend_days?: number[];
+  work_start_time?: string;
+  work_end_time?: string;
+  daily_work_hours: number;
+  weekly_work_hours: number;
+  late_threshold_minutes: number;
+  overtime_threshold_hours: number;
+  overtime_multiplier: number;
+  payroll_cycle: string;
+  payroll_process_day: number;
+  default_currency: string;
+  probation_period_days: number;
+  notice_period_days: number;
+  date_format: string;
+  time_format: string;
+  password_min_length: number;
+  password_require_uppercase: boolean;
+  password_require_number: boolean;
+  password_require_special: boolean;
+  password_expiry_days: number;
+  enable_overtime: boolean;
+  enable_shifts: boolean;
+  enable_geo_tracking: boolean;
+  enable_client_billing: boolean;
+  enable_telegram_bot: boolean;
+  custom_config?: Record<string, unknown>;
+}
+
+// ─── Leave Policy ────────────────────────────────────────────
+export interface LeavePolicy extends BaseRecord {
+  company_id: string;
+  name: string;
+  description?: string;
+  is_default: boolean;
+}
+
+// ─── Leave Type (Policy Engine) ──────────────────────────────
+export interface LeavePolicyType extends BaseRecord {
+  leave_policy_id: string;
+  name: string;
+  code: string;
+  annual_quota: number;
+  max_consecutive_days?: number;
+  min_days_per_request: number;
+  is_paid: boolean;
+  is_carry_forward: boolean;
+  max_carry_forward?: number;
+  accrual_frequency: string;
+  requires_approval: boolean;
+  requires_attachment: boolean;
+  applicable_gender?: string;
+  probation_eligible: boolean;
+  encashable: boolean;
+  color?: string;
+}
+
+// ─── Leave Balance ───────────────────────────────────────────
+export interface LeaveBalance {
+  business_id: string;
+  employee_id: string;
+  leave_type_id: string;
+  leave_type_name?: string;
+  leave_type_code?: string;
+  year: number;
+  allocated: number;
+  used: number;
+  pending: number;
+  carried_forward: number;
+  available: number;
+}
+
+// ─── Attendance Policy ───────────────────────────────────────
+export interface AttendancePolicy {
+  business_id: string;
+  company_id: string;
+  name: string;
+  check_in_required: boolean;
+  auto_checkout: boolean;
+  auto_checkout_time?: string;
+  allow_manual_entry: boolean;
+  require_approval_for_corrections: boolean;
+  track_breaks: boolean;
+  max_break_minutes?: number;
+  grace_period_minutes: number;
+  half_day_hours: number;
+  min_hours_for_full_day: number;
+  enable_geo_fencing: boolean;
+  geo_fence_radius_meters?: number;
+  allowed_check_in_methods?: string[];
+}
+
+// ─── Country Config ──────────────────────────────────────────
+export interface CountryConfig {
+  business_id: string;
+  country_code: string;
+  country_name: string;
+  currency_code: string;
+  currency_symbol: string;
+  date_format: string;
+  timezone: string;
+  default_weekend_days?: number[];
+  default_work_hours: number;
+  minimum_wage?: number;
+}
+
+// ─── Salary Structure ────────────────────────────────────────
+export interface SalaryStructure extends BaseRecord {
+  company_id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  currency: string;
+  is_default: boolean;
+  payroll_cycle: string;
+  components?: SalaryComponent[];
+}
+
+// ─── Salary Component ────────────────────────────────────────
+export interface SalaryComponent extends BaseRecord {
+  salary_structure_id: string;
+  name: string;
+  code: string;
+  component_type: string;
+  calculation_type: string;
+  amount?: number;
+  percentage?: number;
+  formula?: string;
+  is_taxable: boolean;
+  is_mandatory: boolean;
+  priority: number;
+  max_amount?: number;
+  min_amount?: number;
+  description?: string;
+}
+
+// ─── Employee Salary ─────────────────────────────────────────
+export interface EmployeeSalary extends BaseRecord {
+  employee_id: string;
+  salary_structure_id: string;
+  ctc: number;
+  basic_salary: number;
+  gross_salary: number;
+  net_salary: number;
+  currency: string;
+  component_overrides?: Record<string, unknown>;
+  effective_from?: string;
+}
+
+// ─── Shift ───────────────────────────────────────────────────
+export interface Shift extends BaseRecord {
+  company_id: string;
+  name: string;
+  code?: string;
+  shift_type: string;
+  start_time: string;
+  end_time: string;
+  break_duration_minutes: number;
+  work_hours: number;
+  is_night_shift: boolean;
+  grace_minutes: number;
+  is_default: boolean;
+  applicable_days?: number[];
+}
+
+// ─── Client / Staffing ──────────────────────────────────────
+export interface Client extends BaseRecord {
+  company_id: string;
+  name: string;
+  legal_name?: string;
+  industry?: string;
+  website?: string;
+  primary_contact_name?: string;
+  primary_contact_email?: string;
+  primary_contact_phone?: string;
+  billing_address?: string;
+  status: string;
+}
+
+export interface ClientProject extends BaseRecord {
+  client_id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+  billing_rate?: number;
+  billing_currency?: string;
   status: string;
 }
 
