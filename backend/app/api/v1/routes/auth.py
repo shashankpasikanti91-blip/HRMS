@@ -36,8 +36,8 @@ settings = get_settings()
 @router.post("/register", response_model=dict, status_code=201)
 @limiter.limit("5/minute")
 async def register(
-    data: RegisterRequest | RegisterCompanyRequest = Body(...),
     request: Request,
+    data: RegisterRequest | RegisterCompanyRequest = Body(...),
     db: AsyncSession = Depends(get_db),
 ):
     """Register either a personal workspace or a full company owner account."""
@@ -63,8 +63,8 @@ async def register(
 @router.post("/google-sync", response_model=dict)
 @limiter.limit("10/minute")
 async def google_sync(
-    data: GoogleSyncRequest = Body(...),
     request: Request,
+    data: GoogleSyncRequest = Body(...),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -128,8 +128,8 @@ async def google_callback(
 @router.post("/register-company", response_model=dict, status_code=201)
 @limiter.limit("3/minute")
 async def register_company(
-    data: RegisterCompanyRequest = Body(...),
     request: Request,
+    data: RegisterCompanyRequest = Body(...),
     db: AsyncSession = Depends(get_db),
 ):
     """Register a new company with an admin user account."""
@@ -146,8 +146,8 @@ async def register_company(
 @router.post("/login", response_model=dict)
 @limiter.limit("10/minute")
 async def login(
-    data: LoginRequest = Body(...),
     request: Request,
+    data: LoginRequest = Body(...),
     db: AsyncSession = Depends(get_db),
 ):
     """Login and receive access + refresh tokens."""
@@ -183,8 +183,8 @@ async def refresh_token(
 @router.post("/forgot-password", response_model=MessageResponse)
 @limiter.limit("3/minute")
 async def forgot_password(
-    data: ForgotPasswordRequest = Body(...),
     request: Request,
+    data: ForgotPasswordRequest = Body(...),
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
@@ -198,8 +198,8 @@ async def forgot_password(
 @router.post("/reset-password", response_model=MessageResponse)
 @limiter.limit("5/minute")
 async def reset_password(
-    data: ResetPasswordRequest = Body(...),
     request: Request,
+    data: ResetPasswordRequest = Body(...),
     db: AsyncSession = Depends(get_db),
 ):
     """Reset password using the reset token."""
