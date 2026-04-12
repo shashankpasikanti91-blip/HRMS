@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Users, UserCheck, UserMinus, Briefcase, Target, TrendingUp, Loader2,
-  CalendarDays, AlertTriangle, ArrowRight, Clock, Sparkles, Building2, BarChart3,
+  CalendarDays, AlertTriangle, ArrowRight, Clock, Sparkles, Building2, BarChart3, Bell,
 } from "lucide-react";
 import { analyticsService, departmentService, notificationService, holidayService, employeeService } from "@/services/api-services";
 import { useAuthStore } from "@/store/auth-store";
@@ -25,30 +25,40 @@ export default function DashboardPage() {
   const [visaAlerts, setVisaAlerts] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Role helpers
+  const role = user?.role || "employee";
+  const isAdmin = ["super_admin", "company_admin", "hr_manager"].includes(role);
+  const isManager = isAdmin || role === "team_manager";
+  const isFinance = role === "finance";
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, deptRes, notifRes, holidayRes, empRes] = await Promise.allSettled([
-        analyticsService.getDashboard(),
-        departmentService.list(),
+      // Everyone gets holidays + notifications
+      const baseRequests: Promise<unknown>[] = [
         notificationService.list(),
         holidayService.list({ year: new Date().getFullYear() }),
-        employeeService.list(),
-      ]);
-      if (statsRes.status === "fulfilled" && statsRes.value) {
-        setStats(statsRes.value);
+      ];
+      // Only admins/managers load org-wide stats
+      if (isAdmin || isManager) {
+        baseRequests.push(
+          analyticsService.getDashboard(),
+          departmentService.list(),
+          employeeService.list(),
+        );
       }
-      if (deptRes.status === "fulfilled") {
-        const deptData = deptRes.value;
-        setDepartments(Array.isArray(deptData) ? deptData : (deptData as { data?: DepartmentSummary[] })?.data || []);
-      }
-      if (notifRes.status === "fulfilled") {
-        const notifData = notifRes.value;
+
+      const results = await Promise.allSettled(baseRequests);
+
+      // Notifications (index 0)
+      if (results[0].status === "fulfilled") {
+        const notifData = results[0].value;
         const items = Array.isArray(notifData) ? notifData : (notifData as { data?: Notification[] })?.data || [];
         setActivity(items.slice(0, 5));
       }
-      if (holidayRes.status === "fulfilled") {
-        const hData = holidayRes.value;
+      // Holidays (index 1)
+      if (results[1].status === "fulfilled") {
+        const hData = results[1].value;
         const hItems: Holiday[] = Array.isArray(hData) ? hData : (hData as { data?: Holiday[] })?.data || [];
         const now = new Date();
         setHolidays(
@@ -58,20 +68,30 @@ export default function DashboardPage() {
             .slice(0, 5)
         );
       }
-      if (empRes.status === "fulfilled") {
-        const eData = empRes.value as unknown as { data?: Employee[] };
-        const emps: Employee[] = eData?.data || [];
-        const threshold = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-        setVisaAlerts(
-          emps.filter((e) => e.visa_expiry_date && new Date(e.visa_expiry_date) <= threshold).slice(0, 5)
-        );
+      // Org stats (index 2+, only if admin/manager)
+      if ((isAdmin || isManager) && results.length > 2) {
+        if (results[2].status === "fulfilled" && results[2].value) {
+          setStats(results[2].value as DashboardStats);
+        }
+        if (results[3]?.status === "fulfilled") {
+          const deptData = results[3].value;
+          setDepartments(Array.isArray(deptData) ? deptData : (deptData as { data?: DepartmentSummary[] })?.data || []);
+        }
+        if (results[4]?.status === "fulfilled") {
+          const eData = results[4].value as unknown as { data?: Employee[] };
+          const emps: Employee[] = eData?.data || [];
+          const threshold = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+          setVisaAlerts(
+            emps.filter((e) => e.visa_expiry_date && new Date(e.visa_expiry_date) <= threshold).slice(0, 5)
+          );
+        }
       }
     } catch (err) {
       console.error("Dashboard load error:", err);
     } finally {
       setLoading(false);
     }
-  }, [user?.company_id]);
+  }, [user?.company_id, isAdmin, isManager]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -91,7 +111,7 @@ export default function DashboardPage() {
     return "Good Evening";
   };
 
-  const metricCards = [
+  const metricCards = isAdmin ? [
     {
       title: "Total Employees",
       value: stats?.total_employees ?? 0,
@@ -131,14 +151,38 @@ export default function DashboardPage() {
       iconBg: "bg-violet-100 dark:bg-violet-900/40",
       textColor: "text-violet-700 dark:text-violet-300",
     },
-  ];
+  ] : [];
 
-  const secondaryCards = [
+  const secondaryCards = isAdmin ? [
     { title: "Open Positions", value: stats?.open_jobs ?? 0, icon: Briefcase, color: "text-orange-600" },
     { title: "Departments", value: stats?.departments_count ?? 0, icon: Building2, color: "text-rose-600" },
     { title: "Active Employees", value: stats?.active_employees ?? 0, icon: Target, color: "text-cyan-600" },
     { title: "Pending Reviews", value: stats?.leave_requests_pending ?? 0, icon: Clock, color: "text-indigo-600" },
+  ] : [];
+
+  // Quick actions differ by role
+  const adminQuickActions = [
+    { label: "Add Employee", href: "/dashboard/employees", icon: Users, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
+    { label: "Mark Attendance", href: "/dashboard/attendance", icon: Clock, color: "text-green-600 bg-green-50 dark:bg-green-950/30" },
+    { label: "Run Payroll", href: "/dashboard/payroll", icon: BarChart3, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
+    { label: "Post Job", href: "/dashboard/recruitment", icon: Briefcase, color: "text-purple-600 bg-purple-50 dark:bg-purple-950/30" },
+    { label: "View Holidays", href: "/dashboard/holidays", icon: CalendarDays, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
+    { label: "AI Assistant", href: "/dashboard/ai-assistant", icon: Sparkles, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30" },
   ];
+  const employeeQuickActions = [
+    { label: "View Holidays", href: "/dashboard/holidays", icon: CalendarDays, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
+    { label: "Notifications", href: "/dashboard/notifications", icon: Bell, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
+    { label: "AI Assistant", href: "/dashboard/ai-assistant", icon: Sparkles, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30" },
+  ];
+  const managerQuickActions = [
+    { label: "Mark Attendance", href: "/dashboard/attendance", icon: Clock, color: "text-green-600 bg-green-50 dark:bg-green-950/30" },
+    { label: "View Holidays", href: "/dashboard/holidays", icon: CalendarDays, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
+    { label: "Performance", href: "/dashboard/performance", icon: Target, color: "text-purple-600 bg-purple-50 dark:bg-purple-950/30" },
+    { label: "AI Assistant", href: "/dashboard/ai-assistant", icon: Sparkles, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30" },
+  ];
+
+  const quickActions = isAdmin ? adminQuickActions : isManager ? managerQuickActions : employeeQuickActions;
+  const roleLabel = role === "super_admin" ? "Super Admin" : role === "company_admin" ? "Company Admin" : role === "hr_manager" ? "HR Manager" : role === "team_manager" ? "Team Manager" : role === "recruiter" ? "Recruiter" : role === "finance" ? "Finance" : "Employee";
 
   return (
     <div className="space-y-6">
@@ -151,8 +195,11 @@ export default function DashboardPage() {
           </div>
           <h1 className="text-2xl font-bold">{greeting()}, {user?.full_name?.split(" ")[0] || "Admin"} 👋</h1>
           <p className="mt-1 text-white/80 text-sm max-w-lg">
-            Here&apos;s what&apos;s happening in your organization today. Stay on top of your HR operations with real-time insights.
+            {isAdmin
+              ? "Here's what's happening in your organization today. Stay on top of your HR operations with real-time insights."
+              : "Welcome to your dashboard. Check your schedule, holidays, and notifications."}
           </p>
+          <Badge variant="secondary" className="mt-2 bg-white/20 text-white border-0 text-xs">{roleLabel}</Badge>
         </div>
         {/* Decorative circles */}
         <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
@@ -169,7 +216,8 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* Primary Metric Cards */}
+          {/* Primary Metric Cards — admin only */}
+          {metricCards.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {metricCards.map((card) => (
               <Card key={card.title} className={`${card.bg} border-0 shadow-sm hover:shadow-md transition-shadow`}>
@@ -188,8 +236,10 @@ export default function DashboardPage() {
               </Card>
             ))}
           </div>
+          )}
 
-          {/* Secondary Stats Row */}
+          {/* Secondary Stats Row — admin only */}
+          {secondaryCards.length > 0 && (
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
             {secondaryCards.map((card) => (
               <Card key={card.title} className="border shadow-sm">
@@ -203,25 +253,19 @@ export default function DashboardPage() {
               </Card>
             ))}
           </div>
+          )}
 
           {/* Middle Row: Quick Actions + Department Overview */}
-          <div className="grid gap-6 lg:grid-cols-7">
+          <div className={`grid gap-6 ${isAdmin ? "lg:grid-cols-7" : "lg:grid-cols-1"}`}>
             {/* Quick Actions */}
-            <Card className="lg:col-span-3 shadow-sm">
+            <Card className={`${isAdmin ? "lg:col-span-3" : ""} shadow-sm`}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Quick Actions</CardTitle>
                 <CardDescription>Jump to common tasks</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: "Add Employee", href: "/dashboard/employees", icon: Users, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
-                    { label: "Mark Attendance", href: "/dashboard/attendance", icon: Clock, color: "text-green-600 bg-green-50 dark:bg-green-950/30" },
-                    { label: "Run Payroll", href: "/dashboard/payroll", icon: BarChart3, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
-                    { label: "Post Job", href: "/dashboard/recruitment", icon: Briefcase, color: "text-purple-600 bg-purple-50 dark:bg-purple-950/30" },
-                    { label: "View Holidays", href: "/dashboard/holidays", icon: CalendarDays, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
-                    { label: "AI Assistant", href: "/dashboard/ai-assistant", icon: Sparkles, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30" },
-                  ].map((action) => (
+                  {quickActions.map((action) => (
                     <Link
                       key={action.label}
                       href={action.href}
@@ -237,7 +281,8 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Department Overview */}
+            {/* Department Overview — admin only */}
+            {isAdmin && (
             <Card className="lg:col-span-4 shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -277,10 +322,11 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+            )}
           </div>
 
           {/* Bottom Row: Upcoming Holidays + Visa Alerts + Recent Activity */}
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className={`grid gap-6 ${isAdmin ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
             {/* Upcoming Holidays */}
             <Card className="shadow-sm">
               <CardHeader className="pb-3">
@@ -328,7 +374,8 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Visa Alerts */}
+            {/* Visa Alerts — admin only */}
+            {isAdmin && (
             <Card className="shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -371,6 +418,7 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+            )}
 
             {/* Recent Activity */}
             <Card className="shadow-sm">

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Filter, Download, Upload, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { employeeService, departmentService } from "@/services/api-services";
+import { useAuthStore } from "@/store/auth-store";
 import { useToast } from "@/hooks/use-toast";
 import { getInitials, formatDate } from "@/lib/utils";
 import type { EmployeeSummary, DepartmentSummary } from "@/types";
@@ -28,6 +29,8 @@ const statusColors: Record<string, "success" | "warning" | "destructive" | "seco
 export default function EmployeesPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuthStore();
+  const canManage = ["super_admin", "company_admin", "hr_manager"].includes(user?.role || "");
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [departments, setDepartments] = useState<DepartmentSummary[]>([]);
   const [search, setSearch] = useState("");
@@ -172,8 +175,8 @@ export default function EmployeesPage() {
           <p className="text-muted-foreground">Manage your organization&apos;s workforce</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" />Export</Button>
-          <Button size="sm" onClick={openAddDialog}><Plus className="mr-2 h-4 w-4" />Add Employee</Button>
+          {canManage && <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" />Export</Button>}
+          {canManage && <Button size="sm" onClick={openAddDialog}><Plus className="mr-2 h-4 w-4" />Add Employee</Button>}
         </div>
       </div>
 
@@ -220,7 +223,7 @@ export default function EmployeesPage() {
                     <th className="p-4 text-left text-sm font-medium">Position</th>
                     <th className="p-4 text-left text-sm font-medium">Joined</th>
                     <th className="p-4 text-left text-sm font-medium">Status</th>
-                    <th className="p-4 text-left text-sm font-medium">Actions</th>
+                    {canManage && <th className="p-4 text-left text-sm font-medium">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -245,6 +248,7 @@ export default function EmployeesPage() {
                       <td className="p-4 text-sm">{emp.designation || "—"}</td>
                       <td className="p-4 text-sm text-muted-foreground">{formatDate(emp.joining_date)}</td>
                       <td className="p-4"><Badge variant={statusColors[emp.employment_status] || "secondary"}>{emp.employment_status.replace("_", " ")}</Badge></td>
+                      {canManage && (
                       <td className="p-4">
                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditDialog(emp)}>
@@ -255,6 +259,7 @@ export default function EmployeesPage() {
                           </Button>
                         </div>
                       </td>
+                      )}
                     </tr>
                   ))}
                   {filtered.length === 0 && !loading && (

@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Mail, Phone, Building2, Calendar, MapPin, Briefcase, UploadCloud, FileText, Trash2, Download, Loader2, Clock3, Camera } from "lucide-react";
 import { employeeService, attendanceService, leaveService, documentService } from "@/services/api-services";
+import { useAuthStore } from "@/store/auth-store";
 import { useToast } from "@/hooks/use-toast";
 import { getInitials, formatDate } from "@/lib/utils";
 import type { AttendanceRecord, Document, Employee, LeaveRequest } from "@/types";
@@ -23,6 +24,8 @@ export default function EmployeeDetailPage() {
   const params = useParams();
   const employeeId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const { toast } = useToast();
+  const { user: authUser } = useAuthStore();
+  const canManage = ["super_admin", "company_admin", "hr_manager"].includes(authUser?.role || "");
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
   const [leaveHistory, setLeaveHistory] = useState<LeaveRequest[]>([]);
@@ -175,6 +178,7 @@ export default function EmployeeDetailPage() {
                   )}
                   <AvatarFallback className="text-xl">{getInitials(employee.full_name)}</AvatarFallback>
                 </Avatar>
+                {canManage && (
                 <button
                   className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                   onClick={() => photoInputRef.current?.click()}
@@ -186,6 +190,8 @@ export default function EmployeeDetailPage() {
                     <Camera className="h-5 w-5 text-white" />
                   )}
                 </button>
+                )}
+                {canManage && (
                 <input
                   ref={photoInputRef}
                   type="file"
@@ -195,6 +201,7 @@ export default function EmployeeDetailPage() {
                     if (e.target.files?.[0]) handlePhotoUpload(e.target.files[0]);
                   }}
                 />
+                )}
               </div>
               <h2 className="mt-4 text-lg font-semibold">{employee.full_name}</h2>
               <p className="text-sm text-muted-foreground">{employee.designation || "Employee"}</p>
@@ -500,6 +507,7 @@ export default function EmployeeDetailPage() {
             </TabsContent>
 
             <TabsContent value="documents" className="mt-4 space-y-4">
+              {canManage && (
               <Card>
                 <CardHeader>
                   <CardTitle>Upload Documents</CardTitle>
@@ -559,6 +567,7 @@ export default function EmployeeDetailPage() {
                   </div>
                 </CardContent>
               </Card>
+              )}
 
               <Card>
                 <CardHeader>
@@ -583,9 +592,11 @@ export default function EmployeeDetailPage() {
                             <Button variant="outline" size="icon" onClick={() => window.open(doc.file_url, "_blank", "noopener,noreferrer")}>
                               <Download className="h-4 w-4" />
                             </Button>
+                            {canManage && (
                             <Button variant="outline" size="icon" onClick={() => handleDeleteDocument(doc.business_id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            )}
                           </div>
                         </div>
                       ))}
