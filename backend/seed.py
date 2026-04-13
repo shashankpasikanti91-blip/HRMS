@@ -112,9 +112,30 @@ async def _upsert_super_admin(session: AsyncSession) -> str:
 async def _upsert_company_admin(session: AsyncSession, company_id: str) -> str:
     from app.models.user import User
 
-    EMAIL = "hr@acme.com"
-    result = await session.execute(select(User).where(User.email == EMAIL))
+    # Check by business_id first (handles existing DB state)
+    bid = _bid("USR", 2)
+    result = await session.execute(select(User).where(User.business_id == bid))
     user = result.scalar_one_or_none()
+    if user:
+        return user.id
+
+    # Also check by email
+    EMAIL = "hr@acme.com"
+    result = await session.execute(
+        select(User).where(User.email == EMAIL, User.company_id == company_id)
+    )
+    user = result.scalar_one_or_none()
+    if user:
+        return user.id
+
+    # Check for any company_admin for this company
+    result = await session.execute(
+        select(User).where(
+            User.company_id == company_id,
+            User.role.in_([UserRole.COMPANY_ADMIN.value, UserRole.HR_MANAGER.value]),
+        )
+    )
+    user = result.scalars().first()
     if user:
         return user.id
 
@@ -122,7 +143,7 @@ async def _upsert_company_admin(session: AsyncSession, company_id: str) -> str:
     uid = str(uuid.uuid4())
     user = User(
         id=uid,
-        business_id=_bid("USR", 2),
+        business_id=bid,
         email=EMAIL,
         password_hash=hash_password("Admin@1234"),
         full_name="Jane HR",
