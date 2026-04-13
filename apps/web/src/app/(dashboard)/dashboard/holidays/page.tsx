@@ -70,6 +70,8 @@ export default function HolidaysPage() {
   const { user } = useAuthStore();
   const { toast } = useToast();
   const companyId = user?.company_id;
+  const role = user?.role || "employee";
+  const isAdmin = ["super_admin", "company_admin", "hr_manager"].includes(role);
 
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
@@ -349,9 +351,11 @@ export default function HolidaysPage() {
           <Button variant="outline" onClick={() => downloadIcs(monthHolidays)}>
             <Download className="h-4 w-4 mr-2" /> Export ICS
           </Button>
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-2" /> Add Holiday
-          </Button>
+          {isAdmin && (
+            <Button onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-2" /> Add Holiday
+            </Button>
+          )}
         </div>
       </div>
 
@@ -466,7 +470,7 @@ export default function HolidaysPage() {
           <CardContent className="py-20 text-center">
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
             <p className="text-muted-foreground">No holidays found for {MONTHS[month]} {year}</p>
-            <Button variant="outline" className="mt-4" onClick={openCreate}>Add your first holiday</Button>
+            {isAdmin && <Button variant="outline" className="mt-4" onClick={openCreate}>Add your first holiday</Button>}
           </CardContent>
         </Card>
       ) : (
@@ -552,12 +556,16 @@ export default function HolidaysPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(h)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(h.business_id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {isAdmin && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(h)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(h.business_id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">

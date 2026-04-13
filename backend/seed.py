@@ -887,6 +887,60 @@ async def _seed_holidays_2025(session: AsyncSession, company_id: str, created_by
     logger.info("holidays_2025_seeded")
 
 
+async def _seed_holidays_2026(session: AsyncSession, company_id: str, created_by: str) -> None:
+    from app.models.attendance import Holiday
+    from datetime import date
+    import uuid
+
+    holidays = [
+        (date(2026, 1, 26), "Republic Day", "public"),
+        (date(2026, 3, 4), "Holi", "public"),
+        (date(2026, 3, 20), "Eid ul-Fitr", "public"),
+        (date(2026, 3, 25), "Ram Navami", "restricted"),
+        (date(2026, 4, 2), "Mahavir Jayanti", "public"),
+        (date(2026, 4, 3), "Good Friday", "public"),
+        (date(2026, 4, 14), "Ambedkar Jayanti", "public"),
+        (date(2026, 5, 1), "May Day", "public"),
+        (date(2026, 5, 31), "Buddha Purnima", "public"),
+        (date(2026, 5, 27), "Eid ul-Adha", "public"),
+        (date(2026, 6, 26), "Muharram", "restricted"),
+        (date(2026, 8, 14), "Janmashtami", "public"),
+        (date(2026, 8, 15), "Independence Day", "public"),
+        (date(2026, 8, 25), "Milad-un-Nabi", "restricted"),
+        (date(2026, 10, 2), "Gandhi Jayanti", "public"),
+        (date(2026, 10, 19), "Dussehra", "public"),
+        (date(2026, 11, 8), "Diwali", "public"),
+        (date(2026, 11, 9), "Diwali (Day 2)", "public"),
+        (date(2026, 11, 24), "Guru Nanak Jayanti", "public"),
+        (date(2026, 12, 25), "Christmas", "public"),
+    ]
+
+    for i, (dt, name, htype) in enumerate(holidays, 100):
+        r = await session.execute(
+            select(Holiday).where(
+                Holiday.company_id == company_id,
+                Holiday.date == dt,
+                Holiday.name == name,
+            )
+        )
+        if r.scalar_one_or_none():
+            continue
+        session.add(Holiday(
+            id=str(uuid.uuid4()),
+            business_id=_bid("HLDY", i),
+            company_id=company_id,
+            name=name,
+            date=dt,
+            holiday_type=htype,
+            country="IN",
+            is_paid=True,
+            created_by=created_by,
+            updated_by=created_by,
+        ))
+    await session.flush()
+    logger.info("holidays_2026_seeded")
+
+
 async def _seed_attendance_records(
     session: AsyncSession, company_id: str, created_by: str,
 ) -> None:
@@ -1342,6 +1396,7 @@ async def main() -> None:
             await _seed_organization_settings(session, company_id, hr_admin_id)
             await _seed_employee_salaries(session, company_id, hr_admin_id)
             await _seed_holidays_2025(session, company_id, hr_admin_id)
+            await _seed_holidays_2026(session, company_id, hr_admin_id)
             await _seed_attendance_records(session, company_id, hr_admin_id)
             await _seed_leave_balances(session, company_id, hr_admin_id)
             await _seed_leave_requests(session, company_id, hr_admin_id)

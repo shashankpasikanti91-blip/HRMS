@@ -13,10 +13,18 @@ import { payrollService, salaryService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/store/auth-store";
 import type { PayrollRun, PayrollItem, PayslipDetail, SalaryStructure, SalaryComponent } from "@/types";
 
 export default function PayrollPage() {
   const { toast } = useToast();
+  const { user } = useAuthStore();
+  const role = user?.role || "employee";
+  const isAdmin = ["super_admin", "company_admin", "hr_manager"].includes(role);
+  const isManager = isAdmin || role === "team_manager";
+
+  // Employee payslips state
+  const [myPayslips, setMyPayslips] = useState<Array<{ business_id: string; period_month: number; period_year: number; run_status: string; gross_salary: number; allowances: number; deductions: number; tax_amount: number; net_salary: number; currency: string; payment_status: string; payment_date: string | null }>>([]);
   const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>([]);
   const [payslips, setPayslips] = useState<PayrollItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,22 +58,28 @@ export default function PayrollPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [runsResult] = await Promise.allSettled([
-        payrollService.listRuns(),
-      ]);
-      if (runsResult.status === "fulfilled") {
-        const data = runsResult.value;
-        const runs: PayrollRun[] = Array.isArray(data) ? data : data?.data || [];
-        setPayrollRuns(runs);
-        // Compute summary stats from the latest processed/approved run
-        const activeRun = runs.find((r) => r.status === "approved" || r.status === "processed") || runs[0];
-        if (activeRun) {
-          setStats({
-            totalGross: runs.reduce((sum, r) => sum + (r.total_gross || 0), 0),
-            totalDeductions: runs.reduce((sum, r) => sum + (r.total_deductions || 0), 0),
-            totalNet: runs.reduce((sum, r) => sum + (r.total_net || 0), 0),
-            employeeCount: activeRun.total_employees || 0,
-          });
+      if (!isAdmin && !isManager) {
+        // Employee: load only own payslips
+        const slips = await payrollService.getMyPayslips();
+        setMyPayslips(slips);
+      } else {
+        // Admin/Manager: load payroll runs
+        const [runsResult] = await Promise.allSettled([
+          payrollService.listRuns(),
+        ]);
+        if (runsResult.status === "fulfilled") {
+          const data = runsResult.value;
+          const runs: PayrollRun[] = Array.isArray(data) ? data : data?.data || [];
+          setPayrollRuns(runs);
+          const activeRun = runs.find((r) => r.status === "approved" || r.status === "processed") || runs[0];
+          if (activeRun) {
+            setStats({
+              totalGross: runs.reduce((sum, r) => sum + (r.total_gross || 0), 0),
+              totalDeductions: runs.reduce((sum, r) => sum + (r.total_deductions || 0), 0),
+              totalNet: runs.reduce((sum, r) => sum + (r.total_net || 0), 0),
+              employeeCount: activeRun.total_employees || 0,
+            });
+          }
         }
       }
     } catch {
@@ -73,7 +87,7 @@ export default function PayrollPage() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, isAdmin, isManager]);
 
   useEffect(() => {
     loadData();
@@ -277,6 +291,129 @@ export default function PayrollPage() {
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
+  // ── Employee View ──────────────────────────────────────────────────────────
+  if (!isAdmin && !isManager) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">My Payslips</h1>
+          <p className="text-muted-foreground">View your monthly salary slips</p>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
+        ) : myPayslips.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Payslip History</CardTitle>
+              <CardDescription>Your salary slips</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left text-sm font-medium">Period</th>
+                    <th className="p-3 text-right text-sm font-medium">Gross</th>
+                    <th className="p-3 text-right text-sm font-medium">Deductions</th>
+                    <th className="p-3 text-right text-sm font-medium">Tax</th>
+                    <th className="p-3 text-right text-sm font-medium">Net Salary</th>
+                    <th className="p-3 text-center text-sm font-medium">Status</th>
+                    <th className="p-3 text-center text-sm font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myPayslips.map((ps) => (
+                    <tr key={ps.business_id} className="border-b last:border-0">
+                      <td className="p-3 text-sm font-medium">{monthNames[(ps.period_month || 1) - 1]} {ps.period_year}</td>
+                      <td className="p-3 text-sm text-right">{formatCurrency(ps.gross_salary || 0)}</td>
+                      <td className="p-3 text-sm text-right">{formatCurrency(ps.deductions || 0)}</td>
+                      <td className="p-3 text-sm text-right">{formatCurrency(ps.tax_amount || 0)}</td>
+                      <td className="p-3 text-sm text-right font-medium">{formatCurrency(ps.net_salary || 0)}</td>
+                      <td className="p-3 text-center"><Badge variant={ps.payment_status === "paid" ? "success" : "warning"}>{ps.payment_status || "pending"}</Badge></td>
+                      <td className="p-3 text-center">
+                        <Button size="sm" variant="ghost" onClick={() => viewPayslipDetail({ business_id: ps.business_id, employee_id: "", employee_name: user?.name || "", id: ps.business_id } as PayrollItem)}>
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              <FileText className="mx-auto mb-2 h-8 w-8" />
+              <p>No payslips available yet.</p>
+              <p className="text-xs">Your payslips will appear here once payroll is processed.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Payslip Detail Dialog */}
+        <Dialog open={payslipDetailOpen} onOpenChange={setPayslipDetailOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            {loadingDetail ? (
+              <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            ) : payslipDetail ? (
+              <div className="space-y-0" id="payslip-template">
+                <div className="border-b-2 border-primary pb-4 text-center">
+                  {payslipDetail.company?.logo_url && <img src={payslipDetail.company.logo_url} alt="Logo" className="mx-auto mb-2 h-12" />}
+                  <h2 className="text-xl font-bold text-primary">{payslipDetail.company?.legal_name || payslipDetail.company?.name || "Company"}</h2>
+                  <div className="mt-3 rounded-lg bg-primary/5 py-2">
+                    <h3 className="text-lg font-semibold">Pay Slip</h3>
+                    {payslipDetail.payroll_run && <p className="text-sm text-muted-foreground">{monthNames[(payslipDetail.payroll_run.period_month || 1) - 1]} {payslipDetail.payroll_run.period_year}</p>}
+                  </div>
+                </div>
+                {payslipDetail.employee && (
+                  <div className="grid grid-cols-2 gap-4 border-b py-4">
+                    <div className="space-y-1 ml-2">
+                      <p className="text-sm"><strong>Name:</strong> {payslipDetail.employee.full_name}</p>
+                      <p className="text-sm"><strong>Code:</strong> {payslipDetail.employee.employee_code || "—"}</p>
+                    </div>
+                    <div className="space-y-1 ml-2">
+                      <p className="text-sm"><strong>Department:</strong> {payslipDetail.employee.department_name || "—"}</p>
+                      <p className="text-sm"><strong>Designation:</strong> {payslipDetail.employee.designation || "—"}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="py-4 space-y-3">
+                  <h4 className="text-sm font-semibold">Salary Breakdown</h4>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+                    <div className="border-b pb-2">
+                      <p className="text-xs font-semibold text-green-700 mb-1">Earnings</p>
+                      <div className="flex justify-between text-sm"><span>Gross Salary</span><span className="font-medium">{formatCurrency(payslipDetail.payslip.gross_salary || 0)}</span></div>
+                      <div className="flex justify-between text-sm"><span>Allowances</span><span className="font-medium">{formatCurrency(payslipDetail.payslip.allowances || 0)}</span></div>
+                    </div>
+                    <div className="border-b pb-2">
+                      <p className="text-xs font-semibold text-red-700 mb-1">Deductions</p>
+                      <div className="flex justify-between text-sm"><span>Deductions</span><span className="font-medium">{formatCurrency(payslipDetail.payslip.deductions || 0)}</span></div>
+                      <div className="flex justify-between text-sm"><span>Tax</span><span className="font-medium">{formatCurrency(payslipDetail.payslip.tax_amount || 0)}</span></div>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 text-center">
+                    <p className="text-sm text-muted-foreground">Net Pay</p>
+                    <p className="text-3xl font-bold text-primary">{formatCurrency(payslipDetail.payslip.net_salary || 0)}</p>
+                  </div>
+                </div>
+                <div className="border-t pt-3 text-center">
+                  <p className="text-xs text-muted-foreground">This is a computer-generated payslip and does not require a signature.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground space-y-3">
+                <FileText className="mx-auto h-8 w-8 opacity-50" />
+                <p className="font-medium">{payslipDetailError || "Failed to load payslip details"}</p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // ── Admin / Manager View ──────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -284,9 +421,11 @@ export default function PayrollPage() {
           <h1 className="text-3xl font-bold tracking-tight">Payroll</h1>
           <p className="text-muted-foreground">Process payroll, manage salaries, and generate payslips</p>
         </div>
-        <Button onClick={() => setRunDialogOpen(true)}>
-          <Calculator className="mr-2 h-4 w-4" />Run Payroll
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setRunDialogOpen(true)}>
+            <Calculator className="mr-2 h-4 w-4" />Run Payroll
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
@@ -350,12 +489,12 @@ export default function PayrollPage() {
                             <Button size="sm" variant="outline" onClick={() => viewPayslips(run)}>
                               <Eye className="mr-1 h-3 w-3" />View
                             </Button>
-                            {run.status === "draft" && (
+                            {isAdmin && run.status === "draft" && (
                               <Button size="sm" disabled={processing} onClick={() => handleProcessRun(run)}>
                                 <Play className="mr-1 h-3 w-3" />Process
                               </Button>
                             )}
-                            {(run.status === "processing" || run.status === "processed" || run.status === "completed") && (
+                            {isAdmin && (run.status === "processing" || run.status === "processed" || run.status === "completed") && (
                               <Button size="sm" variant="default" disabled={processing} onClick={() => handleApproveRun(run)}>
                                 <CheckCircle2 className="mr-1 h-3 w-3" />Approve
                               </Button>
@@ -383,9 +522,11 @@ export default function PayrollPage() {
               <h3 className="text-lg font-semibold">Salary Structures</h3>
               <p className="text-sm text-muted-foreground">Define salary components and calculation rules</p>
             </div>
-            <Button onClick={() => { openStructureDialog(); if (!salaryStructures.length) loadStructures(); }}>
-              <Plus className="mr-2 h-4 w-4" />New Structure
-            </Button>
+            {isAdmin && (
+              <Button onClick={() => { openStructureDialog(); if (!salaryStructures.length) loadStructures(); }}>
+                <Plus className="mr-2 h-4 w-4" />New Structure
+              </Button>
+            )}
           </div>
 
           {loadingStructures ? (
@@ -404,10 +545,12 @@ export default function PayrollPage() {
                         </div>
                         {s.is_default && <Badge variant="secondary">Default</Badge>}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openStructureDialog(s); }}><Edit className="h-3 w-3" /></Button>
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteStructure(s.business_id); }}><Trash2 className="h-3 w-3" /></Button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openStructureDialog(s); }}><Edit className="h-3 w-3" /></Button>
+                          <Button size="sm" variant="ghost" className="text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteStructure(s.business_id); }}><Trash2 className="h-3 w-3" /></Button>
+                        </div>
+                      )}
                     </div>
 
                     {expandedStructure === s.business_id && (
