@@ -74,7 +74,7 @@ export default function DashboardPage() {
           attendanceService.getMyToday().catch(() => null),
           attendanceService.getMyHistory({ page: 1, page_size: 7 }).catch(() => null),
           payrollService.getMyPayslips().catch(() => null),
-          leaveService.getByEmployee(user?.id || "").catch(() => null),
+          leaveService.getMyLeaves().catch(() => null),
         );
       }
 

@@ -15,7 +15,7 @@ import GoogleLoginButton from "@/components/GoogleLoginButton";
 const SHOW_DEMO_ACCESS = process.env.NEXT_PUBLIC_SHOW_DEMO !== "false";
 
 const DEMO_ACCOUNTS = {
-  admin: { email: "admin@demo.srpailabs.com", password: "Admin@1234", label: "Admin" },
+  admin: { email: "hr@acme.com", password: "Admin@1234", label: "HR Admin" },
   manager: { email: "bob@acme.com", password: "Employee@1234", label: "Manager" },
   employee: { email: "alice@acme.com", password: "Employee@1234", label: "Employee" },
   superadmin: { email: "superadmin@srpailabs.com", password: "SrpAdmin@2026!", label: "Super Admin" },

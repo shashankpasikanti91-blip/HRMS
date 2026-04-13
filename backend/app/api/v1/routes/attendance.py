@@ -188,6 +188,35 @@ async def approve_attendance(
 
 # ── Leave Requests ──────────────────────────────────────────────────────────
 
+@leave_router.get("/me", response_model=Page[LeaveResponse])
+async def get_my_leaves(
+    params: PaginationParams = Depends(),
+    status: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the current user's own leave requests."""
+    from sqlalchemy import select
+    from app.models.employee import Employee
+
+    emp_result = await db.execute(
+        select(Employee).where(
+            Employee.user_id == current_user.id,
+            Employee.company_id == current_user.company_id,
+            Employee.is_deleted == False,
+        )
+    )
+    emp = emp_result.scalar_one_or_none()
+    if not emp:
+        return Page.create([], 0, params)
+
+    svc = LeaveService(db)
+    leaves, total = await svc.list(
+        current_user.company_id, params, employee_id=emp.id, status=status
+    )
+    return Page.create([LeaveResponse.model_validate(l) for l in leaves], total, params)
+
+
 @leave_router.post("", response_model=LeaveResponse, status_code=201)
 async def create_leave_request(
     data: LeaveRequestCreate,

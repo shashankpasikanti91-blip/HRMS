@@ -259,6 +259,10 @@ export const leaveService = {
     const { data } = await api.get("/leaves", { params });
     return data as Page<LeaveRequest>;
   },
+  async getMyLeaves(params?: { page?: number; page_size?: number; status?: string }): Promise<LeaveRequest[]> {
+    const { data } = await api.get("/leaves/me", { params: { page_size: 100, ...params } });
+    return (data as Page<LeaveRequest>).data ?? [];
+  },
   async getByBusinessId(businessId: string): Promise<LeaveRequest> {
     const { data } = await api.get(`/leaves/${businessId}`);
     return data as LeaveRequest;
