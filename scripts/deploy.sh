@@ -138,6 +138,15 @@ healthcheck() {
             all_healthy=false
         fi
     done
+
+    # Check FastAPI backend (runs on host or in Docker)
+    if curl -sf "http://localhost:8003/health" &>/dev/null; then
+        log "  ✓ FastAPI backend healthy"
+    else
+        warn "  ✗ FastAPI backend may not be running"
+        all_healthy=false
+    fi
+
     if [ "$all_healthy" = true ]; then
         log "All services healthy!"
     else
@@ -156,9 +165,16 @@ backup_db() {
     local timestamp=$(date +%Y%m%d_%H%M%S)
     local backup_dir="$PROJECT_ROOT/backups"
     mkdir -p "$backup_dir"
-    log "Backing up database to $backup_dir/srp_hrms_$timestamp.sql.gz..."
+
+    log "Backing up NestJS database..."
     docker exec srp-hrms-postgres pg_dump -U srp_hrms_prod srp_hrms_prod | gzip > "$backup_dir/srp_hrms_$timestamp.sql.gz"
-    log "Backup complete: $backup_dir/srp_hrms_$timestamp.sql.gz"
+    log "  ✓ srp_hrms_prod → $backup_dir/srp_hrms_$timestamp.sql.gz"
+
+    log "Backing up FastAPI database..."
+    docker exec srp-hrms-postgres pg_dump -U srp_hrms_prod hrms_backend 2>/dev/null | gzip > "$backup_dir/hrms_backend_$timestamp.sql.gz" || \
+        warn "  ✗ hrms_backend backup skipped (database may not exist in Docker)"
+
+    log "Backup complete!"
 }
 
 # ---- Update (pull latest + redeploy) ----

@@ -25,20 +25,19 @@ const CTASection = () => {
           >
             <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Get Started</span>
             <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 mb-5 text-foreground leading-tight">
-              Ready to Replace <br />
-              <span className="gradient-text">Manual HR?</span>
+            Ready to <span className="gradient-text">Get Started?</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-8">
-              Start your AI-powered HR transformation today.
-              Our team will set up a trial environment with your data in under 24 hours.
+              Try SRP AI HRMS with your team. We'll help you get set up
+              and answer any questions along the way.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <a href="https://app.hrms.srpailabs.com/register" className="btn-primary inline-flex items-center gap-2 justify-center">
-                🚀 Start Free Trial <ArrowRight size={16} />
+                Start Free Trial <ArrowRight size={16} />
               </a>
               <a href="#contact" className="btn-outline inline-flex items-center gap-2 justify-center">
-                📞 Book Demo
+                Book a Demo
               </a>
             </div>
 

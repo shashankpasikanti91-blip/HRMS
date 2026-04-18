@@ -1,41 +1,13 @@
 import { motion, useInView } from 'framer-motion';
-import { useRef, useState, useEffect } from 'react';
+import { useRef } from 'react';
+import { Shield, Layers, Zap, Lock } from 'lucide-react';
 
-const stats = [
-  { value: 15000, suffix: '+', label: 'Employee Profiles Managed' },
-  { value: 500, suffix: '+', label: 'Enterprises Onboarded' },
-  { value: 99.9, suffix: '%', label: 'Uptime SLA' },
-  { value: 38, suffix: '+', label: 'AI-Powered Modules' },
+const highlights = [
+  { icon: Shield, title: 'Multi-Tenant Architecture', desc: 'Each company\'s data is isolated and secure by default.' },
+  { icon: Layers, title: '20+ Built-in Modules', desc: 'HR, Payroll, Attendance, Recruitment, Performance, and more.' },
+  { icon: Zap, title: 'Fast Onboarding', desc: 'Set up your company and start managing employees in minutes.' },
+  { icon: Lock, title: 'Role-Based Access', desc: 'Granular permissions from admin to employee level.' },
 ];
-
-const Counter = ({ target, suffix, inView }: { target: number; suffix: string; inView: boolean }) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!inView) return;
-    let start = 0;
-    const isDecimal = target % 1 !== 0;
-    const duration = 2000;
-    const increment = target / (duration / 16);
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(isDecimal ? parseFloat(start.toFixed(1)) : Math.floor(start));
-      }
-    }, 16);
-    return () => clearInterval(timer);
-  }, [inView, target]);
-
-  return (
-    <span>
-      {target >= 1000 ? count.toLocaleString() : count}
-      {suffix}
-    </span>
-  );
-};
 
 const StatsSection = () => {
   const ref = useRef(null);
@@ -45,19 +17,20 @@ const StatsSection = () => {
     <section className="py-16 md:py-20 relative overflow-hidden" ref={ref}>
       <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-[hsl(260_80%_60%/0.05)]" />
       <div className="container mx-auto px-4 relative z-10">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-          {stats.map((s, i) => (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {highlights.map((item, i) => (
             <motion.div
-              key={s.label}
+              key={item.title}
               initial={{ opacity: 0, y: 30 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: i * 0.15 }}
-              className="text-center"
+              transition={{ duration: 0.5, delay: i * 0.12 }}
+              className="text-center p-6"
             >
-              <div className="text-5xl md:text-6xl font-display font-bold gradient-text mb-2">
-                <Counter target={s.value} suffix={s.suffix} inView={inView} />
+              <div className="w-12 h-12 mx-auto rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+                <item.icon className="w-5 h-5 text-primary" />
               </div>
-              <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{s.label}</div>
+              <h3 className="text-sm font-display font-bold text-foreground mb-1">{item.title}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
             </motion.div>
           ))}
         </div>

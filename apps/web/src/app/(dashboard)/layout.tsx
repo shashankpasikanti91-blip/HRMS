@@ -13,6 +13,7 @@ import NotificationBell from "@/components/layout/NotificationBell";
 import {
   LayoutDashboard, Users, Building2, Clock, DollarSign, Briefcase,
   Target, Bell, BarChart3, Bot, Settings, LogOut, ChevronLeft, Menu, CalendarDays,
+  Activity,
 } from "lucide-react";
 
 // Roles that can manage the organization (admin/HR tier)
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/dashboard/performance", label: "Performance", icon: Target, roles: [...MANAGEMENT_ROLES] },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell, roles: null },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ADMIN_ROLES },
+  { href: "/dashboard/system-logs", label: "System Logs", icon: Activity, roles: ["super_admin", "company_admin"] },
   { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot, roles: null },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, roles: null },
 ];

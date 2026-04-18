@@ -8,43 +8,43 @@ import {
 const features = [
   {
     icon: Users,
-    title: 'Core HR & Employee Management',
-    desc: 'Complete employee lifecycle — onboarding, profiles, org charts, documents, and self-service portal.',
+    title: 'Employee Management',
+    desc: 'Maintain employee profiles, org charts, documents, and contact information in one place.',
   },
   {
     icon: Briefcase,
     title: 'Recruitment & ATS',
-    desc: 'AI-powered job board, candidate pipeline, interview scheduling, resume screening, and offer letter automation.',
+    desc: 'Post jobs, track candidates through the pipeline, schedule interviews, and manage offers.',
   },
   {
     icon: DollarSign,
     title: 'Payroll & Compensation',
-    desc: 'Multi-country payroll processing, tax calculations, salary structures, and payslip generation.',
+    desc: 'Configure salary structures, run payroll, handle deductions, and generate payslips each month.',
   },
   {
     icon: Clock,
     title: 'Attendance & Leave',
-    desc: 'Real-time tracking, shift scheduling, leave policies, holiday calendars, and overtime management.',
+    desc: 'Track clock-in/out, manage leave requests, configure holiday calendars, and handle shifts.',
   },
   {
     icon: Target,
-    title: 'Performance & OKR Tracking',
-    desc: 'Goal setting, review cycles, 360° feedback, skill matrix, and competency frameworks.',
+    title: 'Performance Reviews',
+    desc: 'Set employee goals, run review cycles, and keep a history of performance feedback.',
   },
   {
     icon: BarChart3,
     title: 'Analytics & Reports',
-    desc: 'Executive dashboards, workforce analytics, attrition trends, and scheduled report exports.',
+    desc: 'Dashboard with headcount, attendance trends, recruitment pipeline, and payroll summaries.',
   },
   {
     icon: Bot,
-    title: 'AI HR Chatbot',
-    desc: '24/7 assistant that answers HR policies, generates letters, explains payslips, and handles requests.',
+    title: 'AI HR Assistant',
+    desc: 'Built-in chatbot that answers common HR questions from employees, reducing repetitive queries.',
   },
   {
     icon: Bell,
-    title: 'Notifications & Workflows',
-    desc: 'Multi-channel alerts and automated workflows from onboarding to exit — no manual steps.',
+    title: 'Notifications & Alerts',
+    desc: 'Stay on top of pending approvals, new applications, and important HR deadlines.',
   },
 ];
 
@@ -63,10 +63,10 @@ const FeaturesSection = () => {
         >
           <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Complete Platform</span>
           <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 text-foreground">
-            Everything You Need, <span className="gradient-text">Powered by AI</span>
+            Everything You Need, <span className="gradient-text">One Platform</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            From hiring to exit — every module is designed to save time, reduce errors, and give you real-time insights.
+            Core HR modules that cover the full employee lifecycle — from onboarding to exit.
           </p>
         </motion.div>
 

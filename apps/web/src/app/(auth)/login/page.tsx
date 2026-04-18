@@ -12,15 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, ShieldCheck, Sparkles } from "lucide-react";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
 
-const SHOW_DEMO_ACCESS = process.env.NEXT_PUBLIC_SHOW_DEMO !== "false";
-
-const DEMO_ACCOUNTS = {
-  admin: { email: "admin@demo.srpailabs.com", password: "Admin@1234", label: "Admin" },
-  manager: { email: "bob@acme.com", password: "Employee@1234", label: "Manager" },
-  employee: { email: "alice@acme.com", password: "Employee@1234", label: "Employee" },
-  superadmin: { email: "superadmin@srpailabs.com", password: "SrpAdmin@2026!", label: "Super Admin" },
-};
-
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuthStore();
@@ -29,12 +20,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  function applyDemoAccount(type: keyof typeof DEMO_ACCOUNTS) {
-    setEmail(DEMO_ACCOUNTS[type].email);
-    setPassword(DEMO_ACCOUNTS[type].password);
-    setError("");
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -74,25 +59,6 @@ export default function LoginPage() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          {SHOW_DEMO_ACCESS && (
-          <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3 dark:border-blue-900 dark:bg-blue-950/20">
-            <p className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-100">Quick demo access (temporary)</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {Object.entries(DEMO_ACCOUNTS).map(([key, account]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => applyDemoAccount(key as keyof typeof DEMO_ACCOUNTS)}
-                  className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-left text-xs transition hover:border-blue-400 hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-950/40"
-                >
-                  <p className="font-medium text-foreground">{account.label}</p>
-                  <p className="text-muted-foreground">{account.email}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-          )}
-
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}

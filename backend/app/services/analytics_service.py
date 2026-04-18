@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import List, Optional
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.employee import Employee, Department
@@ -190,55 +190,64 @@ class AnalyticsService:
         )
 
     async def get_headcount_by_department(self, company_id: str) -> List[HeadcountByDepartment]:
-        dept_result = await self.db.execute(
-            select(Department).where(
+        # Single query with GROUP BY to avoid N+1
+        result = await self.db.execute(
+            select(
+                Department.id,
+                Department.name,
+                func.count(Employee.id).label("total"),
+                func.count(
+                    case(
+                        (Employee.employment_status == "active", Employee.id),
+                    )
+                ).label("active"),
+            )
+            .outerjoin(
+                Employee,
+                (Employee.department_id == Department.id)
+                & (Employee.is_deleted == False),
+            )
+            .where(
                 Department.company_id == company_id,
                 Department.is_deleted == False,
             )
+            .group_by(Department.id, Department.name)
         )
-        depts = list(dept_result.scalars().all())
-        out = []
-        for dept in depts:
-            total = await self._count(Employee, company_id, "department_id", dept.id)
-            active = 0
-            if total:
-                active_result = await self.db.execute(
-                    select(func.count()).select_from(Employee).where(
-                        Employee.company_id == company_id,
-                        Employee.department_id == dept.id,
-                        Employee.employment_status == "active",
-                        Employee.is_deleted == False,
-                    )
-                )
-                active = active_result.scalar() or 0
-            out.append(HeadcountByDepartment(
-                department_id=dept.id,
-                department_name=dept.name,
+        rows = result.all()
+        return [
+            HeadcountByDepartment(
+                department_id=dept_id,
+                department_name=dept_name,
                 total=total,
                 active=active,
-            ))
-        return out
+            )
+            for dept_id, dept_name, total, active in rows
+        ]
 
     async def get_leave_summary(self, company_id: str) -> List[LeaveSummary]:
-        leave_types_result = await self.db.execute(
-            select(LeaveRequest.leave_type, func.count())
+        # Single query with conditional aggregation to avoid N+1
+        result = await self.db.execute(
+            select(
+                LeaveRequest.leave_type,
+                func.count().label("total"),
+                func.count(case((LeaveRequest.status == "approved", 1))).label("approved"),
+                func.count(case((LeaveRequest.status == "pending", 1))).label("pending"),
+                func.count(case((LeaveRequest.status == "rejected", 1))).label("rejected"),
+            )
             .where(LeaveRequest.company_id == company_id, LeaveRequest.is_deleted == False)
             .group_by(LeaveRequest.leave_type)
         )
-        rows = leave_types_result.all()
-        summary = []
-        for leave_type, total in rows:
-            approved = await self._count_leave(company_id, leave_type, "approved")
-            pending = await self._count_leave(company_id, leave_type, "pending")
-            rejected = await self._count_leave(company_id, leave_type, "rejected")
-            summary.append(LeaveSummary(
+        rows = result.all()
+        return [
+            LeaveSummary(
                 leave_type=leave_type,
                 total_requests=total,
                 approved=approved,
                 pending=pending,
                 rejected=rejected,
-            ))
-        return summary
+            )
+            for leave_type, total, approved, pending, rejected in rows
+        ]
 
     async def get_payroll_summary(self, company_id: str) -> List[PayrollSummary]:
         result = await self.db.execute(

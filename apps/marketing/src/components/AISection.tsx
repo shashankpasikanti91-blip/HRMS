@@ -6,25 +6,25 @@ const differentiators = [
   {
     icon: Brain,
     title: 'AI Resume Screening',
-    desc: 'Automatically parses, scores, and ranks candidates — no manual screening needed.',
+    desc: 'Upload resumes and get automatic scoring based on job requirements. Saves hours of manual review.',
     emoji: '🧠',
   },
   {
     icon: AlertTriangle,
-    title: 'Attrition Prediction',
-    desc: 'Detect employees at risk before they resign using behavioral signals.',
+    title: 'Smart Alerts',
+    desc: 'Get notified about pending approvals, visa expirations, and payroll deadlines before they become problems.',
     emoji: '⚠️',
   },
   {
     icon: MessageSquare,
     title: 'AI HR Assistant',
-    desc: '24/7 chatbot answering policies, payroll queries, and HR requests.',
+    desc: 'Employees can ask common HR questions through a built-in chatbot, reducing repetitive queries.',
     emoji: '💬',
   },
   {
     icon: RefreshCw,
     title: 'Workflow Automation',
-    desc: 'From onboarding to payroll — everything runs automatically.',
+    desc: 'Automate onboarding steps, leave approvals, and payroll processing with configurable rules.',
     emoji: '🔄',
   },
 ];
@@ -48,10 +48,10 @@ const AISection = () => {
         >
           <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">AI Capabilities</span>
           <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 text-foreground">
-            What Makes SRP AI HRMS <span className="gradient-text">Different</span>
+            Built-in <span className="gradient-text">AI Tools</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            Intelligence built into every workflow — from hiring to retention.
+            Practical AI features that save time across hiring, HR support, and daily operations.
           </p>
         </motion.div>
 

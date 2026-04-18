@@ -120,7 +120,7 @@ async def _upsert_company_admin(session: AsyncSession, company_id: str) -> str:
         return user.id
 
     # Also check by email
-    EMAIL = "hr@acme.com"
+    EMAIL = "admin@demo.srpailabs.com"
     result = await session.execute(
         select(User).where(User.email == EMAIL, User.company_id == company_id)
     )
@@ -146,10 +146,10 @@ async def _upsert_company_admin(session: AsyncSession, company_id: str) -> str:
         business_id=bid,
         email=EMAIL,
         password_hash=hash_password("Admin@1234"),
-        full_name="Jane HR",
-        first_name="Jane",
-        last_name="HR",
-        role=UserRole.HR_MANAGER.value,
+        full_name="Demo Admin",
+        first_name="Demo",
+        last_name="Admin",
+        role=UserRole.COMPANY_ADMIN.value,
         status=UserStatus.ACTIVE.value,
         company_id=company_id,
     )
@@ -1056,7 +1056,7 @@ async def _seed_leave_balances(
     if not employees or not leave_types:
         return
 
-    year = 2025
+    year = 2026
     for emp in employees:
         for lt in leave_types:
             r = await session.execute(
@@ -1117,16 +1117,16 @@ async def _seed_leave_requests(
 
     requests_data = [
         # (emp_index, leave_code, start, end, days, status, reason)
-        (0, "CL", date(2025, 2, 10), date(2025, 2, 11), 2, "approved", "Family function"),
-        (0, "SL", date(2025, 3, 5), date(2025, 3, 6), 2, "approved", "Not feeling well"),
-        (1, "CL", date(2025, 1, 20), date(2025, 1, 21), 2, "approved", "Personal work"),
-        (1, "EL", date(2025, 7, 1), date(2025, 7, 4), 4, "pending", "Summer vacation"),
-        (2, "SL", date(2025, 3, 15), date(2025, 3, 15), 1, "approved", "Doctor appointment"),
-        (2, "CL", date(2025, 4, 25), date(2025, 4, 25), 1, "pending", "Personal errand"),
-        (3, "EL", date(2025, 5, 12), date(2025, 5, 16), 5, "rejected", "Travel plans changed"),
-        (3, "CL", date(2025, 3, 3), date(2025, 3, 4), 2, "approved", "Family event"),
-        (4, "SL", date(2025, 2, 18), date(2025, 2, 19), 2, "approved", "Fever"),
-        (4, "CL", date(2025, 6, 10), date(2025, 6, 11), 2, "pending", "Wedding"),
+        (0, "CL", date(2026, 1, 12), date(2026, 1, 13), 2, "approved", "Family function"),
+        (0, "SL", date(2026, 2, 5), date(2026, 2, 6), 2, "approved", "Not feeling well"),
+        (1, "CL", date(2026, 1, 20), date(2026, 1, 21), 2, "approved", "Personal work"),
+        (1, "EL", date(2026, 7, 1), date(2026, 7, 4), 4, "pending", "Summer vacation"),
+        (2, "SL", date(2026, 3, 15), date(2026, 3, 15), 1, "approved", "Doctor appointment"),
+        (2, "CL", date(2026, 4, 25), date(2026, 4, 25), 1, "pending", "Personal errand"),
+        (3, "EL", date(2026, 5, 12), date(2026, 5, 16), 5, "rejected", "Travel plans changed"),
+        (3, "CL", date(2026, 3, 3), date(2026, 3, 4), 2, "approved", "Family event"),
+        (4, "SL", date(2026, 2, 18), date(2026, 2, 19), 2, "approved", "Fever"),
+        (4, "CL", date(2026, 6, 10), date(2026, 6, 11), 2, "pending", "Wedding"),
     ]
 
     # check if already seeded

@@ -15,7 +15,7 @@ from app.core.config import get_settings
 from app.core.database import engine, Base
 from app.core.exceptions import AppException
 from app.core.logging import configure_logging
-from app.middleware import TenantMiddleware, AuditMiddleware
+from app.middleware import TenantMiddleware, AuditMiddleware, SecurityHeadersMiddleware
 from app.api.v1 import api_router
 
 settings = get_settings()
@@ -69,6 +69,7 @@ def create_app() -> FastAPI:
     )
 
     # ── Custom middleware (outermost first) ───────────────────────────────
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(TenantMiddleware)
     app.add_middleware(AuditMiddleware)
 
@@ -79,18 +80,43 @@ def create_app() -> FastAPI:
     # ── Exception handlers ─────────────────────────────────────────────────
     @app.exception_handler(AppException)
     async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", None)
+        logger.warning(
+            "app_error",
+            path=request.url.path,
+            method=request.method,
+            status_code=exc.status_code,
+            code=getattr(exc, "error_code", "APP_ERROR"),
+            detail=exc.detail,
+            request_id=request_id,
+        )
         return JSONResponse(
             status_code=exc.status_code,
-            content={"detail": exc.detail, "code": getattr(exc, "error_code", getattr(exc, "code", "APP_ERROR"))},
+            content={
+                "detail": exc.detail,
+                "code": getattr(exc, "error_code", getattr(exc, "code", "APP_ERROR")),
+                "request_id": request_id,
+            },
             headers=exc.headers,
         )
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-        logger.exception("unhandled_error", path=request.url.path, exc=str(exc))
+        request_id = getattr(request.state, "request_id", None)
+        logger.exception(
+            "unhandled_error",
+            path=request.url.path,
+            method=request.method,
+            exc=str(exc),
+            request_id=request_id,
+        )
         return JSONResponse(
             status_code=500,
-            content={"detail": "An unexpected error occurred.", "code": "INTERNAL_SERVER_ERROR"},
+            content={
+                "detail": "An unexpected error occurred.",
+                "code": "INTERNAL_SERVER_ERROR",
+                "request_id": request_id,
+            },
         )
 
     # ── Static files (uploaded documents) ─────────────────────────────────

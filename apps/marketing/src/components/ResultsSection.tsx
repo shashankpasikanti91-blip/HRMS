@@ -2,11 +2,11 @@ import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 
 const outcomes = [
-  { emoji: '⏱', text: '70% reduction in manual HR work' },
-  { emoji: '🎯', text: 'Faster hiring with AI screening' },
-  { emoji: '📉', text: 'Lower employee attrition' },
-  { emoji: '📊', text: 'Real-time workforce insights' },
-  { emoji: '🤖', text: '24/7 HR support without extra staff' },
+  { emoji: '⏱', text: 'Spend less time on manual HR tasks' },
+  { emoji: '🎯', text: 'Fill open roles faster with AI screening' },
+  { emoji: '📋', text: 'Keep attendance and leave records organized' },
+  { emoji: '📊', text: 'Get clear workforce reports when you need them' },
+  { emoji: '🔒', text: 'Keep employee data secure and access-controlled' },
 ];
 
 const ResultsSection = () => {
@@ -24,7 +24,7 @@ const ResultsSection = () => {
         >
           <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Results</span>
           <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 text-foreground">
-            What You Achieve With <span className="gradient-text">SRP AI HRMS</span>
+            What You Get With <span className="gradient-text">SRP AI HRMS</span>
           </h2>
         </motion.div>
 

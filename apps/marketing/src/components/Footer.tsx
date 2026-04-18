@@ -10,10 +10,10 @@ const Footer = () => {
         {/* CTA Banner */}
         <div className="py-16 text-center border-b border-border/20">
           <h3 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
-            Ready to Talk? Get in Touch.
+            Ready to simplify your HR?
           </h3>
           <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-            Start your AI-powered HR transformation today. Our team sets up a trial environment in under 24 hours.
+            Create your free account and start managing your team in minutes.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <a href="https://app.hrms.srpailabs.com/register" className="btn-primary inline-flex items-center gap-2">
@@ -38,8 +38,8 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-              AI-powered Human Resource Management System by SRP AI Labs.
-              From hiring to exit — fully automated, enterprise-grade.
+              HR software by SRP AI Labs. Manage employees, payroll,
+              attendance, and recruitment from one platform.
             </p>
             <div className="flex gap-3">
               <a href="https://linkedin.com/company/srpailabs" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary hover:bg-primary/10 transition-all duration-300">

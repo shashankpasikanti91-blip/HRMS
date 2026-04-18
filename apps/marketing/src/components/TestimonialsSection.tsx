@@ -1,61 +1,37 @@
 import { motion, useInView } from 'framer-motion';
-import { useRef, useState, useEffect } from 'react';
-import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useRef } from 'react';
+import { CheckCircle, ArrowRight } from 'lucide-react';
 
-const testimonials = [
+const reasons = [
   {
-    name: 'Arjun Mehta',
-    role: 'CHRO',
-    company: 'TechStar India',
-    text: 'Reduced our hiring time by 60% instantly.',
+    title: 'Built for growing companies',
+    desc: 'Whether you have 10 or 500 employees, the system scales with your team without additional complexity.',
   },
   {
-    name: 'Sarah Chen',
-    role: 'VP People Operations',
-    company: 'CloudScale',
-    text: 'Feels like we hired an AI HR manager.',
+    title: 'Clean automation workflows',
+    desc: 'Attendance, leave approvals, payroll runs, and onboarding steps — automated end to end.',
   },
   {
-    name: 'Mohammed Al-Rashid',
-    role: 'HR Director',
-    company: 'Gulf Enterprises',
-    text: 'Automation replaced 3 manual HR roles.',
+    title: 'Secure multi-tenant architecture',
+    desc: 'Every company\'s data is fully isolated. Role-based access ensures the right people see the right data.',
   },
   {
-    name: 'Priya Krishnamurthy',
-    role: 'Founder',
-    company: 'HR Catalyst',
-    text: 'The performance management transformed how our clients manage talent.',
+    title: 'AI-assisted productivity',
+    desc: 'Resume screening, candidate scoring, and an HR chatbot that answers employee questions around the clock.',
   },
   {
-    name: 'David Park',
-    role: 'CTO',
-    company: 'ScaleUp Labs',
-    text: "Best HR platform we've used — modern, fast, and truly intelligent.",
+    title: 'Fast setup, no long contracts',
+    desc: 'Create your account, invite your team, and start managing HR the same day. Cancel anytime.',
   },
   {
-    name: 'Lisa Fernandez',
-    role: 'COO',
-    company: 'MedTech Solutions',
-    text: 'Passed our security review on day one. Compliance built-in.',
+    title: 'Actively maintained & updated',
+    desc: 'New features and improvements ship regularly. Built by a team that responds to customer feedback.',
   },
 ];
 
 const TestimonialsSection = () => {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-100px' });
-  const [current, setCurrent] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const visibleCount = 3;
-  const maxIndex = testimonials.length - visibleCount;
-
-  useEffect(() => {
-    if (isPaused) return;
-    const timer = setInterval(() => {
-      setCurrent((prev) => (prev >= maxIndex ? 0 : prev + 1));
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [isPaused, maxIndex]);
 
   return (
     <section className="section-padding overflow-hidden" ref={ref}>
@@ -66,66 +42,43 @@ const TestimonialsSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Testimonials</span>
+          <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Why SRP AI HRMS</span>
           <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 text-foreground">
-            What Teams Say About <span className="gradient-text">SRP AI HRMS</span>
+            Why Teams Choose <span className="gradient-text">SRP AI HRMS</span>
           </h2>
+          <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
+            We focus on building software that actually works for HR teams — no gimmicks, no bloat.
+          </p>
         </motion.div>
 
-        <div
-          className="relative"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-        >
-          {/* Side blur effects */}
-          <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-
-          <div className="overflow-hidden">
-            <div
-              className="flex gap-6 transition-transform duration-500 ease-in-out"
-              style={{ transform: `translateX(-${current * (100 / visibleCount)}%)` }}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {reasons.map((r, i) => (
+            <motion.div
+              key={r.title}
+              initial={{ opacity: 0, y: 30 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.4, delay: i * 0.08 }}
+              className="glass-card p-6"
             >
-              {testimonials.map((t, i) => (
-                <div key={i} className="min-w-[calc(33.333%-1rem)] shrink-0">
-                  <div className="glass-card p-6 h-full">
-                    <div className="flex gap-1 mb-3">
-                      {Array.from({ length: 5 }).map((_, j) => (
-                        <Star key={j} className="w-3.5 h-3.5 fill-primary text-primary" />
-                      ))}
-                    </div>
-                    <p className="text-sm text-foreground/90 leading-relaxed mb-5">"{t.text}"</p>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-sm text-white" style={{ background: 'var(--gradient-primary)' }}>
-                        {t.name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="text-sm font-display font-semibold text-foreground">{t.name}</div>
-                        <div className="text-xs text-muted-foreground">{t.role}, {t.company}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <div className="flex justify-center gap-3 mt-8">
-            <button
-              onClick={() => setCurrent((p) => Math.max(0, p - 1))}
-              className="w-10 h-10 rounded-lg border border-border/50 bg-card/40 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={() => setCurrent((p) => Math.min(maxIndex, p + 1))}
-              className="w-10 h-10 rounded-lg border border-border/50 bg-card/40 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
+              <div className="flex items-start gap-3 mb-3">
+                <CheckCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <h3 className="text-sm font-display font-bold text-foreground">{r.title}</h3>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed pl-8">{r.desc}</p>
+            </motion.div>
+          ))}
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="text-center mt-10"
+        >
+          <a href="https://app.hrms.srpailabs.com/register" className="inline-flex items-center gap-2 text-sm font-display font-semibold text-primary hover:gap-3 transition-all">
+            Start your free trial <ArrowRight size={16} />
+          </a>
+        </motion.div>
       </div>
     </section>
   );

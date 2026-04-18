@@ -1,7 +1,14 @@
-import urllib.request, urllib.error, json
+"""
+Quick smoke-test for the FastAPI backend.
+Tests auth + core routes to verify endpoints are reachable.
+
+Usage:
+    python scripts/test-api-routes.py
+"""
+
+import urllib.request, urllib.error, json, sys
 
 BASE = "https://api.hrms.srpailabs.com/api/v1"
-TENANT = "a0000000-0000-4000-8000-000000000001"
 
 def req(method, url, token=None, body=None):
     data = json.dumps(body).encode() if body else None
@@ -15,50 +22,50 @@ def req(method, url, token=None, body=None):
     except urllib.error.HTTPError as e:
         try:
             body2 = json.loads(e.read())
-        except:
+        except Exception:
             body2 = {}
         return e.code, body2
 
-# Login and print full response structure
-code, data = req("POST", "/auth/login", body={"email":"hr@demo.srpailabs.com","password":"Demo@2026!","tenantId":TENANT})
-print(f"Login status: {code}")
-print(f"Response keys: {list(data.keys())}")
-if "tokens" in data:
-    print(f"tokens sub-keys: {list(data['tokens'].keys())}")
-tok = ""
-if "tokens" in data and isinstance(data["tokens"], dict):
-    tok = data["tokens"].get("accessToken", data["tokens"].get("access_token", ""))
-elif "accessToken" in data:
-    tok = data["accessToken"]
-elif "access_token" in data:
-    tok = data["access_token"]
-print(f"token (chars 0-40): {tok[:40]}")
-print()
-
+# Login
+code, data = req("POST", "/auth/login", body={
+    "email": "admin@demo.srpailabs.com",
+    "password": "Admin@1234",
+})
+print(f"Login: {code}")
+tok = data.get("access_token", "")
 if not tok:
-    print("No token - full response:")
-    print(json.dumps(data, indent=2)[:1000])
-    exit()
+    print("No token received. Response:")
+    print(json.dumps(data, indent=2)[:500])
+    sys.exit(1)
+print(f"Token: {tok[:40]}...\n")
 
-# Test all routes with token
+# Routes to test
 tests = [
-    ("GET", "/users/me"),
-    ("GET", "/auth/users/me"),
-    ("GET", "/core-hr/employees"),
-    ("GET", "/core-hr/departments"),
-    ("GET", f"/analytics/dashboards/executive/{TENANT}"),
-    ("GET", "/attendance"),
-    ("GET", "/payroll"),
-    ("GET", "/recruitment"),
-    ("GET", "/performance"),
-    ("GET", "/notification"),
-    ("GET", "/core-hr/positions"),
+    ("GET",  "/auth/me"),
+    ("GET",  "/employees"),
+    ("GET",  "/departments"),
+    ("GET",  "/attendance"),
+    ("GET",  "/leaves"),
+    ("GET",  "/payroll/payslips"),
+    ("GET",  "/holidays"),
+    ("GET",  "/analytics/dashboard"),
+    ("GET",  "/search?q=test"),
+    ("GET",  "/audit-logs"),
 ]
 
+passed, failed = 0, 0
 for method, path in tests:
     code2, data2 = req(method, path, token=tok)
-    if isinstance(data2, dict):
-        keys = list(data2.keys())[:4]
+    status = "OK" if code2 < 400 else "FAIL"
+    if status == "OK":
+        passed += 1
     else:
-        keys = f"list[{len(data2)}]"
-    print(f"  {method} {path}: {code2} | {keys}")
+        failed += 1
+    summary = ""
+    if isinstance(data2, dict):
+        summary = str(list(data2.keys())[:3])
+    elif isinstance(data2, list):
+        summary = f"list[{len(data2)}]"
+    print(f"  [{status}] {method} {path}: {code2} {summary}")
+
+print(f"\nDone: {passed} passed, {failed} failed out of {len(tests)} tests")

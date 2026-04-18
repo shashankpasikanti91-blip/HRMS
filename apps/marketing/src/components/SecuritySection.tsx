@@ -28,7 +28,7 @@ const SecuritySection = () => {
             Enterprise-Grade <span className="gradient-text">Security</span> Built In
           </h2>
           <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            Your employee data is protected at every layer.
+            Your employee data is protected with encryption, access controls, and tenant isolation at every layer.
           </p>
         </motion.div>
 
@@ -57,7 +57,7 @@ const SecuritySection = () => {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="mt-10 flex flex-wrap justify-center gap-4"
         >
-          {['SOC2', 'GDPR', 'ISO Ready'].map((badge) => (
+          {['RBAC', 'Encryption', 'Tenant Isolation'].map((badge) => (
             <div key={badge} className="px-5 py-2.5 rounded-full border border-primary/20 bg-primary/5 text-xs font-display font-semibold text-primary uppercase tracking-wider">
               {badge}
             </div>
