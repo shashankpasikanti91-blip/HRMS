@@ -120,6 +120,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     async function loadSettings() {
+      // Super admin has no company — skip org profile fetch
+      if (!user || user.role === "super_admin") {
+        setInitialLoading(false);
+        return;
+      }
       try {
         const company = await settingsService.getCompanyProfile();
         setOrgForm({
@@ -135,7 +140,7 @@ export default function SettingsPage() {
       }
     }
     loadSettings();
-  }, []);
+  }, [user?.role]);
 
   async function handleSaveProfile() {
     setSaving(true);

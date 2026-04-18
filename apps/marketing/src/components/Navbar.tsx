@@ -1,34 +1,24 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 const navLinks = [
-  { label: 'Solutions', href: '/#solutions' },
-  { label: 'AI Engine', href: '/#ai' },
-  { label: 'Platform', href: '/#features' },
-  { label: 'Security', href: '/#security' },
-  { label: 'Pricing', href: '/#pricing' },
-  { label: 'Contact', href: '/#contact' },
+  { label: 'Solutions', href: '/solutions', section: 'solutions' },
+  { label: 'AI Engine', href: '/ai', section: 'ai' },
+  { label: 'Platform', href: '/platform', section: 'features' },
+  { label: 'Security', href: '/security', section: 'security' },
+  { label: 'Pricing', href: '/pricing', section: 'pricing' },
+  { label: 'Contact', href: '/contact', section: 'contact' },
 ];
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('hero');
+  const location = useLocation();
 
   useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 50);
-      const sections = ['hero', 'solutions', 'ai', 'features', 'security', 'pricing', 'contact'];
-      for (const id of [...sections].reverse()) {
-        const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top <= 200) {
-          setActiveSection(id);
-          break;
-        }
-      }
-    };
+    const onScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -57,24 +47,24 @@ const Navbar = () => {
 
         <div className="hidden lg:flex items-center gap-8">
           {navLinks.map((link) => (
-            <a
+            <Link
               key={link.label}
-              href={link.href}
+              to={link.href}
               className={`text-sm font-medium transition-colors duration-300 tracking-wide uppercase relative ${
-                activeSection === link.href.replace('/#', '')
+                location.pathname === link.href
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {link.label}
-              {activeSection === link.href.replace('/#', '') && (
+              {location.pathname === link.href && (
                 <motion.span
                   layoutId="activeNavHRMS"
                   className="absolute -bottom-1 left-0 right-0 h-0.5 rounded-full"
                   style={{ background: 'var(--gradient-primary)' }}
                 />
               )}
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -110,14 +100,14 @@ const Navbar = () => {
           >
             <div className="flex flex-col gap-4 p-6">
               {navLinks.map((link) => (
-                <a
+                <Link
                   key={link.label}
-                  href={link.href}
+                  to={link.href}
                   onClick={() => setMobileOpen(false)}
                   className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide"
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
               <a href="https://app.hrms.srpailabs.com/register" className="btn-primary text-center mt-2">
                 Get Started

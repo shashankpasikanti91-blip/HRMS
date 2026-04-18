@@ -167,31 +167,54 @@ async def get_payroll_items(
 async def get_payroll_item_detail(
     item_business_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hr_or_above()),
+    current_user: User = Depends(get_current_user),
 ):
-    """Get detailed payslip for a single employee including company info."""
-    from sqlalchemy import select as sa_select, outerjoin
+    """Get detailed payslip for a single employee including company info.
+    Employees may only view their own payslip; HR+ and super_admin can view any."""
+    from sqlalchemy import select as sa_select
     from app.models.employee import Employee, Department
     from app.models.payroll import PayrollItem, PayrollRun
     from app.models.company import Company
     from app.core.exceptions import NotFoundException
+    from app.utils.enums import UserRole
 
-    # Find payroll item
-    item_result = await db.execute(
-        sa_select(PayrollItem).where(
-            PayrollItem.business_id == item_business_id,
-            PayrollItem.company_id == current_user.company_id,
-            PayrollItem.is_deleted == False,
-        )
+    is_hr_or_above = current_user.role in (
+        UserRole.SUPER_ADMIN.value,
+        UserRole.COMPANY_ADMIN.value,
+        UserRole.HR_MANAGER.value,
+        UserRole.FINANCE.value,
     )
+
+    # Build base query
+    conditions = [
+        PayrollItem.business_id == item_business_id,
+        PayrollItem.is_deleted == False,
+    ]
+    # Scope by company unless super_admin
+    if current_user.company_id:
+        conditions.append(PayrollItem.company_id == current_user.company_id)
+
+    item_result = await db.execute(sa_select(PayrollItem).where(*conditions))
     item = item_result.scalar_one_or_none()
     if not item:
         raise NotFoundException("Payslip not found")
 
+    # Employees may only view their own payslip
+    if not is_hr_or_above:
+        emp_result = await db.execute(
+            sa_select(Employee).where(
+                Employee.user_id == current_user.id,
+                Employee.is_deleted == False,
+            )
+        )
+        own_employee = emp_result.scalar_one_or_none()
+        if not own_employee or own_employee.id != item.employee_id:
+            raise NotFoundException("Payslip not found")
+
     # Get employee details with department name via join
     emp_result = await db.execute(
         sa_select(Employee, Department.name.label("dept_name"))
-        .outerjoin(Department, Employee.department_id == Department.id)
+        .outerjoin(Department, Employee.department_id == Department.id)  # type: ignore[attr-defined]
         .where(Employee.id == item.employee_id)
     )
     emp_row = emp_result.first()
@@ -204,9 +227,9 @@ async def get_payroll_item_detail(
     )
     run = run_result.scalar_one_or_none()
 
-    # Get company info
+    # Get company info (use item's company_id so super_admin also gets it)
     company_result = await db.execute(
-        sa_select(Company).where(Company.id == current_user.company_id)
+        sa_select(Company).where(Company.id == item.company_id)
     )
     company = company_result.scalar_one_or_none()
 
