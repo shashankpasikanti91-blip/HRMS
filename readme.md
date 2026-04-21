@@ -1,36 +1,12 @@
-<div align="center">
-
 # SRP AI HRMS
 
-### AI-Powered Human Resource Management System
+Multi-tenant, role-based Human Resource Management System built for growing organisations. Covers the full employee lifecycle — onboarding through exit — with payroll, attendance, leave, performance, and an AI HR assistant.
 
-*Built by [SRP AI Labs](https://srpailabs.com)*
-
-[![Live App](https://img.shields.io/badge/App-app.hrms.srpailabs.com-blue?style=for-the-badge)](https://app.hrms.srpailabs.com)
-[![Marketing](https://img.shields.io/badge/Marketing-hrms.srpailabs.com-purple?style=for-the-badge)](https://hrms.srpailabs.com)
-[![API Docs](https://img.shields.io/badge/API-api.hrms.srpailabs.com%2Fdocs-green?style=for-the-badge)](https://api.hrms.srpailabs.com/docs)
-[![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)]()
-
-</div>
+**Live:** [app.hrms.srpailabs.com](https://app.hrms.srpailabs.com) · **API:** [api.hrms.srpailabs.com](https://api.hrms.srpailabs.com) · **Docs:** [/docs](https://api.hrms.srpailabs.com/docs)
 
 ---
 
-## Overview
-
-SRP AI HRMS is a multi-tenant, role-based HR management platform covering the full employee lifecycle — from onboarding to exit. It is built on a FastAPI backend with PostgreSQL, a Next.js 15 web app, a React/Vite marketing site, and a GPT-4o powered AI assistant.
-
-**Live URLs**
-
-| Service | URL |
-|---------|-----|
-| Web App | https://app.hrms.srpailabs.com |
-| Marketing | https://hrms.srpailabs.com |
-| API | https://api.hrms.srpailabs.com |
-| API Docs (Swagger) | https://api.hrms.srpailabs.com/docs |
-
----
-
-## Demo Accounts
+## Demo Access
 
 | Role | Email | Password |
 |------|-------|----------|
@@ -39,117 +15,59 @@ SRP AI HRMS is a multi-tenant, role-based HR management platform covering the fu
 
 ---
 
-## Live Modules (April 2026)
+## Modules
 
-| Module | Status | Description |
-|--------|--------|-------------|
-| Employee Management | Live | Full lifecycle — create, edit, probation, exit, document upload |
-| Department Management | Live | CRUD departments, team member view, employee counts |
-| Branch & Designation Management | Live | Multi-branch, designations, shift configuration |
-| Attendance Tracking | Live | Clock in/out, manual entry, corrections, team dashboard, CSV export |
-| Leave Management | Live | Apply/approve/reject, leave balances, policies per type |
-| LOP (Loss of Pay) | Live | Monthly LOP calculation, approval workflow, bulk processing, overrides |
-| Holiday Calendar | Live | Multi-country presets: India, Malaysia, Singapore, UAE |
-| Calendar Overview | Live | Monthly attendance overlay — present, late, absent, leave, holidays |
-| Payroll Processing | Live | Salary structures, components, monthly runs, payslip generation |
-| Tax & Compliance | Live | Statutory rules: PF, ESIC (India), CPF (Singapore), professional tax |
-| Performance Reviews | Live | Create reviews, goal scores, manager feedback, self-assessment |
-| Document Vault | Live | Upload documents, onboarding/exit checklists, compliance templates |
-| Analytics Dashboard | Live | Headcount, attendance trend + forecast, payroll summary, dept breakdown |
-| AI HR Assistant | Live | GPT-4o + RAG, session persistence, handles HR queries 24/7 |
-| Notifications | Live | In-app feed, mark-read, bulk clear, paginated |
-| System Audit Logs | Live | Full audit trail: entity, change diff, user, IP — admin only |
-| User & Role Management | Live | Invite by email, assign 7 RBAC roles, manage from Settings |
-| Organization Settings | Live | Company profile, timezone, employee ID format, MFA |
-| Recruitment & ATS | Add-on | Job postings, candidate pipeline, AI resume screening, interviews, offers |
-| Geo-Fenced Check-in | Coming Soon | Location-verified clock in/out |
-| 360° Feedback | Coming Soon | Peer review cycles |
-| Expense Management | Coming Soon | Employee expense claims and approval |
+| Module | Status |
+|--------|--------|
+| Employee Management | Live |
+| Department & Branch Management | Live |
+| Attendance Tracking | Live |
+| Leave Management | Live |
+| Loss of Pay (LOP) | Live |
+| Holiday Calendar | Live |
+| Payroll & Payslips | Live |
+| Salary Structures | Live |
+| Tax & Statutory Compliance | Live |
+| Performance Reviews | Live |
+| Document Vault | Live |
+| Analytics Dashboard | Live |
+| AI HR Assistant (GPT-4o) | Live |
+| Notifications | Live |
+| System Audit Logs | Live |
+| User & Role Management | Live |
+| Organization Settings | Live |
+| Recruitment & ATS | Add-on |
+| Geo-Fenced Clock-in | Planned |
 
 ---
 
 ## Tech Stack
 
 ### Backend
-- **Framework:** FastAPI 0.115 + SQLAlchemy 2.0 async
-- **Database:** PostgreSQL (`hrms_backend`)
-- **Cache:** Redis
-- **Migrations:** Alembic
-- **Auth:** JWT HS256 with jti blacklist, bcrypt, Google OAuth (NextAuth)
-- **Rate Limiting:** slowapi (200/min global, 5/min login)
-- **AI:** OpenAI GPT-4o via `/ai/chat/` endpoint
-- **Port:** 8003
+- **FastAPI 0.115** + SQLAlchemy 2.0 async
+- **PostgreSQL** — multi-tenant, scoped by `company_id`
+- **Redis** — JWT blacklist, rate-limit counters
+- **Alembic** migrations
+- **JWT HS256** — jti blacklist, bcrypt, Google OAuth
+- **slowapi** rate limiting (5/min login · 200/min global)
+- **OpenAI GPT-4o** — AI HR assistant endpoint
 
-### Frontend (Web App: `/apps/web`)
-- **Framework:** Next.js 15 + App Router
-- **Language:** TypeScript (strict: false, noEmitOnError: false)
-- **UI:** Tailwind CSS + Radix UI + shadcn/ui
-- **State:** Zustand (auth-store.ts)
-- **HTTP:** Axios with auto-refresh token interceptor (lib/api.ts)
-- **Forms:** react-hook-form + zod
-- **Charts:** Recharts
+### Web App (`apps/web`)
+- **Next.js 15** App Router · TypeScript
+- **Tailwind CSS** + shadcn/ui (Radix UI)
+- **Zustand** auth store · **Axios** with auto-refresh interceptor
+- **react-hook-form** + **zod** · **Recharts**
 
-### Marketing Site (`/apps/marketing`)
-- **Framework:** Vite 5 + React 18 + TypeScript
-- **Styling:** Tailwind CSS 3
-- **Animations:** Framer Motion
-- **Router:** React Router v6
+### Marketing Site (`apps/marketing`)
+- **Vite 5** + React 18 · TypeScript
+- **Tailwind CSS** · Framer Motion · React Router v6
 
 ### Infrastructure
-- **Server:** Hetzner VPS — 5.223.67.236
-- **Containers:** Docker
-- **Reverse Proxy:** Host Nginx (not containerized)
-- **SSL:** Cloudflare origin certificates
-- **PostgreSQL Port:** 5434
-
----
-
-## RBAC — User Roles
-
-| Role | Key Permissions |
-|------|----------------|
-| `super_admin` | Full access across all companies |
-| `company_admin` | Full access within own company |
-| `hr_manager` | Employees, payroll, leave, attendance, recruitment |
-| `finance` | Payroll, taxation, salary structures |
-| `team_manager` | Team attendance view, leave approvals |
-| `recruiter` | Recruitment module |
-| `employee` | Self-service: own profile, attendance, leave, payslips |
-
----
-
-## API Routes
-
-Base URL: `https://api.hrms.srpailabs.com/api/v1/`
-
-| Prefix | Module |
-|--------|--------|
-| `/auth/` | Login, register, refresh, reset, Google OAuth |
-| `/companies/` | Company profile |
-| `/users/` | User management, invitations |
-| `/employees/` | Employee lifecycle, exit workflow |
-| `/departments/` | Department CRUD |
-| `/attendance/` | Clock in/out, logs, corrections |
-| `/leaves/` | Leave CRUD, approve/reject, balances, policies |
-| `/holidays/` | Holidays, bulk import |
-| `/payroll/` | Payroll runs, payslips |
-| `/salary-structures/` | Salary structures and components |
-| `/lop/` | LOP calculation and approval |
-| `/performance/` | Reviews, goals |
-| `/documents/` | Document management |
-| `/document-vault/` | Onboarding/exit checklists |
-| `/notifications/` | Notification feed |
-| `/analytics/` | Dashboard KPIs, trends |
-| `/organization/` | Branches, designations, shifts |
-| `/policies/` | Leave types and policies |
-| `/audit-logs/` | System audit trail |
-| `/search/` | Global search |
-| `/jobs/` | Job postings (Add-on) |
-| `/candidates/` | Candidates (Add-on) |
-| `/applications/` | Applications (Add-on) |
-| `/interviews/` | Interviews (Add-on) |
-| `/recruitment-ai/` | AI resume screening, job post generation |
-| `/ai/chat/` | AI HR Assistant (GPT-4o + RAG) |
+- **Hetzner VPS** — `5.223.67.236`
+- **Docker** containers via `docker-compose.prod.yml`
+- **Nginx** reverse proxy (host-level, not containerised)
+- **Cloudflare** origin SSL certificates
+- Turborepo monorepo
 
 ---
 
@@ -158,48 +76,109 @@ Base URL: `https://api.hrms.srpailabs.com/api/v1/`
 ```
 srp-hrms/
 ├── apps/
-│   ├── web/                         # Next.js 15 web app
+│   ├── web/                        # Next.js 15 web application
 │   │   └── src/
-│   │       ├── app/(dashboard)/     # All dashboard pages
-│   │       ├── components/          # Reusable UI components
-│   │       ├── services/api-services.ts
-│   │       ├── store/auth-store.ts
-│   │       ├── lib/api.ts           # Axios instance + token refresh
-│   │       └── types/index.ts
-│   └── marketing/                   # Vite marketing site
+│   │       ├── app/                # App Router pages
+│   │       │   └── (dashboard)/   # All authenticated pages
+│   │       ├── components/        # Shared UI components
+│   │       ├── services/          # API service layer (api-services.ts)
+│   │       ├── store/             # Zustand stores
+│   │       ├── lib/               # Axios instance, utilities
+│   │       └── types/             # TypeScript interfaces
+│   └── marketing/                 # Vite marketing site
 │       └── src/
-│           ├── pages/               # LandingPage, PricingPage, ContactPage, etc.
-│           └── components/          # HeroSection, FeaturesSection, etc.
-├── backend/                         # FastAPI backend
+│           ├── pages/             # Landing, Pricing, Contact, etc.
+│           └── components/        # Section components
+├── backend/                       # FastAPI application
 │   └── app/
-│       ├── api/v1/routes/           # Route handlers (26 files)
-│       ├── models/                  # SQLAlchemy models (37+ models)
-│       ├── schemas/                 # Pydantic request/response schemas
-│       ├── services/                # Business logic
-│       └── core/                    # Auth, deps, config, rate limiting
-├── infrastructure/                  # Docker Compose, nginx configs
-└── scripts/                         # Deploy and seeding scripts
+│       ├── api/v1/routes/         # Route handlers (~28 files)
+│       ├── models/                # SQLAlchemy ORM models
+│       ├── schemas/               # Pydantic request/response schemas
+│       ├── services/              # Business logic layer
+│       ├── repositories/          # Data access layer
+│       └── core/                  # Config, auth, deps, rate limiting
+├── infrastructure/
+│   ├── docker/                    # docker-compose files
+│   └── nginx/                     # Nginx vhost configs
+├── packages/
+│   ├── database/                  # Shared DB package (Turborepo)
+│   ├── shared/                    # Shared TypeScript types/utils
+│   └── tsconfig/                  # Shared TS configs
+└── scripts/
+    ├── deploy.sh                  # Full-stack production deploy
+    ├── deploy-backend.sh          # Backend-only deploy
+    ├── deploy-production.sh       # Production deploy with health checks
+    ├── setup-server.sh            # Fresh server bootstrap
+    ├── seed-demo.sql              # Demo company and users
+    └── seed-demo-employees.sql    # Demo employee data
 ```
 
 ---
 
+## RBAC
+
+| Role | Scope |
+|------|-------|
+| `super_admin` | All companies — platform administration |
+| `company_admin` | Full access within own company |
+| `hr_manager` | Employees, payroll, leave, attendance, recruitment |
+| `finance` | Payroll, taxation, salary structures |
+| `team_manager` | Team attendance, leave approvals |
+| `recruiter` | Recruitment module only |
+| `employee` | Self-service — own profile, attendance, leave, payslips |
+
+---
+
+## API Reference
+
+Base: `https://api.hrms.srpailabs.com/api/v1`
+
+| Prefix | Description |
+|--------|-------------|
+| `/auth` | Login, register, token refresh, password reset, Google OAuth |
+| `/companies` | Company profile, logo upload |
+| `/users` | User management, invitations |
+| `/employees` | Employee lifecycle, photo upload, exit workflow |
+| `/departments` | Department CRUD |
+| `/attendance` | Clock in/out, manual entry, corrections, team log |
+| `/leaves` | Leave requests, approvals, balances, policies |
+| `/holidays` | Holiday calendar, bulk import |
+| `/payroll` | Payroll runs, payslip generation |
+| `/salary-structures` | Salary structures and components |
+| `/lop` | LOP calculation, approval, overrides |
+| `/performance` | Performance reviews and goals |
+| `/documents` | Document upload and management |
+| `/document-vault` | Onboarding/exit checklists |
+| `/notifications` | In-app notifications |
+| `/analytics` | Dashboard KPIs, trends, forecasts |
+| `/organization` | Branches, designations, shifts, settings |
+| `/policies` | Leave types and policies |
+| `/audit-logs` | System audit trail (admin only) |
+| `/search` | Global search across all entities |
+| `/jobs` | Job postings (Recruitment add-on) |
+| `/candidates` | Candidate management |
+| `/ai/chat` | AI HR assistant (GPT-4o + RAG) |
+
+---
+
 ## Local Development
+
+### Prerequisites
+- Python 3.12+, Node.js 22+, PostgreSQL 15+, Redis 7+
 
 ### Backend
 
 ```bash
 cd backend
 python -m venv .venv
-# Windows: .venv\Scripts\activate
-source .venv/bin/activate
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-cp .env.example .env   # fill DATABASE_URL, JWT_SECRET_KEY, OPENAI_API_KEY
+cp .env.example .env               # configure DATABASE_URL, JWT_SECRET_KEY, etc.
+alembic upgrade head               # apply migrations
+python seed.py                     # seed demo data
 
-alembic upgrade head   # run migrations
-python seed.py         # seed demo data
-
-uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload
+uvicorn app.main:app --port 8003 --reload
 ```
 
 ### Web App
@@ -207,106 +186,103 @@ uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload
 ```bash
 cd apps/web
 npm install
-# set NEXT_PUBLIC_API_URL=http://localhost:8003 in .env.local
-npm run dev   # http://localhost:3000
+# create .env.local with NEXT_PUBLIC_API_URL=http://localhost:8003
+npm run dev                        # http://localhost:3000
 ```
 
-### Marketing
+### Marketing Site
 
 ```bash
 cd apps/marketing
 npm install
-npm run dev   # http://localhost:3001
+npm run dev                        # http://localhost:3001
 ```
 
 ---
 
 ## Deployment
 
-**Target server:** `root@5.223.67.236`
+See `scripts/deploy.sh` for the full automated workflow.  
+Manual steps:
 
 ```bash
 ssh root@5.223.67.236
-cd /opt/srp-hrms
-git pull origin main
+cd /opt/srp-hrms && git pull origin main
 
-# Backend (Docker)
-cd backend
-docker compose up -d --build
-# Run migrations inside container
-docker exec srp-hrms-backend alembic upgrade head
+# Rebuild and restart backend
+docker build -f backend/Dockerfile -t srp-hrms/fastapi-backend:latest backend/
+docker compose -f infrastructure/docker/docker-compose.prod.yml up -d fastapi-backend
 
-# Web app (Docker)
-cd ../apps/web
-docker build -t srp-hrms-web .
-docker stop srp-hrms-web 2>/dev/null; docker rm srp-hrms-web 2>/dev/null
-docker run -d --name srp-hrms-web -p 3000:3000 \
-  --env-file /opt/srp-hrms/.env.production \
-  srp-hrms-web
-
-# Marketing (static build served via nginx)
-cd ../marketing
-npm install && npm run build
-cp -r dist/* /var/www/hrms-marketing/
+# Rebuild and restart web app (pass Telegram env for error reporting)
+docker build -f apps/web/Dockerfile \
+  --build-arg NEXT_PUBLIC_TELEGRAM_BOT_TOKEN=<token> \
+  --build-arg NEXT_PUBLIC_TELEGRAM_CHAT_ID=<chat_id> \
+  -t srp-hrms/web:latest .
+docker compose -f infrastructure/docker/docker-compose.prod.yml up -d web
 ```
 
-### Nginx Routing
+### Nginx to Container Routing
 
-| Domain | Backend |
-|--------|---------|
-| `hrms.srpailabs.com` | Marketing static files |
+| Domain | Target |
+|--------|--------|
+| `hrms.srpailabs.com` | Marketing — static files via nginx |
 | `app.hrms.srpailabs.com` | Next.js — `127.0.0.1:3000` |
 | `api.hrms.srpailabs.com` | FastAPI — `127.0.0.1:8003` |
-| `app.hrms.srpailabs.com/files/*` | FastAPI uploads — `127.0.0.1:8003` |
+| `app.hrms.srpailabs.com/files/*` | FastAPI static uploads |
 
 ---
 
 ## Environment Variables
 
-### Backend `.env`
+### `backend/.env`
 
 ```env
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5434/hrms_backend
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/hrms_backend
 REDIS_URL=redis://:password@localhost:6379/0
-JWT_SECRET_KEY=
+
+JWT_SECRET_KEY=<32-char secret>
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
+
 OPENAI_API_KEY=sk-...
+FRONTEND_URL=https://app.hrms.srpailabs.com
+ALLOWED_ORIGINS=https://app.hrms.srpailabs.com
+
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-FRONTEND_URL=https://app.hrms.srpailabs.com
+
+STORAGE_BACKEND=local           # or s3
+LOCAL_UPLOAD_DIR=/app/uploads
 ```
 
-### Web App `.env.local`
+### `apps/web/.env.local`
 
 ```env
 NEXT_PUBLIC_API_URL=https://api.hrms.srpailabs.com
 NEXTAUTH_URL=https://app.hrms.srpailabs.com
-NEXTAUTH_SECRET=
+NEXTAUTH_SECRET=<secret>
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+NEXT_PUBLIC_TELEGRAM_BOT_TOKEN=
+NEXT_PUBLIC_TELEGRAM_CHAT_ID=
 ```
 
 ---
 
 ## Security
 
-- JWT `jti` blacklist on Redis — tokens revoked immediately on logout
-- bcrypt password hashing
-- Rate limiting: 5/min login, 3/min register/forgot-password, 200/min global
-- Multi-tenant isolation: every DB query scoped to `company_id`
-- RBAC enforced via FastAPI dependency injection on every protected route
-- HTTPS via Cloudflare origin certs (certificate at `/etc/ssl/cloudflare/`)
-- Full system audit log for every data change
+- JWT with `jti` — tokens invalidated immediately on logout via Redis blacklist
+- bcrypt password hashing (cost factor 12)
+- Per-route rate limiting via slowapi
+- All database queries scoped to `company_id` — no cross-tenant data leakage
+- RBAC enforced at the FastAPI dependency layer on every protected route
+- HTTPS enforced via Cloudflare origin certificates
+- Full audit log on every create/update/delete operation
 
 ---
 
 ## Contact
 
-- **Email:** contact@srpailabs.com
-- **WhatsApp:** +91 6281294878
-- **Website:** https://srpailabs.com
+**SRP AI Labs** · [srpailabs.com](https://srpailabs.com)  
+contact@srpailabs.com · +91 6281294878
 
----
-
-*© 2026 SRP AI Labs. All rights reserved.*
