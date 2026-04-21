@@ -15,13 +15,12 @@ SUPER_ADMIN_ROLES = {UserRole.SUPER_ADMIN}
 HR_ADMIN_ROLES = {UserRole.COMPANY_ADMIN, UserRole.HR_MANAGER}
 
 # ── Roles that can manage recruitment ────────────────────────────────────
-RECRUITMENT_ROLES = {UserRole.COMPANY_ADMIN, UserRole.HR_MANAGER, UserRole.RECRUITER}
+RECRUITMENT_ROLES = {UserRole.COMPANY_ADMIN, UserRole.HR_MANAGER}
 
 # ── Roles that can view all employees ────────────────────────────────────
 MANAGEMENT_ROLES = {
     UserRole.COMPANY_ADMIN,
     UserRole.HR_MANAGER,
-    UserRole.RECRUITER,
     UserRole.TEAM_MANAGER,
 }
 
