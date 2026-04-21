@@ -460,4 +460,8 @@ BUSINESS_ID_PREFIXES: dict[str, str] = {
     "exit_checklist": "EXIT",
     "bank_account": "BANK",
     "doc_access_log": "DACL",
+    # LOP
+    "lop_policy": "LOPPOL",
+    "lop_record": "LOPREC",
+    "lop_override": "LOPOVR",
 }

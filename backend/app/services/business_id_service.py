@@ -55,6 +55,10 @@ class BusinessIdService:
         "exit_item": "exit_checklist_items",
         "bank_account": "employee_bank_accounts",
         "doc_access_log": "document_access_logs",
+        # LOP
+        "lop_policy": "lop_policies",
+        "lop_record": "lop_records",
+        "lop_override": "lop_overrides",
     }
 
     @classmethod
