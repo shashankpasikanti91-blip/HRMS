@@ -71,7 +71,10 @@ class AttendanceService:
             return emp
 
     async def get_my_today(self, current_user_id: str, company_id: str) -> Optional[Attendance]:
-        """Get today's attendance record for the current user. Returns None if no employee profile or no record."""
+        """Get today's attendance record for the current user.
+        Returns None if employee has a profile but no record today.
+        Raises NotFoundException if the user has no employee profile at all.
+        """
         emp_result = await self.db.execute(
             select(Employee).where(
                 Employee.user_id == current_user_id,
@@ -81,7 +84,7 @@ class AttendanceService:
         )
         emp = emp_result.scalar_one_or_none()
         if not emp:
-            return None
+            raise NotFoundException("Your employee profile was not found")
         today = date.today()
         att_result = await self.db.execute(
             select(Attendance).where(

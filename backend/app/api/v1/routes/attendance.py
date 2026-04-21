@@ -51,10 +51,13 @@ async def get_my_today(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get the current user's attendance record for today."""
+    """Get the current user's attendance record for today.
+    Returns null (200) if employee has no record today.
+    Returns 404 if the user has no employee profile at all.
+    """
     svc = AttendanceService(db)
     record = await svc.get_my_today(current_user.id, current_user.company_id)
-    if not record:
+    if record is None:
         return None
     return await _enrich_attendance(record, db)
 
