@@ -32,7 +32,8 @@ from app.core.rate_limit import limiter
 async def lifespan(app: FastAPI):
     logger.info("startup", env=settings.ENVIRONMENT, version=settings.APP_VERSION)
     # Tables are managed by Alembic in production; auto-create only in dev
-    if settings.APP_ENV == "development":
+    is_dev = settings.APP_ENV == "development" and settings.ENVIRONMENT == "development"
+    if is_dev:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("dev_tables_synced")
