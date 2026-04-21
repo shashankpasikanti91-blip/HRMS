@@ -71,6 +71,18 @@ class EmployeeCreate(BaseSchema):
 
     @model_validator(mode="after")
     def normalize_legacy_fields(self):
+        # Coerce empty strings to None for all string fields
+        str_fields = (
+            "full_name", "first_name", "last_name", "phone",
+            "emergency_contact_name", "emergency_contact_phone",
+            "department_id", "user_id", "designation", "manager_id",
+            "location", "notes", "employee_code",
+        )
+        for field in str_fields:
+            val = getattr(self, field, None)
+            if isinstance(val, str) and not val.strip():
+                setattr(self, field, None)
+
         if not self.work_email and self.email:
             self.work_email = self.email
         if not self.joining_date and self.date_of_joining:
@@ -111,6 +123,21 @@ class EmployeeUpdate(BaseSchema):
     passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None
     nationality: Optional[str] = None
+
+    @model_validator(mode="after")
+    def coerce_empty_strings(self):
+        str_fields = (
+            "full_name", "first_name", "last_name", "phone",
+            "emergency_contact_name", "emergency_contact_phone",
+            "department_id", "designation", "manager_id",
+            "location", "notes", "profile_photo_url",
+            "visa_status", "visa_type", "passport_number", "nationality",
+        )
+        for field in str_fields:
+            val = getattr(self, field, None)
+            if isinstance(val, str) and not val.strip():
+                setattr(self, field, None)
+        return self
 
 
 class EmployeeResponse(BaseResponse):
@@ -154,6 +181,8 @@ class EmployeeSummary(BaseSchema):
     designation: Optional[str] = None
     department_name: Optional[str] = None
     employment_status: str
+    employment_type: Optional[str] = None
+    joining_date: Optional[date] = None
 
 
 class EmployeeSummaryDetail(EmployeeResponse):

@@ -21,6 +21,13 @@ from app.models.salary import (
 from app.models.shift import Shift
 from app.models.client import Client, ClientProject, EmployeeAssignment
 from app.models.telegram import TelegramLink, TelegramCommandLog
+from app.models.lop import LOPPolicy, LOPRecord, LOPOverride
+from app.models.document_vault import (
+    DocumentTypeTemplate, EmployeeDocument, DocumentAccessLog,
+    OnboardingChecklist, OnboardingChecklistItem,
+    ExitChecklist, ExitChecklistItem,
+    EmployeeBankAccount,
+)
 
 __all__ = [
     "BaseModel",
@@ -62,4 +69,15 @@ __all__ = [
     "EmployeeAssignment",
     "TelegramLink",
     "TelegramCommandLog",
+    "LOPPolicy",
+    "LOPRecord",
+    "LOPOverride",
+    "DocumentTypeTemplate",
+    "EmployeeDocument",
+    "DocumentAccessLog",
+    "OnboardingChecklist",
+    "OnboardingChecklistItem",
+    "ExitChecklist",
+    "ExitChecklistItem",
+    "EmployeeBankAccount",
 ]

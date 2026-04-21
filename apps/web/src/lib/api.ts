@@ -75,15 +75,33 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch {
           // Refresh failed — clear tokens but do NOT hard-redirect.
-          // The auth store / layout auth guard will handle navigation.
+          // The auth store / layout auth guard handles navigation after tokens are cleared.
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
           refreshSubscribers = [];
+          isRefreshing = false;
+          // Signal auth store to clear user state gracefully
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("auth:session-expired"));
+          }
         } finally {
           isRefreshing = false;
         }
       }
     }
+
+    // For all non-auth-related 5xx errors expose a structured error shape
+    // so call sites can show user-friendly messages without crashing.
+    if (error.response?.status >= 500) {
+      const original = error.response?.data as { detail?: string; message?: string } | undefined;
+      if (!original?.detail && !original?.message) {
+        error.response.data = {
+          ...original,
+          detail: "A server error occurred. Our team has been notified. Please try again shortly.",
+        };
+      }
+    }
+
     return Promise.reject(error);
   },
 );

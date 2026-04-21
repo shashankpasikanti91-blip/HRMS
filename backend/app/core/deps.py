@@ -93,12 +93,14 @@ def require_hr_or_above():
     )
 
 
-def require_recruiter_or_above():
+def require_payroll_or_above():
+    """Payroll admin and above can manage payroll, taxation, salary structures."""
     return require_roles(
         UserRole.SUPER_ADMIN,
         UserRole.COMPANY_ADMIN,
         UserRole.HR_MANAGER,
-        UserRole.RECRUITER,
+        UserRole.PAYROLL_ADMIN,
+        UserRole.FINANCE,
     )
 
 

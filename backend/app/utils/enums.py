@@ -7,8 +7,8 @@ class UserRole(str, enum.Enum):
     SUPER_ADMIN = "super_admin"
     COMPANY_ADMIN = "company_admin"
     HR_MANAGER = "hr_manager"
-    HR_ADMIN = "hr_manager"
-    RECRUITER = "recruiter"
+    HR_ADMIN = "hr_manager"     # deprecated alias – kept for backward compat
+    PAYROLL_ADMIN = "payroll_admin"  # manages payroll, taxation, salary structures
     TEAM_MANAGER = "team_manager"
     EMPLOYEE = "employee"
     FINANCE = "finance"
@@ -64,6 +64,8 @@ class EmploymentStatus(str, enum.Enum):
     RESIGNED = "resigned"
     PROBATION = "probation"
     NOTICE_PERIOD = "notice_period"
+    EXIT_CLEARANCE = "exit_clearance"
+    INACTIVE = "inactive"
 
 
 class Gender(str, enum.Enum):
@@ -356,6 +358,69 @@ class TelegramCommandType(str, enum.Enum):
     HELP = "help"
 
 
+# ── Document Vault Enums ──────────────────────────────────────────────────
+
+class DocVaultCategory(str, enum.Enum):
+    """High-level category for HR document vault."""
+    IDENTITY = "identity"
+    EMPLOYMENT = "employment"
+    EDUCATION = "education"
+    PAYROLL_BANKING = "payroll_banking"
+    COMPLIANCE = "compliance"
+    TAX = "tax"
+    ONBOARDING = "onboarding"
+    EXIT = "exit"
+    MEDICAL = "medical"
+    OTHER = "other"
+
+
+class DocVaultStatus(str, enum.Enum):
+    """Lifecycle status of a single employee document."""
+    NOT_REQUESTED = "not_requested"
+    REQUESTED = "requested"
+    UPLOADED = "uploaded"
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    MISSING = "missing"
+    EXPIRED = "expired"
+    NEED_RESUBMISSION = "need_resubmission"
+    COMPLETED = "completed"
+
+
+class OnboardingStatus(str, enum.Enum):
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    WAITING_EMPLOYEE = "waiting_employee"
+    WAITING_HR = "waiting_hr"
+    COMPLETED = "completed"
+    BLOCKED = "blocked"
+
+
+class ExitStatus(str, enum.Enum):
+    INITIATED = "initiated"
+    PENDING_DOCS = "pending_docs"
+    PENDING_CLEARANCE = "pending_clearance"
+    PENDING_PAYROLL = "pending_payroll"
+    COMPLETED = "completed"
+    ARCHIVED = "archived"
+
+
+class DocAccessLevel(str, enum.Enum):
+    """Who can see this document."""
+    PRIVATE = "private"         # HR/Admin only
+    SELF = "self"               # employee's own view allowed
+    MANAGER = "manager"         # manager can see
+    PUBLIC = "public"           # all authenticated users
+
+
+class BankAccountType(str, enum.Enum):
+    SAVINGS = "savings"
+    CURRENT = "current"
+    SALARY = "salary"
+    OTHER = "other"
+
+
 # ── Business ID prefixes ───────────────────────────────────────────────────
 BUSINESS_ID_PREFIXES: dict[str, str] = {
     "company": "COMP",
@@ -387,4 +452,12 @@ BUSINESS_ID_PREFIXES: dict[str, str] = {
     "salary_structure": "SALSTR",
     "salary_component": "SALCMP",
     "employee_salary": "EMPSAL",
+    # Document vault
+    "doc_type_template": "DTYPE",
+    "emp_document": "EDOC",
+    "doc_request": "DOCREQ",
+    "onboarding_checklist": "ONBRD",
+    "exit_checklist": "EXIT",
+    "bank_account": "BANK",
+    "doc_access_log": "DACL",
 }

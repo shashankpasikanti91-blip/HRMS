@@ -110,67 +110,80 @@ class EmployeeService:
         self.repo = BaseRepository(Employee, db)
 
     async def create(self, data: EmployeeCreate, company_id: str, created_by: str) -> Employee:
-        # Check work email uniqueness within company
+        # Normalize optional string fields — empty strings must become None to avoid
+        # FK constraint violations or spurious uniqueness failures.
+        work_email = data.work_email or None
+        phone = data.phone.strip() if data.phone and data.phone.strip() else None
+        employee_code = data.employee_code.strip() if data.employee_code and data.employee_code.strip() else None
+        department_id_raw = data.department_id.strip() if data.department_id and data.department_id.strip() else None
+        manager_id = data.manager_id.strip() if data.manager_id and data.manager_id.strip() else None
+        designation = data.designation.strip() if data.designation and data.designation.strip() else None
+        location = data.location.strip() if data.location and data.location.strip() else None
+
+        if not work_email:
+            raise BadRequestException("work_email is required")
+
+        # Check work email uniqueness within company (active records only)
         existing = await self.db.execute(
             select(Employee).where(
-                Employee.work_email == data.work_email,
+                Employee.work_email == work_email,
                 Employee.company_id == company_id,
                 Employee.is_deleted == False,
             )
         )
         if existing.scalar_one_or_none():
-            raise ConflictException(f"Employee with work email '{data.work_email}' already exists")
+            raise ConflictException(f"An active employee with email '{work_email}' already exists")
 
         # Check employee_code uniqueness if manually provided
-        if data.employee_code:
+        if employee_code:
             existing_code = await self.db.execute(
                 select(Employee).where(
-                    Employee.employee_code == data.employee_code,
+                    Employee.employee_code == employee_code,
                     Employee.company_id == company_id,
                     Employee.is_deleted == False,
                 )
             )
             if existing_code.scalar_one_or_none():
-                raise ConflictException(f"Employee with code '{data.employee_code}' already exists")
+                raise ConflictException(f"Employee with ID '{employee_code}' already exists")
 
-        # Check phone uniqueness if provided
-        if data.phone:
-            existing_phone = await self.db.execute(
-                select(Employee).where(
-                    Employee.phone == data.phone,
-                    Employee.company_id == company_id,
-                    Employee.is_deleted == False,
-                )
-            )
-            if existing_phone.scalar_one_or_none():
-                raise ConflictException(f"Employee with phone '{data.phone}' already exists")
+        # Phone uniqueness: only warn if phone is non-trivial and already active
+        # (phone is informational – do not hard-block on duplicates in the same company)
 
         bid = await BusinessIdService.generate(self.db, "employee")
 
-        department_id = data.department_id
-        if department_id and department_id.startswith("DEPT-"):
-            dept_result = await self.db.execute(
-                select(Department).where(
-                    Department.business_id == department_id,
-                    Department.company_id == company_id,
-                    Department.is_deleted == False,
+        # Resolve department: accepts internal UUID or DEPT-* business_id
+        department_id: Optional[str] = None
+        if department_id_raw:
+            if department_id_raw.startswith("DEPT-"):
+                dept_result = await self.db.execute(
+                    select(Department).where(
+                        Department.business_id == department_id_raw,
+                        Department.company_id == company_id,
+                        Department.is_deleted == False,
+                    )
                 )
-            )
-            dept = dept_result.scalar_one_or_none()
-            if not dept:
-                raise BadRequestException(f"Department '{department_id}' was not found")
-            department_id = dept.id
+                dept = dept_result.scalar_one_or_none()
+                if not dept:
+                    raise BadRequestException(f"Department '{department_id_raw}' was not found")
+                department_id = dept.id
+            else:
+                # Treat as internal UUID — validate it belongs to this company
+                dept_result = await self.db.execute(
+                    select(Department).where(
+                        Department.id == department_id_raw,
+                        Department.company_id == company_id,
+                        Department.is_deleted == False,
+                    )
+                )
+                dept = dept_result.scalar_one_or_none()
+                if dept:
+                    department_id = dept.id
+                # Silently ignore invalid UUIDs rather than failing the whole request
 
-        # Auto-generate employee_code if not provided
-        emp_code = data.employee_code
+        # Auto-generate employee_code if not provided, using company's configured format
+        emp_code = employee_code
         if not emp_code:
-            count_result = await self.db.execute(
-                select(func.count()).select_from(Employee).where(
-                    Employee.company_id == company_id
-                )
-            )
-            count = (count_result.scalar() or 0) + 1
-            emp_code = f"EMP{str(count).zfill(4)}"
+            emp_code = await self._generate_employee_code(company_id, department_id)
 
         emp = Employee(
             id=str(uuid.uuid4()),
@@ -181,21 +194,21 @@ class EmployeeService:
             full_name=data.full_name,
             first_name=data.first_name,
             last_name=data.last_name,
-            work_email=data.work_email,
+            work_email=work_email,
             personal_email=str(data.personal_email) if data.personal_email else None,
-            phone=data.phone,
-            emergency_contact_name=data.emergency_contact_name,
-            emergency_contact_phone=data.emergency_contact_phone,
+            phone=phone,
+            emergency_contact_name=data.emergency_contact_name or None,
+            emergency_contact_phone=data.emergency_contact_phone or None,
             gender=data.gender.value if data.gender else None,
             date_of_birth=data.date_of_birth,
             joining_date=data.joining_date,
             employment_type=data.employment_type.value if data.employment_type else None,
             work_mode=data.work_mode.value if data.work_mode else None,
             department_id=department_id,
-            designation=data.designation,
-            manager_id=data.manager_id,
-            location=data.location,
-            notes=data.notes,
+            designation=designation,
+            manager_id=manager_id,
+            location=location,
+            notes=data.notes or None,
             created_by=created_by,
         )
         self.db.add(emp)
@@ -235,6 +248,59 @@ class EmployeeService:
             filters=filters,
             extra_conditions=conditions,
         )
+
+    async def _generate_employee_code(self, company_id: str, department_id: Optional[str] = None) -> str:
+        """Generate a unique employee code using the company's configured format.
+
+        Format config is stored in OrganizationSettings.custom_config['employee_id']:
+            prefix          – string prefix, e.g. "EMP" or "IN" (default "EMP")
+            include_year    – bool, include current year (default False)
+            include_dept    – bool, include department code prefix (default False)
+            separator       – separator char, e.g. "-" (default "-")
+            padding         – zero-pad width for sequence number (default 4)
+        """
+        from app.models.organization import OrganizationSettings
+        import datetime
+
+        config: dict = {}
+        settings_result = await self.db.execute(
+            select(OrganizationSettings).where(
+                OrganizationSettings.company_id == company_id,
+                OrganizationSettings.is_deleted == False,
+            )
+        )
+        settings = settings_result.scalar_one_or_none()
+        if settings and settings.custom_config:
+            config = settings.custom_config.get("employee_id", {})
+
+        prefix = str(config.get("prefix", "EMP")).upper().strip() or "EMP"
+        include_year = bool(config.get("include_year", False))
+        include_dept = bool(config.get("include_dept", False))
+        separator = str(config.get("separator", "-"))
+        padding = int(config.get("padding", 4))
+
+        # Build sequence prefix
+        parts: list[str] = [prefix]
+        if include_year:
+            parts.append(str(datetime.date.today().year))
+        if include_dept and department_id:
+            dept_result = await self.db.execute(
+                select(Department).where(Department.id == department_id)
+            )
+            dept = dept_result.scalar_one_or_none()
+            if dept and dept.code:
+                parts.append(dept.code.upper())
+
+        # Count existing employees for this company to get next sequence
+        count_result = await self.db.execute(
+            select(func.count()).select_from(Employee).where(
+                Employee.company_id == company_id
+            )
+        )
+        next_num = (count_result.scalar() or 0) + 1
+        parts.append(str(next_num).zfill(padding))
+
+        return separator.join(parts)
 
     async def get(self, business_id: str, company_id: str) -> Employee:
         return await self.repo.get_or_404(business_id, company_id)
@@ -293,12 +359,54 @@ class EmployeeService:
     async def update(self, business_id: str, data: EmployeeUpdate, company_id: str, updated_by: str) -> Employee:
         emp = await self.repo.get_or_404(business_id, company_id)
         update_dict = data.model_dump(exclude_unset=True)
+
+        # Normalize empty strings to None for all string FK/optional fields
+        string_optional_fields = (
+            "phone", "designation", "location", "department_id", "manager_id",
+            "emergency_contact_name", "emergency_contact_phone", "notes",
+            "profile_photo_url",
+        )
+        for field in string_optional_fields:
+            if field in update_dict:
+                val = update_dict[field]
+                if isinstance(val, str):
+                    update_dict[field] = val.strip() or None
+
+        # Resolve department_id: accept internal UUID or DEPT-* business_id
+        if "department_id" in update_dict and update_dict["department_id"]:
+            dept_id_raw = update_dict["department_id"]
+            if dept_id_raw.startswith("DEPT-"):
+                dept_result = await self.db.execute(
+                    select(Department).where(
+                        Department.business_id == dept_id_raw,
+                        Department.company_id == company_id,
+                        Department.is_deleted == False,
+                    )
+                )
+                dept = dept_result.scalar_one_or_none()
+                if dept:
+                    update_dict["department_id"] = dept.id
+                else:
+                    del update_dict["department_id"]
+            else:
+                # Internal UUID — validate it belongs to this company
+                dept_result = await self.db.execute(
+                    select(Department).where(
+                        Department.id == dept_id_raw,
+                        Department.company_id == company_id,
+                        Department.is_deleted == False,
+                    )
+                )
+                if not dept_result.scalar_one_or_none():
+                    update_dict["department_id"] = None
+
         # Convert enums to values
         for key in ("gender", "employment_type", "work_mode", "employment_status"):
             if key in update_dict and update_dict[key] and hasattr(update_dict[key], "value"):
                 update_dict[key] = update_dict[key].value
         if "personal_email" in update_dict and update_dict["personal_email"]:
             update_dict["personal_email"] = str(update_dict["personal_email"])
+
         update_dict["updated_by"] = updated_by
         return await self.repo.update(emp, update_dict)
 

@@ -2,12 +2,12 @@ import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 
 const integrations = [
-  { name: 'Slack', abbr: 'SL' },
-  { name: 'WhatsApp', abbr: 'WA' },
-  { name: 'Stripe', abbr: 'ST' },
-  { name: 'Google', abbr: 'GO' },
-  { name: 'OpenAI', abbr: 'AI' },
-  { name: 'MS Teams', abbr: 'MT' },
+  { name: 'Google OAuth', abbr: 'GO', note: 'Single sign-on' },
+  { name: 'OpenAI GPT-4o', abbr: 'AI', note: 'AI assistant & screening' },
+  { name: 'Telegram', abbr: 'TG', note: 'Bot notifications' },
+  { name: 'WhatsApp', abbr: 'WA', note: 'Contact & notifications' },
+  { name: 'Slack', abbr: 'SL', note: 'Coming soon' },
+  { name: 'MS Teams', abbr: 'MT', note: 'Coming soon' },
 ];
 
 const IntegrationsSection = () => {
@@ -42,6 +42,7 @@ const IntegrationsSection = () => {
                 {int.abbr}
               </div>
               <div className="text-sm font-display font-semibold text-foreground">{int.name}</div>
+              <div className="text-[10px] text-muted-foreground mt-1">{int.note}</div>
             </motion.div>
           ))}
         </div>

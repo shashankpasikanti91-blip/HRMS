@@ -1,12 +1,12 @@
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { Shield, Layers, Zap, Lock } from 'lucide-react';
+import { Shield, Layers, Globe, Lock } from 'lucide-react';
 
 const highlights = [
-  { icon: Shield, title: 'Multi-Tenant Architecture', desc: 'Each company\'s data is isolated and secure by default.' },
-  { icon: Layers, title: '20+ Built-in Modules', desc: 'HR, Payroll, Attendance, Recruitment, Performance, and more.' },
-  { icon: Zap, title: 'Fast Onboarding', desc: 'Set up your company and start managing employees in minutes.' },
-  { icon: Lock, title: 'Role-Based Access', desc: 'Granular permissions from admin to employee level.' },
+  { icon: Shield, title: 'Multi-Tenant Architecture', desc: 'Each company\'s data is fully isolated. Secure by default, configurable per organization.' },
+  { icon: Layers, title: '35+ Built-in Modules', desc: 'HR, Payroll, Leave, LOP, Attendance, Performance, Analytics, and more.' },
+  { icon: Globe, title: 'Multi-Country Support', desc: 'India, Malaysia, Singapore, UAE — statutory deductions and holiday presets built in.' },
+  { icon: Lock, title: '7 Roles, RBAC', desc: 'Granular permissions from super admin to employee. Every screen respects role access.' },
 ];
 
 const StatsSection = () => {

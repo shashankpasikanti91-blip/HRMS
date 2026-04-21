@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, FileText, Calculator, TrendingUp, Loader2, Play, CheckCircle2, Eye, Download, Building2, User, X, Plus, Edit, Trash2 } from "lucide-react";
-import { payrollService, salaryService } from "@/services/api-services";
+import { DollarSign, FileText, Calculator, TrendingUp, Loader2, Play, CheckCircle2, Eye, Download, Building2, User, X, Plus, Edit, Trash2, ArrowRight, MinusCircle } from "lucide-react";
+import { payrollService, salaryService, lopService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,26 @@ export default function PayrollPage() {
   const [componentDialogOpen, setComponentDialogOpen] = useState(false);
   const [componentForm, setComponentForm] = useState({ name: "", code: "", component_type: "earning", calculation_type: "fixed", amount: 0, percentage: 0, is_taxable: true, is_mandatory: false, priority: 100, description: "" });
   const [savingComponent, setSavingComponent] = useState(false);
+
+  // LOP summary state
+  type LOPSummaryRecord = { business_id: string; employee_name?: string; employee_code?: string; final_lop_days: number; lop_amount?: number; status: string };
+  const [lopRecords, setLopRecords] = useState<LOPSummaryRecord[]>([]);
+  const [lopLoading, setLopLoading] = useState(false);
+  const [lopMonth] = useState(new Date().getMonth() + 1);
+  const [lopYear] = useState(new Date().getFullYear());
+
+  const loadLopSummary = useCallback(async () => {
+    setLopLoading(true);
+    try {
+      const data = await lopService.listRecords({ month: lopMonth, year: lopYear, page_size: 5 });
+      const records: LOPSummaryRecord[] = Array.isArray(data) ? data : data?.data || data?.items || [];
+      setLopRecords(records);
+    } catch {
+      // LOP data unavailable
+    } finally {
+      setLopLoading(false);
+    }
+  }, [lopMonth, lopYear]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -331,7 +351,7 @@ export default function PayrollPage() {
                       <td className="p-3 text-sm text-right font-medium">{formatCurrency(ps.net_salary || 0)}</td>
                       <td className="p-3 text-center"><Badge variant={ps.payment_status === "paid" ? "success" : "warning"}>{ps.payment_status || "pending"}</Badge></td>
                       <td className="p-3 text-center">
-                        <Button size="sm" variant="ghost" onClick={() => viewPayslipDetail({ business_id: ps.business_id, employee_id: "", employee_name: user?.name || "", id: ps.business_id } as PayrollItem)}>
+                        <Button size="sm" variant="ghost" onClick={() => viewPayslipDetail({ business_id: ps.business_id, employee_id: "", employee_name: user?.full_name || "", id: ps.business_id } as PayrollItem)}>
                           <Eye className="h-3 w-3" />
                         </Button>
                       </td>
@@ -447,10 +467,11 @@ export default function PayrollPage() {
         ))}
       </div>
 
-      <Tabs defaultValue="runs" onValueChange={(v) => { if (v === "salary" && !salaryStructures.length) loadStructures(); }}>
+      <Tabs defaultValue="runs" onValueChange={(v) => { if (v === "salary" && !salaryStructures.length) loadStructures(); if (v === "lop") loadLopSummary(); }}>
         <TabsList>
           <TabsTrigger value="runs">Payroll Runs</TabsTrigger>
           <TabsTrigger value="salary">Salary Structures</TabsTrigger>
+          {isAdmin && <TabsTrigger value="lop"><MinusCircle className="mr-2 h-4 w-4" />LOP</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="runs" className="mt-4">
@@ -611,6 +632,93 @@ export default function PayrollPage() {
             </Card>
           )}
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="lop" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <MinusCircle className="h-5 w-5 text-destructive" />
+                    Loss of Pay — {new Date(lopYear, lopMonth - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+                  </CardTitle>
+                  <CardDescription>Preview of LOP deductions included in this payroll period</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/dashboard/lop">
+                    Manage LOP <ArrowRight className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {lopLoading ? (
+                  <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                ) : lopRecords.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <MinusCircle className="mx-auto mb-2 h-8 w-8" />
+                    <p>No LOP records for this period.</p>
+                    <p className="text-xs mt-1">Go to the LOP page to calculate records.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="rounded-lg border p-3 text-center">
+                        <p className="text-2xl font-bold">{lopRecords.length}</p>
+                        <p className="text-xs text-muted-foreground">Records</p>
+                      </div>
+                      <div className="rounded-lg border p-3 text-center">
+                        <p className="text-2xl font-bold text-destructive">
+                          {lopRecords.reduce((s, r) => s + (r.final_lop_days || 0), 0).toFixed(1)} d
+                        </p>
+                        <p className="text-xs text-muted-foreground">Total LOP Days</p>
+                      </div>
+                      <div className="rounded-lg border p-3 text-center">
+                        <p className="text-2xl font-bold text-destructive">
+                          {formatCurrency(lopRecords.reduce((s, r) => s + (r.lop_amount || 0), 0))}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Total Deduction</p>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto rounded-md border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="p-3 text-left font-semibold">Employee</th>
+                            <th className="p-3 text-left font-semibold">LOP Days</th>
+                            <th className="p-3 text-left font-semibold">Amount</th>
+                            <th className="p-3 text-left font-semibold">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lopRecords.map((r) => (
+                            <tr key={r.business_id} className="border-b last:border-0">
+                              <td className="p-3">
+                                <p className="font-medium">{r.employee_name || "—"}</p>
+                                <p className="text-xs text-muted-foreground">{r.employee_code || ""}</p>
+                              </td>
+                              <td className="p-3 font-mono">{r.final_lop_days?.toFixed(1) ?? "0.0"}</td>
+                              <td className="p-3 font-mono text-destructive">{formatCurrency(r.lop_amount || 0)}</td>
+                              <td className="p-3">
+                                <Badge variant={r.status === "approved" ? "success" : r.status === "pending" ? "warning" : "secondary"}>
+                                  {r.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {lopRecords.length >= 5 && (
+                      <p className="text-xs text-muted-foreground mt-3 text-center">
+                        Showing top 5 records. <a href="/dashboard/lop" className="underline">View all →</a>
+                      </p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Run Payroll Dialog */}

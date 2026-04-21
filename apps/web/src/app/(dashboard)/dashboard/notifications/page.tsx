@@ -3,32 +3,40 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell, CheckCheck, Megaphone, Loader2 } from "lucide-react";
+import { Bell, CheckCheck, Megaphone, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { notificationService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import type { Notification } from "@/types";
+
+const PAGE_SIZE = 20;
 
 export default function NotificationsPage() {
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await notificationService.list();
-      const items = Array.isArray(result) ? result : (result as { data?: Notification[] })?.data || [];
-      setNotifications(items);
+      const result = await notificationService.listPaged({ page, page_size: PAGE_SIZE });
+      setNotifications(result.data ?? []);
+      setTotal(result.meta?.total ?? result.data?.length ?? 0);
     } catch {
       setNotifications([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const hasNext = page < totalPages;
+  const hasPrev = page > 1;
 
   async function markAllRead() {
     try {
@@ -101,6 +109,20 @@ export default function NotificationsPage() {
             <p>No notifications yet. You&apos;ll see updates here as they come in.</p>
           </CardContent>
         </Card>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">Page {page} of {totalPages} &bull; {total} total</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={!hasPrev || loading} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft className="h-4 w-4" />Previous
+            </Button>
+            <Button variant="outline" size="sm" disabled={!hasNext || loading} onClick={() => setPage((p) => p + 1)}>
+              Next<ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

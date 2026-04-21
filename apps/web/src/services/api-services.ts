@@ -18,6 +18,10 @@ import type {
   LoginResponse, Company,
   AIScreeningResult, AIJobPosts,
   Holiday,
+  DocumentTypeTemplate, EmployeeDocument,
+  OnboardingChecklist, OnboardingChecklistItem,
+  ExitChecklist, ExitChecklistItem,
+  BankAccount, DocumentVaultSummary,
 } from "@/types";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -153,6 +157,21 @@ export const employeeService = {
     const { data } = await api.post(`/employees/${businessId}/photo`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+    return data as Employee;
+  },
+  /** Start the exit/resignation workflow for an employee. */
+  async startExit(businessId: string, payload: {
+    resignation_date?: string;
+    last_working_day?: string;
+    exit_reason?: string;
+    notes?: string;
+  }): Promise<Employee> {
+    const { data } = await api.post(`/employees/${businessId}/start-exit`, payload);
+    return data as Employee;
+  },
+  /** Confirm a probationary employee as active. */
+  async confirmProbation(businessId: string): Promise<Employee> {
+    const { data } = await api.post(`/employees/${businessId}/confirm-probation`);
     return data as Employee;
   },
 };
@@ -487,49 +506,68 @@ export const payrollService = {
 };
 
 // ─── Performance ─────────────────────────────────────────────────────────────
+// Backend performance routes are at /performance (not /performance/reviews)
 export const performanceService = {
   async listReviews(params?: {
-    page?: number; page_size?: number; employee_id?: string; cycle_id?: string;
+    page?: number; page_size?: number; employee_id?: string;
+    status?: string; review_period?: string;
   }): Promise<Page<PerformanceReview>> {
-    const { data } = await api.get("/performance/reviews", { params });
+    const { data } = await api.get("/performance", { params });
     return data as Page<PerformanceReview>;
   },
   async getReviewByBusinessId(businessId: string): Promise<PerformanceReview> {
-    const { data } = await api.get(`/performance/reviews/${businessId}`);
+    const { data } = await api.get(`/performance/${businessId}`);
     return data as PerformanceReview;
   },
-  async createReview(payload: Partial<PerformanceReview>): Promise<PerformanceReview> {
-    const { data } = await api.post("/performance/reviews", payload);
+  async createReview(payload: {
+    employee_id: string;
+    reviewer_id?: string;
+    review_period?: string;
+    review_year?: number;
+    goal_score?: number;
+    behavior_score?: number;
+    comments?: string;
+    employee_self_review?: string;
+  }): Promise<PerformanceReview> {
+    const { data } = await api.post("/performance", payload);
     return data as PerformanceReview;
   },
-  // Legacy aliases used by existing pages
-  async getGoals(params?: Record<string, unknown>) {
-    const { data } = await api.get("/performance/goals", { params });
-    return data?.data ?? data ?? [];
+  async updateReview(businessId: string, payload: {
+    goal_score?: number;
+    behavior_score?: number;
+    comments?: string;
+    employee_self_review?: string;
+    status?: string;
+  }): Promise<PerformanceReview> {
+    const { data } = await api.put(`/performance/${businessId}`, payload);
+    return data as PerformanceReview;
   },
-  async createGoal(goal: Record<string, unknown>) {
-    const { data } = await api.post("/performance/goals", goal);
-    return data;
+  async deleteReview(businessId: string): Promise<void> {
+    await api.delete(`/performance/${businessId}`);
   },
-  async updateGoal(id: string, goal: Record<string, unknown>) {
-    const { data } = await api.put(`/performance/goals/${id}`, goal);
-    return data;
+  // Legacy aliases — goals/cycles are not yet in backend; return empty safely
+  async getGoals(_params?: Record<string, unknown>) {
+    return [];
+  },
+  async createGoal(_goal: Record<string, unknown>) {
+    return null;
+  },
+  async updateGoal(_id: string, _goal: Record<string, unknown>) {
+    return null;
   },
   async getCycles() {
-    const { data } = await api.get("/performance/cycles");
-    return data?.data ?? data ?? [];
+    return [];
   },
   async getSkills() {
-    const { data } = await api.get("/performance/skills");
-    return data?.data ?? data ?? [];
+    return [];
   },
-  // Legacy aliases
-  async getReviews(params?: Record<string, unknown>) {
-    const result = await this.listReviews(params as Parameters<typeof this.listReviews>[0]);
+  // Convenience wrappers
+  async getReviews(params?: { employee_id?: string; status?: string; review_period?: string }) {
+    const result = await this.listReviews({ ...params, page_size: 100 });
     return result.data ?? [];
   },
   async getReviewCycles() {
-    return this.getCycles();
+    return [];
   },
 };
 
@@ -972,5 +1010,217 @@ export const salaryService = {
   async getEmployeeSalaryBreakdown(employeeId: string) {
     const { data } = await api.get(`/employee-salary/${employeeId}/breakdown`);
     return data;
+  },
+};
+
+// ─── Employee Import ──────────────────────────────────────────────────────────
+export const employeeImportService = {
+  async downloadTemplate(): Promise<Blob> {
+    const { data } = await api.get("/employees/import/template", { responseType: "blob" });
+    return data as Blob;
+  },
+  async validate(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post("/employees/import/validate", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  },
+  async bulkImport(file: File, skipErrors = false) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post(`/employees/import?skip_errors=${skipErrors}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  },
+};
+
+// ─── LOP (Loss of Pay) ───────────────────────────────────────────────────────
+export const lopService = {
+  // Policy
+  async getPolicy() {
+    const { data } = await api.get("/lop/policy");
+    return data;
+  },
+  async updatePolicy(payload: Record<string, unknown>) {
+    const { data } = await api.put("/lop/policy", payload);
+    return data;
+  },
+  // Records
+  async listRecords(params?: { year?: number; month?: number; employee_id?: string; status?: string; page?: number; page_size?: number }) {
+    const { data } = await api.get("/lop/records", { params });
+    return data;
+  },
+  async calculateForEmployee(employee_business_id: string, year: number, month: number, recalculate = false) {
+    const { data } = await api.post("/lop/records/calculate", null, {
+      params: { employee_business_id, year, month, recalculate },
+    });
+    return data;
+  },
+  async bulkCalculate(year: number, month: number, recalculate = false) {
+    const { data } = await api.post("/lop/records/bulk-calculate", null, {
+      params: { year, month, recalculate },
+    });
+    return data;
+  },
+  async getRecord(businessId: string) {
+    const { data } = await api.get(`/lop/records/${businessId}`);
+    return data;
+  },
+  async approveRecord(businessId: string) {
+    const { data } = await api.post(`/lop/records/${businessId}/approve`);
+    return data;
+  },
+  // Overrides
+  async listOverrides(params?: { employee_id?: string; year?: number; month?: number; page?: number; page_size?: number }) {
+    const { data } = await api.get("/lop/overrides", { params });
+    return data;
+  },
+  async createOverride(payload: {
+    employee_id: string; year: number; month: number;
+    original_lop_days: number; adjusted_lop_days: number; reason: string;
+  }) {
+    const { data } = await api.post("/lop/overrides", payload);
+    return data;
+  },
+  async approveOverride(businessId: string) {
+    const { data } = await api.post(`/lop/overrides/${businessId}/approve`);
+    return data;
+  },
+};
+
+// ─── Document Vault ──────────────────────────────────────────────────────────
+export const documentVaultService = {
+  // Templates
+  async seedTemplates(): Promise<{ seeded: number; message: string }> {
+    const { data } = await api.post("/vault/templates/seed");
+    return data;
+  },
+  async listTemplates(params?: { country_code?: string; category?: string }): Promise<DocumentTypeTemplate[]> {
+    const { data } = await api.get("/vault/templates", { params });
+    return data as DocumentTypeTemplate[];
+  },
+
+  // Employee Documents
+  async uploadDocument(formData: FormData): Promise<EmployeeDocument> {
+    const { data } = await api.post("/vault/employee-documents", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data as EmployeeDocument;
+  },
+  async listDocuments(params: {
+    employee_id: string;
+    page?: number;
+    page_size?: number;
+    category?: string;
+    status?: string;
+  }): Promise<Page<EmployeeDocument>> {
+    const { data } = await api.get("/vault/employee-documents", { params });
+    return data as Page<EmployeeDocument>;
+  },
+  async getDocument(businessId: string): Promise<EmployeeDocument> {
+    const { data } = await api.get(`/vault/employee-documents/${businessId}`);
+    return data as EmployeeDocument;
+  },
+  async reviewDocument(
+    businessId: string,
+    action: "approve" | "reject" | "request_resubmission",
+    notes?: string,
+    rejectionReason?: string,
+  ): Promise<EmployeeDocument> {
+    const { data } = await api.post(`/vault/employee-documents/${businessId}/review`, {
+      action,
+      notes,
+      rejection_reason: rejectionReason,
+    });
+    return data as EmployeeDocument;
+  },
+  async deleteDocument(businessId: string): Promise<void> {
+    await api.delete(`/vault/employee-documents/${businessId}`);
+  },
+
+  // Onboarding Checklists
+  async getOnboardingChecklist(employeeId: string): Promise<OnboardingChecklist> {
+    const { data } = await api.get(`/vault/onboarding/${employeeId}`);
+    return data as OnboardingChecklist;
+  },
+  async updateOnboardingItem(
+    checklistId: string,
+    itemId: string,
+    status: string,
+    notes?: string,
+  ): Promise<OnboardingChecklist> {
+    const { data } = await api.patch(`/vault/onboarding/${checklistId}/items/${itemId}`, { status, notes });
+    return data as OnboardingChecklist;
+  },
+
+  // Exit Checklists
+  async createExitChecklist(payload: {
+    employee_id: string;
+    last_working_day?: string;
+    resignation_date?: string;
+    notes?: string;
+  }): Promise<ExitChecklist> {
+    const { data } = await api.post("/vault/exit-checklists", payload);
+    return data as ExitChecklist;
+  },
+  async getExitChecklist(employeeId: string): Promise<ExitChecklist | null> {
+    try {
+      const { data } = await api.get(`/vault/exit-checklists/${employeeId}`);
+      return data as ExitChecklist;
+    } catch {
+      return null;
+    }
+  },
+  async updateExitChecklist(
+    businessId: string,
+    payload: Partial<ExitChecklist>,
+  ): Promise<ExitChecklist> {
+    const { data } = await api.patch(`/vault/exit-checklists/${businessId}`, payload);
+    return data as ExitChecklist;
+  },
+
+  // Bank Accounts
+  async listBankAccounts(employeeId: string): Promise<BankAccount[]> {
+    const { data } = await api.get("/vault/bank-accounts", { params: { employee_id: employeeId } });
+    return data as BankAccount[];
+  },
+  async createBankAccount(payload: {
+    employee_id: string;
+    bank_name: string;
+    account_holder_name: string;
+    account_number: string;
+    account_type: string;
+    ifsc_code?: string;
+    branch_name?: string;
+    swift_code?: string;
+    routing_number?: string;
+    iban?: string;
+    currency?: string;
+    country_code?: string;
+    is_primary?: boolean;
+    upi_id?: string;
+  }): Promise<BankAccount> {
+    const { data } = await api.post("/vault/bank-accounts", payload);
+    return data as BankAccount;
+  },
+  async updateBankAccount(businessId: string, payload: Partial<BankAccount>): Promise<BankAccount> {
+    const { data } = await api.patch(`/vault/bank-accounts/${businessId}`, payload);
+    return data as BankAccount;
+  },
+  async verifyBankAccount(businessId: string): Promise<BankAccount> {
+    const { data } = await api.post(`/vault/bank-accounts/${businessId}/verify`);
+    return data as BankAccount;
+  },
+  async deleteBankAccount(businessId: string): Promise<void> {
+    await api.delete(`/vault/bank-accounts/${businessId}`);
+  },
+
+  // Vault Summary (Admin)
+  async getVaultSummary(params?: { page?: number; page_size?: number }): Promise<Page<DocumentVaultSummary>> {
+    const { data } = await api.get("/vault/summary", { params });
+    return data as Page<DocumentVaultSummary>;
   },
 };

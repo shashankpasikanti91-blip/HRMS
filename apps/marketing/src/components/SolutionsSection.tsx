@@ -45,13 +45,13 @@ const solutions = [
     icon: Briefcase,
     headline: 'Hire the Right People, Faster',
     description:
-      'Post jobs, track applicants, schedule interviews, and manage offers — all in one pipeline. AI screening helps surface the best candidates.',
+      'Post jobs, track applicants, schedule interviews, and manage offers — all in one pipeline. AI resume screening helps surface the best candidates. Available as an add-on module.',
     bullets: [
       'Job posting and career page',
-      'Applicant tracking system',
-      'AI resume screening and scoring',
-      'Interview scheduling',
-      'Offer letter management',
+      'Applicant tracking system (ATS)',
+      'AI resume screening and scoring (GPT-4o)',
+      'Interview scheduling and feedback',
+      'Offer letter generation and management',
     ],
     accent: 'from-violet-500 to-[hsl(260_80%_60%)]',
     glow: 'hsl(var(--glow-violet))',

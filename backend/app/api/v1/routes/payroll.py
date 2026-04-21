@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_hr_or_above
+from app.core.deps import get_current_user, require_hr_or_above, require_payroll_or_above
 from app.core.pagination import PaginationParams, Page
 from app.models.user import User
 from app.schemas.payroll import (
@@ -77,7 +77,7 @@ async def get_my_payslips(
 async def create_payroll_run(
     data: PayrollRunCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hr_or_above()),
+    current_user: User = Depends(require_payroll_or_above()),
 ):
     """Create a new payroll run for a given month/year."""
     svc = PayrollService(db)
@@ -90,7 +90,7 @@ async def list_payroll_runs(
     params: PaginationParams = Depends(),
     year: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hr_or_above()),
+    current_user: User = Depends(require_payroll_or_above()),
 ):
     svc = PayrollService(db)
     runs, total = await svc.list_runs(current_user.company_id, params, year=year)
@@ -101,7 +101,7 @@ async def list_payroll_runs(
 async def get_payroll_run(
     business_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hr_or_above()),
+    current_user: User = Depends(require_payroll_or_above()),
 ):
     svc = PayrollService(db)
     run = await svc.get_run(business_id, current_user.company_id)
@@ -112,7 +112,7 @@ async def get_payroll_run(
 async def process_payroll_run(
     business_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hr_or_above()),
+    current_user: User = Depends(require_payroll_or_above()),
 ):
     """Calculate and create payroll items for all active employees."""
     svc = PayrollService(db)
@@ -124,7 +124,7 @@ async def process_payroll_run(
 async def approve_payroll_run(
     business_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hr_or_above()),
+    current_user: User = Depends(require_payroll_or_above()),
 ):
     """Approve a processed payroll run."""
     svc = PayrollService(db)
@@ -137,7 +137,7 @@ async def get_payroll_items(
     business_id: str,
     params: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hr_or_above()),
+    current_user: User = Depends(require_payroll_or_above()),
 ):
     """Get all payroll items (employee slips) for a payroll run."""
     svc = PayrollService(db)

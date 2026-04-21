@@ -129,7 +129,20 @@ const CTASection = () => {
                   rows={4}
                   className="w-full px-4 py-3 rounded-lg bg-secondary/50 border border-border/50 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors resize-none"
                 />
-                <button type="submit" className="btn-primary w-full inline-flex items-center justify-center gap-2">
+              <button
+                type="submit"
+                onClick={() => {
+                  const { name, email, company, employees, message } = formData;
+                  const body = encodeURIComponent(
+                    `Name: ${name}\nCompany: ${company}\nEmployees: ${employees}\n\n${message}`
+                  );
+                  window.open(
+                    `mailto:contact@srpailabs.com?subject=${encodeURIComponent('Demo Request from ' + company)}&body=${body}`,
+                    '_blank'
+                  );
+                }}
+                className="btn-primary w-full inline-flex items-center justify-center gap-2"
+              >
                   <Send size={14} /> Request Demo
                 </button>
               </form>

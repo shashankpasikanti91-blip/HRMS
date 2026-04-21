@@ -58,15 +58,17 @@ const Footer = () => {
             <h4 className="font-display font-semibold text-foreground mb-4 text-sm uppercase tracking-wider">Platform</h4>
             <ul className="space-y-2">
               {[
-                { label: 'Core HR', href: '/#solutions' },
-                { label: 'Payroll', href: '/#solutions' },
-                { label: 'Recruitment & ATS', href: '/#solutions' },
-                { label: 'Performance', href: '/#solutions' },
-                { label: 'Analytics', href: '/#solutions' },
-                { label: 'AI Engine', href: '/#ai' },
+                { label: 'Employee Management', href: '/platform' },
+                { label: 'Attendance & Leave', href: '/platform' },
+                { label: 'Payroll & Taxation', href: '/platform' },
+                { label: 'Performance Reviews', href: '/platform' },
+                { label: 'Analytics', href: '/platform' },
+                { label: 'AI Engine', href: '/ai' },
+                { label: 'Recruitment (Add-on)', href: '/solutions' },
+                { label: 'All Modules', href: '/platform#modules' },
               ].map((l) => (
                 <li key={l.label}>
-                  <a href={l.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">{l.label}</a>
+                  <Link to={l.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">{l.label}</Link>
                 </li>
               ))}
             </ul>

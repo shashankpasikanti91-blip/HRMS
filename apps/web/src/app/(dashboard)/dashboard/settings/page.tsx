@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuthStore } from "@/store/auth-store";
 import { settingsService, organizationService, userService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, User, Shield, Bell, Loader2, Plus, Edit, Trash2, MapPin, Briefcase, Clock, Users, UserPlus, Key, Ban, CheckCircle, Mail, Search } from "lucide-react";
+import { Building2, User, Shield, Bell, Loader2, Plus, Edit, Trash2, MapPin, Briefcase, Clock, Users, UserPlus, Key, Ban, CheckCircle, Mail, Search, Hash } from "lucide-react";
 import type { Branch, Designation, Shift } from "@/types";
 
 interface ManagedUser {
@@ -30,8 +30,8 @@ interface ManagedUser {
 
 const ROLE_OPTIONS = [
   { value: "company_admin", label: "Company Admin" },
-  { value: "hr_manager", label: "HR Manager" },
-  { value: "recruiter", label: "Recruiter" },
+  { value: "hr_manager", label: "HR Admin" },
+  { value: "payroll_admin", label: "Payroll Admin" },
   { value: "team_manager", label: "Team Manager" },
   { value: "finance", label: "Finance" },
   { value: "employee", label: "Employee" },
@@ -41,7 +41,7 @@ const ROLE_COLORS: Record<string, string> = {
   super_admin: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
   company_admin: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
   hr_manager: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  recruiter: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300",
+  payroll_admin: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
   team_manager: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
   finance: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
   employee: "bg-gray-100 text-gray-800 dark:bg-gray-800/40 dark:text-gray-300",
@@ -114,6 +114,16 @@ export default function SettingsPage() {
   const [shiftForm, setShiftForm] = useState({ name: "", code: "", shift_type: "general", start_time: "09:00", end_time: "18:00", break_duration_minutes: 60, work_hours: 8, is_night_shift: false, grace_minutes: 15, is_default: false });
   const [savingShift, setSavingShift] = useState(false);
 
+  // Employee ID settings
+  const [empIdConfig, setEmpIdConfig] = useState({
+    prefix: "EMP",
+    include_year: false,
+    include_dept: false,
+    separator: "-",
+    padding: 4,
+  });
+  const [savingEmpId, setSavingEmpId] = useState(false);
+
   useEffect(() => {
     setProfileForm({ full_name: user?.full_name || "" });
   }, [user?.full_name]);
@@ -133,6 +143,18 @@ export default function SettingsPage() {
           size: company?.size || "",
           timezone: company?.timezone || "",
         });
+        // Load employee ID config from org settings
+        const orgSettings = await import("@/lib/api").then(m => m.default.get("/organization/settings").then(r => r.data)).catch(() => null);
+        if (orgSettings?.custom_config?.employee_id) {
+          const cfg = orgSettings.custom_config.employee_id;
+          setEmpIdConfig({
+            prefix: cfg.prefix || "EMP",
+            include_year: cfg.include_year || false,
+            include_dept: cfg.include_dept || false,
+            separator: cfg.separator || "-",
+            padding: Number(cfg.padding) || 4,
+          });
+        }
       } catch {
         toast({ title: "Warning", description: "Could not load organization settings", variant: "destructive" });
       } finally {
@@ -169,6 +191,31 @@ export default function SettingsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleSaveEmpIdConfig() {
+    if (!canManageOrg) return;
+    setSavingEmpId(true);
+    try {
+      await import("@/lib/api").then(m => m.default.patch("/organization/settings", {
+        custom_config: { employee_id: empIdConfig },
+      }));
+      toast({ title: "Saved", description: "Employee ID format updated. New employees will use this format.", variant: "success" });
+    } catch {
+      toast({ title: "Error", description: "Failed to save Employee ID settings", variant: "destructive" });
+    } finally {
+      setSavingEmpId(false);
+    }
+  }
+
+  /** Generate a preview Employee ID based on current config */
+  function previewEmpId(): string {
+    const { prefix, include_year, include_dept, separator, padding } = empIdConfig;
+    const parts: string[] = [prefix.toUpperCase() || "EMP"];
+    if (include_year) parts.push(new Date().getFullYear().toString());
+    if (include_dept) parts.push("ENG");
+    parts.push("1".padStart(padding, "0"));
+    return parts.join(separator);
   }
 
   async function handleChangePassword() {
@@ -498,6 +545,7 @@ export default function SettingsPage() {
           {canManageOrg && <TabsTrigger value="branches"><MapPin className="mr-2 h-4 w-4" />Branches</TabsTrigger>}
           {canManageOrg && <TabsTrigger value="designations"><Briefcase className="mr-2 h-4 w-4" />Designations</TabsTrigger>}
           {canManageOrg && <TabsTrigger value="shifts"><Clock className="mr-2 h-4 w-4" />Shifts</TabsTrigger>}
+          {canManageOrg && <TabsTrigger value="employee-id"><Hash className="mr-2 h-4 w-4" />Employee ID</TabsTrigger>}
           <TabsTrigger value="security"><Shield className="mr-2 h-4 w-4" />Security</TabsTrigger>
           <TabsTrigger value="notifications"><Bell className="mr-2 h-4 w-4" />Notifications</TabsTrigger>
         </TabsList>
@@ -778,6 +826,109 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Employee ID Tab ───────────────────────────────── */}
+        {canManageOrg && (
+        <TabsContent value="employee-id">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Hash className="h-5 w-5" />Employee ID Format</CardTitle>
+              <CardDescription>
+                Configure how employee IDs are auto-generated for new employees. Existing IDs are not changed.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Preview */}
+              <div className="rounded-lg border bg-muted/40 p-4">
+                <p className="text-xs text-muted-foreground mb-1">Preview</p>
+                <p className="text-2xl font-mono font-bold text-primary tracking-wider">{previewEmpId()}</p>
+                <p className="text-xs text-muted-foreground mt-1">This is how the next employee ID will look</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Prefix */}
+                <div className="space-y-2">
+                  <Label>Prefix</Label>
+                  <Input
+                    maxLength={10}
+                    value={empIdConfig.prefix}
+                    onChange={(e) => setEmpIdConfig({ ...empIdConfig, prefix: e.target.value.toUpperCase() })}
+                    placeholder="e.g. EMP, IN, SRP"
+                  />
+                  <p className="text-xs text-muted-foreground">Short text prepended before the number</p>
+                </div>
+
+                {/* Separator */}
+                <div className="space-y-2">
+                  <Label>Separator</Label>
+                  <Select
+                    value={empIdConfig.separator}
+                    onValueChange={(v) => setEmpIdConfig({ ...empIdConfig, separator: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="-">Hyphen ( - )</SelectItem>
+                      <SelectItem value="/">Slash ( / )</SelectItem>
+                      <SelectItem value="_">Underscore ( _ )</SelectItem>
+                      <SelectItem value="">None (no separator)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Character between ID segments</p>
+                </div>
+
+                {/* Padding */}
+                <div className="space-y-2">
+                  <Label>Number Padding</Label>
+                  <Select
+                    value={String(empIdConfig.padding)}
+                    onValueChange={(v) => setEmpIdConfig({ ...empIdConfig, padding: Number(v) })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3 digits (001)</SelectItem>
+                      <SelectItem value="4">4 digits (0001)</SelectItem>
+                      <SelectItem value="5">5 digits (00001)</SelectItem>
+                      <SelectItem value="6">6 digits (000001)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Leading zeros on the sequence number</p>
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="text-sm font-medium">Include Year</p>
+                    <p className="text-xs text-muted-foreground">Adds the current year (e.g. EMP-2026-0001)</p>
+                  </div>
+                  <Switch
+                    checked={empIdConfig.include_year}
+                    onCheckedChange={(v) => setEmpIdConfig({ ...empIdConfig, include_year: v })}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="text-sm font-medium">Include Department Code</p>
+                    <p className="text-xs text-muted-foreground">Adds the department code if set (e.g. EMP-ENG-0001)</p>
+                  </div>
+                  <Switch
+                    checked={empIdConfig.include_dept}
+                    onCheckedChange={(v) => setEmpIdConfig({ ...empIdConfig, include_dept: v })}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button onClick={handleSaveEmpIdConfig} disabled={savingEmpId || !canManageOrg}>
+                  {savingEmpId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Format
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        )}
 
         <TabsContent value="security">
           <Card>

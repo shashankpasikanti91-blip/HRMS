@@ -4,27 +4,27 @@ import { Brain, AlertTriangle, MessageSquare, RefreshCw } from 'lucide-react';
 
 const differentiators = [
   {
+    icon: MessageSquare,
+    title: 'AI HR Chatbot',
+    desc: 'GPT-4o powered chatbot with RAG-based context and persistent sessions. Answers policy, payroll, leave, and HR queries 24/7.',
+    emoji: '💬',
+  },
+  {
     icon: Brain,
     title: 'AI Resume Screening',
-    desc: 'Upload resumes and get automatic scoring based on job requirements. Saves hours of manual review.',
+    desc: 'Upload resumes and get automatic scoring against job requirements — surfaces qualified candidates in seconds. (Recruitment add-on)',
     emoji: '🧠',
   },
   {
     icon: AlertTriangle,
     title: 'Smart Alerts',
-    desc: 'Get notified about pending approvals, visa expirations, and payroll deadlines before they become problems.',
+    desc: 'In-app and real-time notifications for pending leave approvals, payroll runs, and upcoming deadlines.',
     emoji: '⚠️',
   },
   {
-    icon: MessageSquare,
-    title: 'AI HR Assistant',
-    desc: 'Employees can ask common HR questions through a built-in chatbot, reducing repetitive queries.',
-    emoji: '💬',
-  },
-  {
     icon: RefreshCw,
-    title: 'Workflow Automation',
-    desc: 'Automate onboarding steps, leave approvals, and payroll processing with configurable rules.',
+    title: 'Job Post Generation',
+    desc: 'AI-generated job descriptions formatted for LinkedIn, Indeed, Email, and WhatsApp — in one click. (Recruitment add-on)',
     emoji: '🔄',
   },
 ];
@@ -51,7 +51,7 @@ const AISection = () => {
             Built-in <span className="gradient-text">AI Tools</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            Practical AI features that save time across hiring, HR support, and daily operations.
+            Powered by GPT-4o with RAG. Practical AI features across hiring, HR support, and daily operations.
           </p>
         </motion.div>
 

@@ -92,6 +92,7 @@ export default function SystemLogsPage() {
   const [page, setPage] = useState(1);
   const [entityType, setEntityType] = useState("all");
   const [action, setAction] = useState("all");
+  const [search, setSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const isAdmin = ["super_admin", "company_admin"].includes(user?.role || "");
@@ -127,7 +128,18 @@ export default function SystemLogsPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [entityType, action]);
+  }, [entityType, action, search]);
+
+  const displayedLogs = search.trim()
+    ? logs.filter((l) => {
+        const q = search.toLowerCase();
+        return (
+          l.description?.toLowerCase().includes(q) ||
+          l.entity_type?.toLowerCase().includes(q) ||
+          l.action?.toLowerCase().includes(q)
+        );
+      })
+    : logs;
 
   if (!isAdmin) {
     return (
@@ -160,6 +172,15 @@ export default function SystemLogsPage() {
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Filters</span>
+            </div>
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search description..."
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
             <Select value={entityType} onValueChange={setEntityType}>
               <SelectTrigger className="w-[180px]">
@@ -228,7 +249,7 @@ export default function SystemLogsPage() {
                     </td>
                   </tr>
                 ) : (
-                  logs.map((log) => (
+                  displayedLogs.map((log) => (
                     <>
                       <tr
                         key={log.id}

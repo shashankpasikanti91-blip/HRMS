@@ -11,13 +11,21 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
+  clearSession: () => void;
   register: (payload: { firstName: string; lastName: string; email: string; password: string }) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
+
+  /** Immediately clear session data without an API call (used on token expiry). */
+  clearSession: () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    set({ user: null, isAuthenticated: false, isLoading: false });
+  },
 
   /** Sign in with email/password against the FastAPI backend. */
   login: async (email: string, password: string) => {
@@ -43,9 +51,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       // Ignore logout API errors – always clear session locally
     }
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    set({ user: null, isAuthenticated: false, isLoading: false });
+    get().clearSession();
   },
 
   /** Register a new account. */
@@ -71,23 +77,50 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ isLoading: false });
         return;
       }
-      // FastAPI current-user endpoint
-      const { data } = await api.get("/auth/me");
-      // Handle both direct response and wrapped { data: ... }
-      const user: AuthUser = (data as { data?: AuthUser }).data ?? (data as AuthUser);
-      set({ user, isAuthenticated: true, isLoading: false });
+
+      // Use a short AbortController timeout so a slow /auth/me never blocks the entire layout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+
+      try {
+        const { data } = await api.get("/auth/me", { signal: controller.signal });
+        clearTimeout(timeout);
+        // Handle both direct response and wrapped { data: ... }
+        const user: AuthUser = (data as { data?: AuthUser }).data ?? (data as AuthUser);
+        set({ user, isAuthenticated: true, isLoading: false });
+      } catch (err: unknown) {
+        clearTimeout(timeout);
+        throw err;
+      }
     } catch (err: unknown) {
-      // Only clear tokens on explicit 401 (unauthorized).
-      // Network errors / timeouts should NOT log the user out.
+      // Only clear tokens on explicit 401 (unauthorized) or AbortError.
+      // Network errors / 5xx / timeouts should NOT log the user out.
       const status = (err as { response?: { status?: number } })?.response?.status;
+      const isAbort = (err as { name?: string })?.name === "AbortError" ||
+                      (err as { code?: string })?.code === "ERR_CANCELED";
+
       if (status === 401) {
+        // Token is definitively invalid — clear session
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         set({ user: null, isAuthenticated: false, isLoading: false });
+      } else if (isAbort) {
+        // Request timed out — keep whatever session state we have, just stop loading
+        // If user was previously authenticated (tokens exist), keep them authenticated
+        const hasToken = !!localStorage.getItem("access_token");
+        set({ isLoading: false, ...(hasToken ? {} : { user: null, isAuthenticated: false }) });
       } else {
-        // Transient error — keep current auth state, just stop loading
+        // Transient error (network down, 5xx) — preserve existing auth state
         set({ isLoading: false });
       }
     }
   },
 }));
+
+// ── Session expiry event handler ─────────────────────────────────────────────
+// Listen for token refresh failures from the API interceptor
+if (typeof window !== "undefined") {
+  window.addEventListener("auth:session-expired", () => {
+    useAuthStore.getState().clearSession();
+  });
+}

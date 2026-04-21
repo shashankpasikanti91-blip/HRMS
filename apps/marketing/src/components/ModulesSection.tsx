@@ -12,34 +12,37 @@ const modules = [
   { name: 'Employee Self-Service', cat: 'Core HR', status: 'live' },
   { name: 'Onboarding Workflows', cat: 'Core HR', status: 'live' },
   { name: 'Offboarding Automation', cat: 'Core HR', status: 'live' },
-  { name: 'Job Postings & Career Page', cat: 'Talent', status: 'live' },
-  { name: 'Candidate Pipeline (ATS)', cat: 'Talent', status: 'live' },
-  { name: 'AI Resume Screening', cat: 'Talent', status: 'live' },
-  { name: 'Interview Scheduling', cat: 'Talent', status: 'live' },
-  { name: 'Offer Letter Automation', cat: 'Talent', status: 'live' },
+  { name: 'Job Postings & Career Page', cat: 'Talent', status: 'addon' },
+  { name: 'Candidate Pipeline (ATS)', cat: 'Talent', status: 'addon' },
+  { name: 'AI Resume Screening', cat: 'Talent', status: 'addon' },
+  { name: 'Interview Scheduling', cat: 'Talent', status: 'addon' },
+  { name: 'Offer Letter Automation', cat: 'Talent', status: 'addon' },
   { name: 'Performance Reviews', cat: 'Talent', status: 'live' },
-  { name: 'Goal & OKR Tracking', cat: 'Talent', status: 'live' },
-  { name: 'Skill Matrix', cat: 'Talent', status: 'live' },
-  { name: '360° Feedback', cat: 'Talent', status: 'live' },
+  { name: 'Goal Tracking', cat: 'Talent', status: 'live' },
+  { name: 'Skill Matrix', cat: 'Talent', status: 'coming' },
+  { name: '360° Feedback', cat: 'Talent', status: 'coming' },
   { name: '9-Box Grid', cat: 'Talent', status: 'coming' },
   { name: 'Succession Planning', cat: 'Talent', status: 'coming' },
   { name: 'Attendance Tracking', cat: 'Workforce', status: 'live' },
   { name: 'Leave Management', cat: 'Workforce', status: 'live' },
+  { name: 'LOP (Loss of Pay)', cat: 'Workforce', status: 'live' },
   { name: 'Shift Scheduling', cat: 'Workforce', status: 'live' },
   { name: 'Holiday Calendar', cat: 'Workforce', status: 'live' },
-  { name: 'Overtime Management', cat: 'Workforce', status: 'live' },
+  { name: 'Calendar Overview', cat: 'Workforce', status: 'live' },
   { name: 'Geo-Fenced Check-in', cat: 'Workforce', status: 'coming' },
   { name: 'Timesheet & Projects', cat: 'Workforce', status: 'coming' },
   { name: 'Payroll Processing', cat: 'Finance', status: 'live' },
   { name: 'Salary Structures', cat: 'Finance', status: 'live' },
-  { name: 'Tax Calculations', cat: 'Finance', status: 'live' },
+  { name: 'Tax & Statutory Rules', cat: 'Finance', status: 'live' },
   { name: 'Payslip Generation', cat: 'Finance', status: 'live' },
+  { name: 'Multi-Country Compliance', cat: 'Finance', status: 'live' },
   { name: 'Expense Management', cat: 'Finance', status: 'coming' },
   { name: 'Loans & Advances', cat: 'Finance', status: 'coming' },
   { name: 'Executive Dashboards', cat: 'Intelligence', status: 'live' },
   { name: 'Workforce Analytics', cat: 'Intelligence', status: 'live' },
-  { name: 'AI HR Chatbot', cat: 'Intelligence', status: 'live' },
-  { name: 'Attrition Prediction', cat: 'Intelligence', status: 'live' },
+  { name: 'AI HR Chatbot (GPT-4o)', cat: 'Intelligence', status: 'live' },
+  { name: 'System Audit Logs', cat: 'Intelligence', status: 'live' },
+  { name: 'Attrition Prediction', cat: 'Intelligence', status: 'coming' },
   { name: 'Sentiment Analysis', cat: 'Intelligence', status: 'coming' },
   { name: 'Anomaly Detection', cat: 'Intelligence', status: 'coming' },
 ];
@@ -62,10 +65,10 @@ const ModulesSection = () => {
         >
           <span className="text-primary font-display text-sm tracking-widest uppercase font-semibold">Complete Platform</span>
           <h2 className="text-4xl md:text-5xl font-display font-bold mt-3 text-foreground">
-            <span className="gradient-text">38+</span> Modules
+            <span className="gradient-text">35+</span> Modules
           </h2>
           <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            Every module you'll ever need — from hire to retire. Each independently configurable per tenant.
+            Every module you'll ever need — from hire to retire. Each independently configurable per company.
           </p>
         </motion.div>
 
@@ -101,9 +104,9 @@ const ModulesSection = () => {
             >
               <div className="text-xs font-display font-medium text-foreground mb-1">{m.name}</div>
               <div className={`text-[10px] font-semibold uppercase tracking-wider ${
-                m.status === 'live' ? 'text-emerald-400' : 'text-amber-400'
+                m.status === 'live' ? 'text-emerald-400' : m.status === 'addon' ? 'text-sky-400' : 'text-amber-400'
               }`}>
-                {m.status === 'live' ? '● Live' : '◐ Coming Soon'}
+                {m.status === 'live' ? '● Live' : m.status === 'addon' ? '◆ Add-on' : '◐ Coming Soon'}
               </div>
             </motion.div>
           ))}

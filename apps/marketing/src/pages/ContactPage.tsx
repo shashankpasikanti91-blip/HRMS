@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Mail, MessageCircle, Phone } from 'lucide-react';
+import { ArrowLeft, Mail, MessageCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import CTASection from '../components/CTASection';
 import Footer from '../components/Footer';
@@ -42,11 +42,11 @@ const ContactPage = () => (
 
           <div className="glass-card rounded-2xl p-8 text-center">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: 'var(--gradient-primary)' }}>
-              <Phone className="w-6 h-6 text-white" />
+              <MessageCircle className="w-6 h-6 text-white" />
             </div>
-            <h3 className="font-display font-semibold text-foreground mb-2">Call Us</h3>
-            <p className="text-sm text-muted-foreground mb-3">Mon–Fri, 9 AM–6 PM IST</p>
-            <a href="tel:+919000000000" className="text-primary hover:underline text-sm font-medium">+91 90000 00000</a>
+            <h3 className="font-display font-semibold text-foreground mb-2">WhatsApp</h3>
+            <p className="text-sm text-muted-foreground mb-3">Mon–Fri, 9 AM–6 PM IST (preferred)</p>
+            <a href="https://wa.me/916281294878" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm font-medium">+91 6281294878</a>
           </div>
         </div>
 

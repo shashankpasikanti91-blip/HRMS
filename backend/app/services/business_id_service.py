@@ -45,6 +45,16 @@ class BusinessIdService:
         "salary_structure": "salary_structures",
         "salary_component": "salary_components",
         "employee_salary": "employee_salaries",
+        # Document vault
+        "doc_type_template": "document_type_templates",
+        "emp_document": "employee_documents",
+        "doc_request": "document_type_templates",
+        "onboarding_checklist": "onboarding_checklists",
+        "onboarding_item": "onboarding_checklist_items",
+        "exit_checklist": "exit_checklists",
+        "exit_item": "exit_checklist_items",
+        "bank_account": "employee_bank_accounts",
+        "doc_access_log": "document_access_logs",
     }
 
     @classmethod

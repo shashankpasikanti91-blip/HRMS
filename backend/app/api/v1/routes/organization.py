@@ -109,6 +109,52 @@ async def update_organization_settings(
     )
 
 
+@router.patch("/organization/settings", response_model=OrganizationSettingsResponse)
+async def patch_organization_settings(
+    data: OrganizationSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_company_admin_or_above()),
+):
+    """Partial update — only provided fields are changed."""
+    if not current_user.company_id:
+        raise HTTPException(400, "No company associated")
+    settings = await OrganizationSettingsService.update(
+        db, current_user.company_id, data.model_dump(exclude_unset=True)
+    )
+    await db.commit()
+    return OrganizationSettingsResponse(
+        business_id=settings.business_id,
+        company_id=settings.company_id,
+        working_days=settings.working_days,
+        weekend_days=settings.weekend_days,
+        work_start_time=settings.work_start_time,
+        work_end_time=settings.work_end_time,
+        daily_work_hours=settings.daily_work_hours,
+        weekly_work_hours=settings.weekly_work_hours,
+        late_threshold_minutes=settings.late_threshold_minutes,
+        overtime_threshold_hours=settings.overtime_threshold_hours,
+        overtime_multiplier=settings.overtime_multiplier,
+        payroll_cycle=settings.payroll_cycle,
+        payroll_process_day=settings.payroll_process_day,
+        default_currency=settings.default_currency,
+        probation_period_days=settings.probation_period_days,
+        notice_period_days=settings.notice_period_days,
+        date_format=settings.date_format,
+        time_format=settings.time_format,
+        password_min_length=settings.password_min_length,
+        password_require_uppercase=settings.password_require_uppercase,
+        password_require_number=settings.password_require_number,
+        password_require_special=settings.password_require_special,
+        password_expiry_days=settings.password_expiry_days,
+        enable_overtime=settings.enable_overtime,
+        enable_shifts=settings.enable_shifts,
+        enable_geo_tracking=settings.enable_geo_tracking,
+        enable_client_billing=settings.enable_client_billing,
+        enable_telegram_bot=settings.enable_telegram_bot,
+        custom_config=settings.custom_config,
+    )
+
+
 # ── Branches ──────────────────────────────────────────────────────────────
 
 @router.post("/branches", response_model=BranchResponse, status_code=201)

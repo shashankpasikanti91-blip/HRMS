@@ -1,50 +1,91 @@
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import {
-  Users, Clock, DollarSign, Briefcase, Target, Bell,
-  BarChart3, Bot, ArrowUpRight,
+  Users, Clock, DollarSign, Target, Bell,
+  BarChart3, Bot, ArrowUpRight, FileText, Calendar,
+  Building2, TrendingDown, Globe, ShieldCheck, Layers, UserCheck,
 } from 'lucide-react';
 
 const features = [
   {
     icon: Users,
     title: 'Employee Management',
-    desc: 'Maintain employee profiles, org charts, documents, and contact information in one place.',
+    desc: 'Full employee lifecycle — profiles, onboarding checklists, exit workflows, document management, and bank account details.',
   },
   {
-    icon: Briefcase,
-    title: 'Recruitment & ATS',
-    desc: 'Post jobs, track candidates through the pipeline, schedule interviews, and manage offers.',
+    icon: Clock,
+    title: 'Attendance Tracking',
+    desc: 'Clock in/out with location capture, team dashboard, correction requests, monthly history, and CSV export.',
+  },
+  {
+    icon: Calendar,
+    title: 'Leave Management',
+    desc: 'Apply and approve leave requests, track balances, configure leave policies per type, with manager team viewing.',
+  },
+  {
+    icon: TrendingDown,
+    title: 'LOP (Loss of Pay)',
+    desc: 'Calculate and approve LOP per employee per month, with policy config, overrides, and bulk processing.',
   },
   {
     icon: DollarSign,
     title: 'Payroll & Compensation',
-    desc: 'Configure salary structures, run payroll, handle deductions, and generate payslips each month.',
+    desc: 'Configure salary structures and components, run monthly payroll, generate payslips, and maintain full audit trails.',
   },
   {
-    icon: Clock,
-    title: 'Attendance & Leave',
-    desc: 'Track clock-in/out, manage leave requests, configure holiday calendars, and handle shifts.',
+    icon: Globe,
+    title: 'Tax & Compliance',
+    desc: 'Built-in statutory rules for India, Malaysia, Singapore, and UAE. Handles PF, ESIC, CPF, and professional tax.',
   },
   {
     icon: Target,
     title: 'Performance Reviews',
-    desc: 'Set employee goals, run review cycles, and keep a history of performance feedback.',
+    desc: 'Create and manage performance reviews with goal scores, manager feedback, self-assessment, and review history.',
   },
   {
     icon: BarChart3,
     title: 'Analytics & Reports',
-    desc: 'Dashboard with headcount, attendance trends, recruitment pipeline, and payroll summaries.',
+    desc: 'Workforce headcount, attendance trend forecasting, payroll summaries, and department-level breakdowns.',
   },
   {
     icon: Bot,
     title: 'AI HR Assistant',
-    desc: 'Built-in chatbot that answers common HR questions from employees, reducing repetitive queries.',
+    desc: 'GPT-4o powered chatbot with RAG-based context and session persistence. Handles common HR queries around the clock.',
+  },
+  {
+    icon: FileText,
+    title: 'Document Vault',
+    desc: 'Upload and manage employee documents, onboarding and exit compliance checklists, and document templates.',
+  },
+  {
+    icon: Building2,
+    title: 'Org & Branch Management',
+    desc: 'Configure departments, designations, multi-branch structure, shifts, and employee ID formats per company.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'System Audit Logs',
+    desc: 'Complete audit trail for every action — entity, change diff, user, IP address — with expandable detail view.',
+  },
+  {
+    icon: Layers,
+    title: 'Holiday Calendar',
+    desc: 'Monthly calendar with national holiday presets for India, Malaysia, Singapore, and UAE, plus bulk import.',
   },
   {
     icon: Bell,
-    title: 'Notifications & Alerts',
-    desc: 'Stay on top of pending approvals, new applications, and important HR deadlines.',
+    title: 'Notifications',
+    desc: 'In-app notification feed with mark-read, bulk clear, pagination, and priority categories.',
+  },
+  {
+    icon: UserCheck,
+    title: 'User & Role Management',
+    desc: 'Invite team members by email, assign one of 7 RBAC roles, and manage access from the Settings panel.',
+  },
+  {
+    icon: Target,
+    title: 'Calendar Overview',
+    desc: 'Visual monthly calendar overlaying attendance, late marks, absences, and holiday indicators per employee.',
   },
 ];
 
@@ -70,7 +111,7 @@ const FeaturesSection = () => {
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6" style={{ gridAutoRows: '1fr' }}>
           {features.map((f, i) => (
             <motion.div
               key={f.title}

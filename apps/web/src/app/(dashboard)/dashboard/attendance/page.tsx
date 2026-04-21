@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, LogIn, LogOut, Calendar, Users, Loader2, AlertCircle, CheckCircle2, Plus } from "lucide-react";
+import { Clock, LogIn, LogOut, Calendar, Users, Loader2, AlertCircle, CheckCircle2, Plus, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { attendanceService, leaveService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatDateTime } from "@/lib/utils";
@@ -42,6 +42,18 @@ export default function AttendancePage() {
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [leaveForm, setLeaveForm] = useState({ leave_type: "casual", start_date: "", end_date: "", reason: "" });
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+
+  // Date filter for attendance log
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [attendanceDate, setAttendanceDate] = useState(todayStr);
+  const [filteredLog, setFilteredLog] = useState<AttendanceRecord[]>([]);
+  const [filterLoading, setFilterLoading] = useState(false);
+
+  // My history tab
+  const [historyLog, setHistoryLog] = useState<AttendanceRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyMonth, setHistoryMonth] = useState(new Date().getMonth() + 1);
+  const [historyYear, setHistoryYear] = useState(new Date().getFullYear());
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -94,7 +106,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canApproveLeaves]);
 
   useEffect(() => {
     loadData();
@@ -199,6 +211,55 @@ export default function AttendancePage() {
     }
   }
 
+  const loadAttendanceForDate = useCallback(async (date: string) => {
+    setFilterLoading(true);
+    try {
+      const result = await attendanceService.list({ attendance_date: date, page_size: 200 });
+      setFilteredLog(result.data ?? []);
+    } catch {
+      setFilteredLog([]);
+    } finally {
+      setFilterLoading(false);
+    }
+  }, []);
+
+  const loadMyHistory = useCallback(async (month: number, year: number) => {
+    setHistoryLoading(true);
+    try {
+      const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+      const lastDay = new Date(year, month, 0).getDate();
+      const endDate = `${year}-${String(month).padStart(2, "0")}-${lastDay}`;
+      const result = await attendanceService.getMyHistory({ page_size: 100 });
+      const filtered = (result.data ?? []).filter((r) => {
+        const d = r.attendance_date || r.check_in_time?.split("T")[0] || "";
+        return d >= startDate && d <= endDate;
+      });
+      setHistoryLog(filtered);
+    } catch {
+      setHistoryLog([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  function exportAttendanceCSV(records: AttendanceRecord[], filename: string) {
+    const headers = ["Employee", "Date", "Clock In", "Clock Out", "Hours", "Status"];
+    const rows = records.map((r) => [
+      r.employee_name || r.employee_code || r.employee_id || "",
+      r.attendance_date || r.check_in_time?.split("T")[0] || "",
+      r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "",
+      r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "",
+      r.total_hours ? r.total_hours.toFixed(1) : "",
+      r.status || "",
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${filename}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const statusColors: Record<string, "success" | "warning" | "destructive" | "default"> = {
     present: "success", late: "warning", absent: "destructive", on_leave: "default",
     approved: "success", pending: "warning", rejected: "destructive",
@@ -277,22 +338,42 @@ export default function AttendancePage() {
         ))}
       </div>
 
-      <Tabs defaultValue="attendance">
+      <Tabs defaultValue="attendance" onValueChange={(v) => { if (v === "history") loadMyHistory(historyMonth, historyYear); if (v === "attendance") loadAttendanceForDate(attendanceDate); }}>
         <TabsList>
-          <TabsTrigger value="attendance">Today&apos;s Attendance</TabsTrigger>
+          <TabsTrigger value="attendance">Attendance Log</TabsTrigger>
+          <TabsTrigger value="history">My History</TabsTrigger>
           <TabsTrigger value="leaves">{canApproveLeaves ? `Leave Requests (${leaveRequests.filter((l) => l.status === "pending").length} pending)` : `My Leaves (${leaveRequests.length})`}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="attendance" className="mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Attendance Log</CardTitle>
-              <CardDescription>Real-time attendance tracking from the attendance service</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Attendance Log</CardTitle>
+                <CardDescription>Attendance records with date filter</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  className="w-40"
+                  value={attendanceDate}
+                  max={todayStr}
+                  onChange={(e) => { setAttendanceDate(e.target.value); loadAttendanceForDate(e.target.value); }}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={filteredLog.length === 0}
+                  onClick={() => exportAttendanceCSV(filteredLog, `attendance-${attendanceDate}`)}
+                >
+                  <Download className="mr-2 h-4 w-4" />Export
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {(loading || filterLoading) ? (
                 <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
-              ) : attendanceLog.length > 0 ? (
+              ) : (filteredLog.length > 0 ? filteredLog : attendanceLog).length > 0 ? (
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
@@ -304,7 +385,7 @@ export default function AttendancePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {attendanceLog.map((r, i) => (
+                    {(filteredLog.length > 0 ? filteredLog : attendanceLog).map((r, i) => (
                       <tr key={r.id || i} className="border-b last:border-0">
                         <td className="p-3 text-sm font-medium">{r.employee_name || r.employee_code || r.employee_id}</td>
                         <td className="p-3 text-sm">{r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
@@ -318,8 +399,85 @@ export default function AttendancePage() {
               ) : (
                 <div className="py-8 text-center text-muted-foreground">
                   <CheckCircle2 className="mx-auto mb-2 h-8 w-8" />
-                  <p>No attendance records for today yet.</p>
+                  <p>No attendance records for {attendanceDate === todayStr ? "today" : attendanceDate} yet.</p>
                   <p className="text-xs">Click &quot;Clock In&quot; to start tracking your attendance.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>My Attendance History</CardTitle>
+                <CardDescription>Personal attendance records by month</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="icon" variant="outline" onClick={() => {
+                  const d = new Date(historyYear, historyMonth - 2, 1);
+                  const m = d.getMonth() + 1; const y = d.getFullYear();
+                  setHistoryMonth(m); setHistoryYear(y); loadMyHistory(m, y);
+                }}><ChevronLeft className="h-4 w-4" /></Button>
+                <span className="text-sm font-medium min-w-[100px] text-center">
+                  {new Date(historyYear, historyMonth - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+                </span>
+                <Button size="icon" variant="outline" disabled={historyYear >= new Date().getFullYear() && historyMonth >= new Date().getMonth() + 1} onClick={() => {
+                  const d = new Date(historyYear, historyMonth, 1);
+                  const m = d.getMonth() + 1; const y = d.getFullYear();
+                  setHistoryMonth(m); setHistoryYear(y); loadMyHistory(m, y);
+                }}><ChevronRight className="h-4 w-4" /></Button>
+                <Button size="sm" variant="outline" disabled={historyLog.length === 0}
+                  onClick={() => exportAttendanceCSV(historyLog, `my-attendance-${historyYear}-${String(historyMonth).padStart(2, "0")}`)}>
+                  <Download className="mr-2 h-4 w-4" />Export
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {historyLoading ? (
+                <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : historyLog.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-4 gap-3 mb-4">
+                    {(["present", "late", "absent", "on_leave"] as const).map((s) => {
+                      const count = historyLog.filter((r) => r.status === s).length;
+                      const labels: Record<string, string> = { present: "Present", late: "Late", absent: "Absent", on_leave: "On Leave" };
+                      return (
+                        <div key={s} className="rounded-lg border p-3 text-center">
+                          <p className="text-2xl font-bold">{count}</p>
+                          <p className="text-xs text-muted-foreground">{labels[s]}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="p-3 text-left text-sm font-medium">Date</th>
+                        <th className="p-3 text-left text-sm font-medium">Clock In</th>
+                        <th className="p-3 text-left text-sm font-medium">Clock Out</th>
+                        <th className="p-3 text-left text-sm font-medium">Hours</th>
+                        <th className="p-3 text-left text-sm font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyLog.map((r, i) => (
+                        <tr key={r.id || i} className="border-b last:border-0">
+                          <td className="p-3 text-sm">{formatDate(r.attendance_date || r.check_in_time?.split("T")[0] || "")}</td>
+                          <td className="p-3 text-sm">{r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                          <td className="p-3 text-sm">{r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                          <td className="p-3 text-sm">{r.total_hours ? `${r.total_hours.toFixed(1)}h` : "—"}</td>
+                          <td className="p-3"><Badge variant={statusColors[r.status] || "default"}>{r.status?.replace("_", " ") || "present"}</Badge></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Calendar className="mx-auto mb-2 h-8 w-8" />
+                  <p>No attendance records for this month.</p>
                 </div>
               )}
             </CardContent>

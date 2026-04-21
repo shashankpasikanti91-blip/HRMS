@@ -40,18 +40,11 @@ import {
   Bar,
 } from "recharts";
 
-interface RecruitmentFunnelData {
-  stages?: Array<{ stage: string; count: number; conversion?: number }>;
-  total_applications?: number;
-  open_positions?: number;
-  avg_time_to_hire?: number;
-}
-
 interface AnalyticsData {
   dashboard: DashboardStats | null;
   attendance: AttendanceSummaryItem[];
   headcount: HeadcountByDept[];
-  recruitment: RecruitmentFunnelData;
+  payroll: Array<{ period_month: number; period_year: number; total_gross?: number; total_net?: number; total_deductions?: number; employee_count?: number }>;
 }
 
 const PERIOD_DAYS: Record<string, number> = {
@@ -82,7 +75,7 @@ function formatPct(n: number) {
 
 export default function AnalyticsPage() {
   const { toast } = useToast();
-  const [data, setData] = useState<AnalyticsData>({ dashboard: null, attendance: [], headcount: [], recruitment: {} });
+  const [data, setData] = useState<AnalyticsData>({ dashboard: null, attendance: [], headcount: [], payroll: [] });
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("last_30_days");
 
@@ -90,17 +83,17 @@ export default function AnalyticsPage() {
     setLoading(true);
     try {
       const days = PERIOD_DAYS[period] ?? 30;
-      const [dashRes, attendRes, headRes, recruitRes] = await Promise.allSettled([
+      const [dashRes, attendRes, headRes, payrollRes] = await Promise.allSettled([
         analyticsService.getDashboard(),
         analyticsService.getAttendanceSummary(days),
         analyticsService.getHeadcount(),
-        analyticsService.getRecruitmentFunnel(),
+        analyticsService.getPayrollSummary(),
       ]);
       setData({
         dashboard: dashRes.status === "fulfilled" ? dashRes.value : null,
         attendance: attendRes.status === "fulfilled" ? attendRes.value : [],
         headcount: headRes.status === "fulfilled" ? headRes.value : [],
-        recruitment: recruitRes.status === "fulfilled" ? recruitRes.value : {},
+        payroll: payrollRes.status === "fulfilled" ? (payrollRes.value ?? []) : [],
       });
     } catch {
       // silent
@@ -114,7 +107,7 @@ export default function AnalyticsPage() {
   const dash = data.dashboard;
   const attendSummary = data.attendance;
   const headcountData = data.headcount;
-  const recruitData = data.recruitment;
+  const payrollData = data.payroll;
 
   const attendancePoints = attendSummary.map((a) => ({
     label: shortDate(a.date),
@@ -153,10 +146,18 @@ export default function AnalyticsPage() {
     };
   });
 
-  const pipelineStages = recruitData.stages ?? [];
-  const totalApps = recruitData.total_applications ?? pipelineStages.reduce((sum, stage) => sum + stage.count, 0);
+  const payrollPoints = payrollData.map((p) => ({
+    label: `${new Date(p.period_year, p.period_month - 1).toLocaleString("default", { month: "short", year: "2-digit" })}`,
+    gross: p.total_gross ?? 0,
+    net: p.total_net ?? 0,
+    deductions: p.total_deductions ?? 0,
+    employees: p.employee_count ?? 0,
+  }));
   const topDepartment = [...headcountData].sort((a, b) => b.total - a.total)[0];
   const healthScore = clamp((presentTodayRate * 0.45) + (utilizationRate * 0.25) + (Math.max(0, 100 - (dash?.leave_requests_pending ?? 0) * 3) * 0.15) + (Math.max(0, 100 - (dash?.offers_pending ?? 0) * 2) * 0.15));
+
+  const latestPayroll = payrollData[payrollData.length - 1];
+  const totalPayrollGross = payrollData.reduce((s, p) => s + (p.total_gross ?? 0), 0);
 
   const kpis = [
     {
@@ -175,9 +176,9 @@ export default function AnalyticsPage() {
       trendUp: attendanceTrendUp,
     },
     {
-      label: "Open Positions",
-      value: dash?.open_jobs ?? recruitData.open_positions ?? 0,
-      helper: `${pipelineStages.length} hiring stages active`,
+      label: "Monthly Payroll",
+      value: latestPayroll ? `₹${(latestPayroll.total_net ?? 0).toLocaleString()}` : "N/A",
+      helper: latestPayroll ? `${latestPayroll.employee_count ?? 0} employees paid` : "No payroll runs yet",
       icon: Briefcase,
       color: "text-amber-600",
     },
@@ -198,7 +199,7 @@ export default function AnalyticsPage() {
         dashboard: dash,
         attendance: attendSummary,
         headcount: headcountData,
-        recruitment: recruitData,
+        payroll: payrollData,
         generated_at: new Date().toISOString(),
       };
       const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: "application/json" });
@@ -282,7 +283,7 @@ export default function AnalyticsPage() {
             <TabsList>
               <TabsTrigger value="workforce">Workforce</TabsTrigger>
               <TabsTrigger value="attendance">Attendance</TabsTrigger>
-              <TabsTrigger value="recruitment">Recruitment</TabsTrigger>
+              <TabsTrigger value="payroll">Payroll</TabsTrigger>
             </TabsList>
 
             <TabsContent value="workforce" className="mt-4">
@@ -435,13 +436,13 @@ export default function AnalyticsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="recruitment" className="mt-4">
+            <TabsContent value="payroll" className="mt-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  { label: "Open Positions", value: dash?.open_jobs ?? recruitData.open_positions ?? 0 },
-                  { label: "Total Applications", value: totalApps },
-                  { label: "Pipeline Stages", value: pipelineStages.length },
-                  { label: "Avg Time to Hire", value: recruitData.avg_time_to_hire != null ? `${recruitData.avg_time_to_hire} days` : "N/A" },
+                  { label: "YTD Gross", value: `\u20b9${totalPayrollGross.toLocaleString()}` },
+                  { label: "Latest Month Net", value: latestPayroll ? `\u20b9${(latestPayroll.total_net ?? 0).toLocaleString()}` : "N/A" },
+                  { label: "Latest Deductions", value: latestPayroll ? `\u20b9${(latestPayroll.total_deductions ?? 0).toLocaleString()}` : "N/A" },
+                  { label: "Employees Paid", value: latestPayroll?.employee_count ?? 0 },
                 ].map((s) => (
                   <Card key={s.label}>
                     <CardContent className="p-4 text-center">
@@ -455,55 +456,52 @@ export default function AnalyticsPage() {
               <div className="mt-4 grid gap-6 lg:grid-cols-3">
                 <Card className="lg:col-span-2">
                   <CardHeader>
-                    <CardTitle>Recruitment Funnel</CardTitle>
-                    <CardDescription>Stage concentration and throughput</CardDescription>
+                    <CardTitle>Payroll Trend</CardTitle>
+                    <CardDescription>Monthly gross vs net payroll</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {pipelineStages.length > 0 ? (
+                    {payrollPoints.length > 0 ? (
                       <div className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={pipelineStages.map((stage) => ({
-                            stage: stage.stage,
-                            count: stage.count,
-                            share: totalApps ? Number(((stage.count / totalApps) * 100).toFixed(1)) : 0,
-                          }))}>
+                          <BarChart data={payrollPoints}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
-                            <YAxis tick={{ fontSize: 12 }} />
-                            <Tooltip />
-                            <Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                            <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `\u20b9${(v / 1000).toFixed(0)}k`} />
+                            <Tooltip formatter={(v: number) => `\u20b9${v.toLocaleString()}`} />
+                            <Bar dataKey="gross" name="Gross" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="net" name="Net" fill="#16a34a" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
                     ) : (
-                      <p className="py-8 text-center text-muted-foreground">No recruitment funnel data available.</p>
+                      <p className="py-8 text-center text-muted-foreground">No payroll run data available yet.</p>
                     )}
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Pipeline Efficiency</CardTitle>
-                    <CardDescription>Conversion outlook for upcoming hiring</CardDescription>
+                    <CardTitle>Monthly Breakdown</CardTitle>
+                    <CardDescription>Deduction trend across payroll runs</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {pipelineStages.length > 0 ? (
+                    {payrollPoints.length > 0 ? (
                       <div className="space-y-3">
-                        {pipelineStages.map((s) => {
-                          const share = totalApps ? (s.count / totalApps) * 100 : 0;
+                        {payrollPoints.slice(-6).map((p) => {
+                          const deductionPct = p.gross > 0 ? (p.deductions / p.gross) * 100 : 0;
                           return (
-                            <div key={s.stage}>
+                            <div key={p.label}>
                               <div className="mb-1 flex items-center justify-between text-sm">
-                                <span className="capitalize">{s.stage}</span>
-                                <span>{formatPct(share)}</span>
+                                <span>{p.label}</span>
+                                <span>{formatPct(deductionPct)} deducted</span>
                               </div>
-                              <Progress value={share} className="h-2" />
+                              <Progress value={deductionPct} className="h-2" />
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <p className="py-8 text-center text-muted-foreground">No recruitment data to analyze.</p>
+                      <p className="py-8 text-center text-muted-foreground">No payroll data to analyze.</p>
                     )}
                   </CardContent>
                 </Card>

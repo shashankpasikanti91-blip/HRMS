@@ -11,30 +11,31 @@ import { getInitials } from "@/lib/utils";
 import GlobalSearch from "@/components/search/GlobalSearch";
 import NotificationBell from "@/components/layout/NotificationBell";
 import {
-  LayoutDashboard, Users, Building2, Clock, DollarSign, Briefcase,
-  Target, Bell, BarChart3, Bot, Settings, LogOut, ChevronLeft, Menu, CalendarDays,
-  Activity,
+  LayoutDashboard, Users, Building2, Clock, DollarSign,
+  Target, Bell, BarChart3, Settings, LogOut, ChevronLeft, Menu, CalendarDays,
+  Activity, FileText, Landmark, Umbrella, MinusCircle,
 } from "lucide-react";
 
 // Roles that can manage the organization (admin/HR tier)
 const ADMIN_ROLES = ["super_admin", "company_admin", "hr_manager"];
 const MANAGEMENT_ROLES = [...ADMIN_ROLES, "team_manager"];
-const ALL_ROLES = [...MANAGEMENT_ROLES, "finance", "recruiter", "employee"];
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: null },
-  { href: "/dashboard/employees", label: "Employees", icon: Users, roles: ADMIN_ROLES },
-  { href: "/dashboard/departments", label: "Departments", icon: Building2, roles: [...ADMIN_ROLES, "finance", "team_manager"] },
-  { href: "/dashboard/attendance", label: "Attendance", icon: Clock, roles: null },
-  { href: "/dashboard/holidays", label: "Holidays", icon: CalendarDays, roles: null },
-  { href: "/dashboard/payroll", label: "Payroll", icon: DollarSign, roles: null },
-  { href: "/dashboard/recruitment", label: "Recruitment", icon: Briefcase, roles: [...ADMIN_ROLES, "recruiter"] },
-  { href: "/dashboard/performance", label: "Performance", icon: Target, roles: [...MANAGEMENT_ROLES] },
-  { href: "/dashboard/notifications", label: "Notifications", icon: Bell, roles: null },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ADMIN_ROLES },
-  { href: "/dashboard/system-logs", label: "System Logs", icon: Activity, roles: ["super_admin", "company_admin"] },
-  { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot, roles: null },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings, roles: null },
+  { href: "/dashboard",                  label: "Dashboard",    icon: LayoutDashboard, roles: null },
+  { href: "/dashboard/employees",        label: "Employees",    icon: Users,            roles: ADMIN_ROLES },
+  { href: "/dashboard/departments",      label: "Departments",  icon: Building2,        roles: [...ADMIN_ROLES, "finance", "team_manager"] },
+  { href: "/dashboard/attendance",       label: "Attendance",   icon: Clock,            roles: null },
+  { href: "/dashboard/leave",            label: "Leave",        icon: Umbrella,         roles: null },
+  { href: "/dashboard/holidays",         label: "Holidays",     icon: CalendarDays,     roles: null },
+  { href: "/dashboard/payroll",          label: "Payroll",      icon: DollarSign,       roles: [...ADMIN_ROLES, "finance", "payroll_admin"] },
+  { href: "/dashboard/lop",              label: "LOP",          icon: MinusCircle,      roles: [...ADMIN_ROLES, "finance", "payroll_admin"] },
+  { href: "/dashboard/taxation",         label: "Taxation",     icon: Landmark,         roles: [...ADMIN_ROLES, "finance", "payroll_admin"] },
+  { href: "/dashboard/documents",        label: "Documents",    icon: FileText,         roles: null },
+  { href: "/dashboard/performance",      label: "Performance",  icon: Target,           roles: [...MANAGEMENT_ROLES] },
+  { href: "/dashboard/notifications",    label: "Notifications",icon: Bell,             roles: null },
+  { href: "/dashboard/analytics",        label: "Analytics",    icon: BarChart3,        roles: ADMIN_ROLES },
+  { href: "/dashboard/system-logs",      label: "System Logs",  icon: Activity,         roles: ["super_admin", "company_admin"] },
+  { href: "/dashboard/settings",         label: "Settings",     icon: Settings,         roles: null },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

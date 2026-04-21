@@ -146,6 +146,7 @@ export interface EmployeeSummary {
   department_name?: string;
   designation?: string;
   employment_status: string;
+  employment_type?: string;
   joining_date?: string;
 }
 
@@ -440,6 +441,144 @@ export interface Notification extends BaseRecord {
   action_url?: string;
   entity_type?: string;
   entity_id?: string;
+}
+
+// ─── Document Vault ──────────────────────────────────────────
+export type DocVaultStatus =
+  | "not_requested" | "requested" | "uploaded" | "under_review"
+  | "approved" | "rejected" | "missing" | "expired"
+  | "need_resubmission" | "completed";
+
+export type DocVaultCategory =
+  | "identity" | "employment" | "education" | "payroll_banking"
+  | "compliance" | "tax" | "onboarding" | "exit" | "medical" | "other";
+
+export type DocAccessLevel = "private" | "self" | "manager" | "public";
+export type OnboardingStatus = "not_started" | "in_progress" | "waiting_employee" | "waiting_hr" | "completed" | "blocked";
+export type ExitStatus = "initiated" | "pending_docs" | "pending_clearance" | "pending_payroll" | "completed" | "archived";
+
+export interface DocumentTypeTemplate extends BaseRecord {
+  company_id?: string;
+  name: string;
+  code: string;
+  category: DocVaultCategory;
+  country_code?: string;
+  description?: string;
+  is_mandatory: boolean;
+  is_expirable: boolean;
+  expiry_reminder_days: number;
+  access_level: DocAccessLevel;
+  sort_order: number;
+}
+
+export interface EmployeeDocument extends BaseRecord {
+  company_id: string;
+  employee_id: string;
+  template_id?: string;
+  document_code?: string;
+  document_name: string;
+  category: DocVaultCategory;
+  status: DocVaultStatus;
+  access_level: DocAccessLevel;
+  file_name: string;
+  file_url: string;
+  mime_type?: string;
+  file_size?: number;
+  file_hash?: string;
+  version: number;
+  uploaded_by_id?: string;
+  reviewed_by_id?: string;
+  notes?: string;
+  rejection_reason?: string;
+  expiry_date?: string;
+  is_confidential: boolean;
+  // joined via template relationship
+  template_name?: string;
+  template_category?: string;
+}
+
+export interface OnboardingChecklistItem extends BaseRecord {
+  checklist_id: string;
+  task_key: string;
+  task_label: string;
+  is_required: boolean;
+  status: OnboardingStatus | string;
+  completed_by_id?: string;
+  completed_at?: string;
+  notes?: string;
+  sort_order: number;
+}
+
+export interface OnboardingChecklist extends BaseRecord {
+  company_id: string;
+  employee_id: string;
+  status: OnboardingStatus;
+  completion_pct: number;
+  assigned_hr_id?: string;
+  notes?: string;
+  items: OnboardingChecklistItem[];
+}
+
+export interface ExitChecklistItem extends BaseRecord {
+  checklist_id: string;
+  task_key: string;
+  task_label: string;
+  is_required: boolean;
+  status: string;
+  completed_by_id?: string;
+  completed_at?: string;
+  notes?: string;
+  sort_order: number;
+}
+
+export interface ExitChecklist extends BaseRecord {
+  company_id: string;
+  employee_id: string;
+  status: ExitStatus;
+  last_working_day?: string;
+  resignation_date?: string;
+  manager_approved: boolean;
+  hr_clearance: boolean;
+  payroll_cleared: boolean;
+  assets_returned: boolean;
+  completion_pct: number;
+  assigned_hr_id?: string;
+  notes?: string;
+  items: ExitChecklistItem[];
+}
+
+export interface BankAccount extends BaseRecord {
+  company_id: string;
+  employee_id: string;
+  bank_name: string;
+  account_holder_name: string;
+  account_number_masked: string;
+  account_type: "savings" | "current" | "salary" | "other";
+  ifsc_code?: string;
+  branch_name?: string;
+  swift_code?: string;
+  routing_number?: string;
+  iban?: string;
+  currency: string;
+  country_code: string;
+  is_primary: boolean;
+  is_verified: boolean;
+  verified_by_id?: string;
+  upi_id?: string;
+}
+
+export interface DocumentVaultSummary {
+  employee_id: string;
+  employee_name: string;
+  employee_code?: string;
+  total_required: number;
+  uploaded: number;
+  approved: number;
+  missing: number;
+  pending_review: number;
+  expired: number;
+  onboarding_status?: OnboardingStatus | null;
+  onboarding_pct: number;
 }
 
 // ─── Holiday ─────────────────────────────────────────────────

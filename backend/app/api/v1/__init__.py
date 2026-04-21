@@ -25,6 +25,8 @@ from app.api.v1.routes.organization import router as org_router
 from app.api.v1.routes.policies import router as policies_router
 from app.api.v1.routes.salary import router as salary_router
 from app.api.v1.routes.audit import router as audit_router
+from app.api.v1.routes.lop import router as lop_router
+from app.api.v1.routes.document_vault import vault_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -52,3 +54,5 @@ api_router.include_router(org_router)
 api_router.include_router(policies_router)
 api_router.include_router(salary_router)
 api_router.include_router(audit_router)
+api_router.include_router(lop_router)
+api_router.include_router(vault_router)
