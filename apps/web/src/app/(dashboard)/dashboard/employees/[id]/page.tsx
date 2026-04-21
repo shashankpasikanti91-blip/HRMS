@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,10 +22,12 @@ import type { AttendanceRecord, Document, Employee, LeaveRequest } from "@/types
 export default function EmployeeDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const employeeId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const { toast } = useToast();
   const { user: authUser } = useAuthStore();
   const canManage = ["super_admin", "company_admin", "hr_manager"].includes(authUser?.role || "");
+  const [activeTab, setActiveTab] = useState<string>(() => searchParams?.get("tab") || "overview");
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
   const [leaveHistory, setLeaveHistory] = useState<LeaveRequest[]>([]);
@@ -242,7 +244,7 @@ export default function EmployeeDetailPage() {
         </Card>
 
         <div className="lg:col-span-2">
-          <Tabs defaultValue="overview">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="attendance">Attendance</TabsTrigger>

@@ -13,7 +13,7 @@ import NotificationBell from "@/components/layout/NotificationBell";
 import {
   LayoutDashboard, Users, Building2, Clock, DollarSign,
   Target, Bell, BarChart3, Settings, LogOut, ChevronLeft, Menu, CalendarDays,
-  Activity, FileText, Landmark, Umbrella, MinusCircle,
+  Activity, FileText, Landmark, Umbrella, MinusCircle, CalendarRange,
 } from "lucide-react";
 
 // Roles that can manage the organization (admin/HR tier)
@@ -25,6 +25,7 @@ const navItems = [
   { href: "/dashboard/employees",        label: "Employees",    icon: Users,            roles: ADMIN_ROLES },
   { href: "/dashboard/departments",      label: "Departments",  icon: Building2,        roles: [...ADMIN_ROLES, "finance", "team_manager"] },
   { href: "/dashboard/attendance",       label: "Attendance",   icon: Clock,            roles: null },
+  { href: "/dashboard/calendar",         label: "Calendar",     icon: CalendarRange,    roles: null },
   { href: "/dashboard/leave",            label: "Leave",        icon: Umbrella,         roles: null },
   { href: "/dashboard/holidays",         label: "Holidays",     icon: CalendarDays,     roles: null },
   { href: "/dashboard/payroll",          label: "Payroll",      icon: DollarSign,       roles: [...ADMIN_ROLES, "finance", "payroll_admin"] },
