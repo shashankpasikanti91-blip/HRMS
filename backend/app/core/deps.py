@@ -93,6 +93,10 @@ def require_hr_or_above():
     )
 
 
+# Recruitment is an add-on — access is controlled at HR level (no RECRUITER role exists)
+require_recruiter_or_above = require_hr_or_above
+
+
 def require_payroll_or_above():
     """Payroll admin and above can manage payroll, taxation, salary structures."""
     return require_roles(
