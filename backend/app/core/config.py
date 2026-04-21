@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import List, Optional
-from pydantic import field_validator, AnyHttpUrl
+from typing import Any, Dict, List, Optional
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     PORT: int = 8080
     HOST: str = "0.0.0.0"
     FRONTEND_URL: str = "http://localhost:3000"
+    # Also accepts CORS_ORIGINS (alias used in .env.production)
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:3001"
 
     @property
@@ -40,22 +41,56 @@ class Settings(BaseSettings):
         if isinstance(v, str) and v.startswith("postgresql://"):
             return v.replace("postgresql://", "postgresql+asyncpg://", 1)
         return v
+
     DB_POOL_SIZE: int = 20
     DB_POOL_MAX_OVERFLOW: int = 40
     DB_POOL_TIMEOUT: int = 30
     DB_ECHO: bool = False
 
     # ── Redis ──────────────────────────────────────────────
+    # Built from REDIS_HOST/REDIS_PORT/REDIS_PASSWORD if not set directly
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_CACHE_TTL: int = 300
     TOKEN_BLACKLIST_TTL: int = 86400
 
     # ── JWT ────────────────────────────────────────────────
+    # Also accepts FASTAPI_SECRET_KEY (alias used in .env.production)
     JWT_SECRET_KEY: str = "CHANGE_ME_minimum_64_chars_random_secret_key_for_production"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     JWT_RESET_TOKEN_EXPIRE_MINUTES: int = 60
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_env_aliases(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Resolve legacy / alternate env var names used in .env.production
+        so the backend works without renaming the env file.
+        """
+        # CORS: CORS_ORIGINS -> ALLOWED_ORIGINS
+        cors = values.get("cors_origins") or values.get("CORS_ORIGINS")
+        if cors and not (values.get("allowed_origins") or values.get("ALLOWED_ORIGINS")):
+            values["ALLOWED_ORIGINS"] = cors
+
+        # JWT: FASTAPI_SECRET_KEY -> JWT_SECRET_KEY
+        fsk = values.get("fastapi_secret_key") or values.get("FASTAPI_SECRET_KEY")
+        if fsk and not (values.get("jwt_secret_key") or values.get("JWT_SECRET_KEY")):
+            values["JWT_SECRET_KEY"] = fsk
+
+        # Redis: build REDIS_URL from components when not set as full URL
+        current_url = values.get("redis_url") or values.get("REDIS_URL", "")
+        if not current_url or current_url == "redis://localhost:6379/0":
+            host = values.get("redis_host") or values.get("REDIS_HOST", "")
+            port = values.get("redis_port") or values.get("REDIS_PORT", 6379)
+            pw = values.get("redis_password") or values.get("REDIS_PASSWORD", "")
+            if host and host not in ("localhost", "127.0.0.1"):
+                if pw:
+                    values["REDIS_URL"] = f"redis://:{pw}@{host}:{port}/0"
+                else:
+                    values["REDIS_URL"] = f"redis://{host}:{port}/0"
+
+        return values
 
     # ── Google OAuth ─────────────────────────────────────────
     GOOGLE_CLIENT_ID: Optional[str] = None
