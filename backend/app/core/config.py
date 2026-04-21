@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     # ── Database ───────────────────────────────────────────
     DATABASE_URL: str = "postgresql+asyncpg://srp_hrms:password@localhost:5432/srp_hrms"
     DATABASE_SYNC_URL: str = "postgresql://srp_hrms:password@localhost:5432/srp_hrms"
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def ensure_async_driver(cls, v: str) -> str:
+        """Ensure DATABASE_URL uses the asyncpg async driver."""
+        if isinstance(v, str) and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
     DB_POOL_SIZE: int = 20
     DB_POOL_MAX_OVERFLOW: int = 40
     DB_POOL_TIMEOUT: int = 30
