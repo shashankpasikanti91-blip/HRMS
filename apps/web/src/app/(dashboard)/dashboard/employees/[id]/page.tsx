@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,20 @@ import { useToast } from "@/hooks/use-toast";
 import { getInitials, formatDate } from "@/lib/utils";
 import type { AttendanceRecord, Document, Employee, LeaveRequest } from "@/types";
 
+// Wrap the entire page in Suspense so useSearchParams() is safe in Next.js 15
 export default function EmployeeDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <EmployeeDetailContent />
+    </Suspense>
+  );
+}
+
+function EmployeeDetailContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();

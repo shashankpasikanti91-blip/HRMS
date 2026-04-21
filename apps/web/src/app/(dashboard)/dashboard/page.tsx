@@ -119,10 +119,10 @@ export default function DashboardPage() {
       // Self-service results  
       if (isEmployee || isManager) {
         const s = (isAdmin || isManager) ? 5 : 2;
-        // Today's attendance
+        // Today's attendance ("no_profile" means no employee profile exists — treat as null)
         if (results[s]?.status === "fulfilled") {
           const v = (results[s] as PromiseFulfilledResult<unknown>).value;
-          if (v) setTodayAttendance(v as AttendanceRecord);
+          if (v && typeof v === "object") setTodayAttendance(v as AttendanceRecord);
         }
         // Attendance history
         if (results[s + 1]?.status === "fulfilled") {
