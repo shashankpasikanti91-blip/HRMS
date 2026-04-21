@@ -62,6 +62,14 @@ export const companyService = {
     const { data } = await api.put("/companies/me", payload);
     return data as Company;
   },
+  async uploadLogo(file: File): Promise<Company> {
+    const form = new FormData();
+    form.append("file", file);
+    const { data } = await api.post("/companies/me/logo", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data as Company;
+  },
 };
 
 // ─── Departments ─────────────────────────────────────────────────────────────

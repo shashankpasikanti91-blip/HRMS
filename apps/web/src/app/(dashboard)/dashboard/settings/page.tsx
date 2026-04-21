@@ -12,9 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuthStore } from "@/store/auth-store";
-import { settingsService, organizationService, userService } from "@/services/api-services";
+import { settingsService, organizationService, userService, companyService } from "@/services/api-services";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, User, Shield, Bell, Loader2, Plus, Edit, Trash2, MapPin, Briefcase, Clock, Users, UserPlus, Key, Ban, CheckCircle, Mail, Search, Hash } from "lucide-react";
+import { Building2, User, Shield, Bell, Loader2, Plus, Edit, Trash2, MapPin, Briefcase, Clock, Users, UserPlus, Key, Ban, CheckCircle, Mail, Search, Hash, ImagePlus } from "lucide-react";
 import type { Branch, Designation, Shift } from "@/types";
 
 interface ManagedUser {
@@ -61,7 +61,8 @@ export default function SettingsPage() {
   const [initialLoading, setInitialLoading] = useState(true);
 
   const [profileForm, setProfileForm] = useState({ full_name: "" });
-  const [orgForm, setOrgForm] = useState({ name: "", industry: "", size: "", timezone: "" });
+  const [orgForm, setOrgForm] = useState({ name: "", industry: "", size: "", timezone: "", logo_url: "" });
+  const [logoUploading, setLogoUploading] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
     "Leave approvals": true,
@@ -142,6 +143,7 @@ export default function SettingsPage() {
           industry: company?.industry || "",
           size: company?.size || "",
           timezone: company?.timezone || "",
+          logo_url: company?.logo_url || "",
         });
         // Load employee ID config from org settings
         const orgSettings = await import("@/lib/api").then(m => m.default.get("/organization/settings").then(r => r.data)).catch(() => null);
@@ -151,7 +153,8 @@ export default function SettingsPage() {
             prefix: cfg.prefix || "EMP",
             include_year: cfg.include_year || false,
             include_dept: cfg.include_dept || false,
-            separator: cfg.separator || "-",
+            // Map stored empty string to UI sentinel "none" to satisfy Radix Select
+            separator: cfg.separator === "" || cfg.separator === undefined ? "none" : cfg.separator,
             padding: Number(cfg.padding) || 4,
           });
         }
@@ -184,7 +187,8 @@ export default function SettingsPage() {
     }
     setSaving(true);
     try {
-      await settingsService.updateCompany(orgForm);
+      const { logo_url, ...rest } = orgForm;
+      await settingsService.updateCompany({ ...rest, logo_url: logo_url || undefined });
       toast({ title: "Saved", description: "Organization settings updated", variant: "success" });
     } catch {
       toast({ title: "Error", description: "Failed to update organization", variant: "destructive" });
@@ -193,12 +197,33 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Logo must be under 2MB", variant: "destructive" });
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const updated = await companyService.uploadLogo(file);
+      setOrgForm((prev) => ({ ...prev, logo_url: updated.logo_url || "" }));
+      toast({ title: "Logo uploaded", description: "Company logo updated successfully", variant: "success" });
+    } catch {
+      toast({ title: "Error", description: "Failed to upload logo", variant: "destructive" });
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
   async function handleSaveEmpIdConfig() {
     if (!canManageOrg) return;
     setSavingEmpId(true);
     try {
+      // Translate UI sentinel "none" back to actual empty string for storage
+      const configToSave = { ...empIdConfig, separator: empIdConfig.separator === "none" ? "" : empIdConfig.separator };
       await import("@/lib/api").then(m => m.default.patch("/organization/settings", {
-        custom_config: { employee_id: empIdConfig },
+        custom_config: { employee_id: configToSave },
       }));
       toast({ title: "Saved", description: "Employee ID format updated. New employees will use this format.", variant: "success" });
     } catch {
@@ -211,11 +236,12 @@ export default function SettingsPage() {
   /** Generate a preview Employee ID based on current config */
   function previewEmpId(): string {
     const { prefix, include_year, include_dept, separator, padding } = empIdConfig;
+    const sep = separator === "none" ? "" : separator;
     const parts: string[] = [prefix.toUpperCase() || "EMP"];
     if (include_year) parts.push(new Date().getFullYear().toString());
     if (include_dept) parts.push("ENG");
     parts.push("1".padStart(padding, "0"));
-    return parts.join(separator);
+    return parts.join(sep);
   }
 
   async function handleChangePassword() {
@@ -695,6 +721,44 @@ export default function SettingsPage() {
                 <Label>Timezone</Label>
                 <Input value={orgForm.timezone} onChange={(e) => setOrgForm({ ...orgForm, timezone: e.target.value })} placeholder="e.g. Asia/Kolkata" />
               </div>
+              <div className="space-y-2">
+                <Label>Company Logo</Label>
+                {orgForm.logo_url && (
+                  <div className="mb-2">
+                    <img src={orgForm.logo_url} alt="Company logo" className="h-14 rounded border object-contain p-1" />
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <Label
+                    htmlFor="logo-upload"
+                    className={`flex cursor-pointer items-center gap-2 rounded-md border border-dashed px-4 py-2 text-sm transition-colors hover:bg-muted ${
+                      !canManageOrg ? "cursor-not-allowed opacity-50" : ""
+                    }`}
+                  >
+                    {logoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                    {logoUploading ? "Uploading…" : orgForm.logo_url ? "Change Logo" : "Upload Logo"}
+                  </Label>
+                  <input
+                    id="logo-upload"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    disabled={!canManageOrg || logoUploading}
+                    onChange={handleLogoUpload}
+                  />
+                  {orgForm.logo_url && canManageOrg && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => setOrgForm((prev) => ({ ...prev, logo_url: "" }))}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">PNG, JPG or WebP — max 2 MB. Shown on payslips.</p>
+              </div>
               <Button onClick={handleSaveOrg} disabled={saving || !canManageOrg}>
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Changes
               </Button>
@@ -870,7 +934,7 @@ export default function SettingsPage() {
                       <SelectItem value="-">Hyphen ( - )</SelectItem>
                       <SelectItem value="/">Slash ( / )</SelectItem>
                       <SelectItem value="_">Underscore ( _ )</SelectItem>
-                      <SelectItem value="">None (no separator)</SelectItem>
+                      <SelectItem value="none">None (no separator)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">Character between ID segments</p>

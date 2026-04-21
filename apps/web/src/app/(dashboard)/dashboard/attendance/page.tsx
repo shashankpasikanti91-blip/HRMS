@@ -28,7 +28,7 @@ export default function AttendancePage() {
   const [clockInTime, setClockInTime] = useState<string | null>(null);
   const [clockLoading, setClockLoading] = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
-  const [hasEmployeeProfile, setHasEmployeeProfile] = useState(true);
+  const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
   const [teamData, setTeamData] = useState<{ present: number; onLeave: number; late: number; absent: number }>({ present: 0, onLeave: 0, late: 0, absent: 0 });
   const [attendanceLog, setAttendanceLog] = useState<AttendanceRecord[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
@@ -67,10 +67,11 @@ export default function AttendancePage() {
       if (todayResult.status === "fulfilled") {
         const today = todayResult.value;
         if (today === null) {
-          // null means no employee profile or no record today
+          // null means employee has a profile but no record today yet
           setClockedIn(false);
           setClockInTime(null);
           setTodayRecord(null);
+          setHasEmployeeProfile(true);
         } else if (today === "no_profile") {
           setHasEmployeeProfile(false);
         } else {

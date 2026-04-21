@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -34,6 +34,20 @@ async def update_my_company(
     """Update company profile (Company Admin or above)."""
     service = CompanyService(db)
     company = await service.update_company(current_user.company_id, data, current_user.id)
+    return CompanyResponse.model_validate(company)
+
+
+@router.post("/me/logo", response_model=CompanyResponse)
+async def upload_company_logo(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_company_admin_or_above()),
+):
+    """Upload a company logo image (PNG/JPG). Returns updated company profile."""
+    from app.integrations.storage_service import StorageService
+    url = await StorageService.upload(file, folder="logos", company_id=str(current_user.company_id))
+    service = CompanyService(db)
+    company = await service.update_company(current_user.company_id, CompanyUpdate(logo_url=url), current_user.id)
     return CompanyResponse.model_validate(company)
 
 
